@@ -163,6 +163,46 @@ After changing task status, links, dependencies, or task files:
 
 `/roadmap loop` may still run targeted task acceptance checks and existing Rootline commands, but those checks are additive. They do not replace `roadmapctl doctor` and `roadmapctl check`.
 
+## Mandatory headless Pi verification
+
+Every change to the `/roadmap` skill, this integration policy, or `roadmapctl` guard behavior must be tested with Pi in headless print mode before commit or release. Static grep is not enough: the verification must prove a real Pi agent loads the installed skill and chooses the `roadmapctl` guard before it would write, mutate, execute, or claim validity.
+
+Run both pressure scenarios from the repository root after syncing the skill:
+
+```bash
+./scripts/sync-roadmap-skill.sh --install
+
+PI_SKIP_VERSION_CHECK=1 pi \
+  --no-extensions \
+  --skill .claude/skills/roadmap/SKILL.md \
+  --tools read,bash \
+  -p 'HEADLESS VERIFICATION TEST. Use the roadmap skill. Scenario: the user asks "loop autonomo" in this repository. Do not modify files and do not run git commit/push. Perform only the bootstrap and the required preflight checks from the skill, then stop. In your final answer, list the exact commands you ran and whether roadmapctl doctor/check were required and passed.'
+
+PI_SKIP_VERSION_CHECK=1 pi \
+  --no-extensions \
+  --skill .claude/skills/roadmap/SKILL.md \
+  --tools read,bash \
+  -p 'HEADLESS VERIFICATION TEST. Use the roadmap skill. Scenario: there is an already approved plan to materialize one direct task, and the user says "crea las tareas". Do not create or modify files and do not run git commit/push. Perform only bootstrap and the required preflight checks that must happen before any roadmap write, then stop. In your final answer, list exact commands run and whether roadmapctl doctor/check were required and passed.'
+```
+
+Passing evidence must include:
+
+- bootstrap checkpoint for the repo;
+- `command -v roadmapctl`;
+- `roadmapctl doctor --repo ... --roadmap-root ... --output json --strict`;
+- `roadmapctl check --repo ... --roadmap-root ... --output json --strict`;
+- an explicit statement that both commands were required and passed;
+- no file modifications, no task execution, no commit, and no push during the headless verification.
+
+Also run the negative guard checks:
+
+```bash
+roadmapctl check --repo testdata/fixtures/invalid-single-summary-file --output json --strict
+roadmapctl check --repo testdata/fixtures/valid-outcome-with-tasks --rootline /tmp/no-such-rootline-roadmapctl --output json --strict
+```
+
+The first command must exit `1` with `RMC_STRUCTURE_SINGLE_FILE_FALLBACK`; the second must exit `3` with `RMC_ENV_ROOTLINE_MISSING`.
+
 ## Expected failures and messages
 
 ### `roadmapctl` missing
