@@ -1,0 +1,20 @@
+{
+  "diagnostics": [
+    {
+      "id": "RMC_CONFIG_ROADMAP_ROOT_ESCAPE",
+      "message": "roadmap-root must resolve inside repo",
+      "path": ".claude/roadmap.local.md",
+      "severity": "error"
+    }
+  ],
+  "kind": "roadmapctl/check",
+  "roadmap_root": "",
+  "root": "<fixture:invalid-root-escape>",
+  "summary": {
+    "errors": 1,
+    "infos": 0,
+    "status": "error",
+    "warnings": 0
+  },
+  "version": 1
+}

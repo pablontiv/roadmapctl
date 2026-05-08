@@ -1,5 +1,5 @@
 ---
-roadmap-root: .
+roadmap-root: docs/roadmap
 done-statuses: ['Completed', 'Obsolete']
 active-statuses: ['Pending', 'Specified', 'In Progress']
 status-values:

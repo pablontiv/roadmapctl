@@ -1,0 +1,20 @@
+{
+  "diagnostics": [
+    {
+      "id": "RMC_STRUCTURE_SINGLE_FILE_FALLBACK",
+      "message": "multiple tasks must be materialized as canonical TXXX files, not a summary file",
+      "path": "roadmap-tasks.md",
+      "severity": "error"
+    }
+  ],
+  "kind": "roadmapctl/check",
+  "roadmap_root": "<fixture:invalid-single-summary-file>/docs/roadmap",
+  "root": "<fixture:invalid-single-summary-file>",
+  "summary": {
+    "errors": 1,
+    "infos": 0,
+    "status": "error",
+    "warnings": 0
+  },
+  "version": 1
+}

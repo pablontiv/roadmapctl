@@ -1,0 +1,13 @@
+{
+  "diagnostics": [],
+  "kind": "roadmapctl/check",
+  "roadmap_root": "<fixture:valid-outcome-with-tasks>/docs/roadmap",
+  "root": "<fixture:valid-outcome-with-tasks>",
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "ok",
+    "warnings": 0
+  },
+  "version": 1
+}

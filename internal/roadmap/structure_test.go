@@ -64,7 +64,7 @@ func TestCheckStructureRejectsExtraNestingUnderOutcome(t *testing.T) {
 }
 
 func TestCheckStructureNormalizesDiagnosticPathsToSlashSeparators(t *testing.T) {
-	diagnostics, err := CheckStructure(filepath.Join("..", "..", "testdata", "fixtures", "invalid-extra-nesting"))
+	diagnostics, err := CheckStructure(filepath.Join("..", "..", "testdata", "fixtures", "invalid-extra-nesting", "docs", "roadmap"))
 	if err != nil {
 		t.Fatalf("CheckStructure() error = %v", err)
 	}
@@ -81,7 +81,7 @@ func TestCheckStructureNormalizesDiagnosticPathsToSlashSeparators(t *testing.T) 
 }
 
 func fixturePath(name string) string {
-	return filepath.Join("..", "..", "testdata", "fixtures", name)
+	return filepath.Join("..", "..", "testdata", "fixtures", name, "docs", "roadmap")
 }
 
 func assertHasDiagnostic(t *testing.T, diagnostics []Diagnostic, id string, path string) {

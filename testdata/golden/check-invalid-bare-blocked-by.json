@@ -1,0 +1,24 @@
+{
+  "diagnostics": [
+    {
+      "details": {
+        "kind": "execution",
+        "operation": "validate",
+        "stderr": "validation failed\n"
+      },
+      "id": "RMC_ROOTLINE_VALIDATE_FAILED",
+      "message": "rootline command failed",
+      "severity": "error"
+    }
+  ],
+  "kind": "roadmapctl/check",
+  "roadmap_root": "<fixture:invalid-bare-blocked-by>/docs/roadmap",
+  "root": "<fixture:invalid-bare-blocked-by>",
+  "summary": {
+    "errors": 1,
+    "infos": 0,
+    "status": "error",
+    "warnings": 0
+  },
+  "version": 1
+}

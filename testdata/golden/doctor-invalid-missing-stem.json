@@ -1,0 +1,31 @@
+{
+  "diagnostics": [
+    {
+      "id": "RMC_CONFIG_STEM_MISSING",
+      "message": "roadmap root is missing .stem",
+      "path": "docs/roadmap/.stem",
+      "severity": "error"
+    },
+    {
+      "details": {
+        "config": ".claude/roadmap.local.md",
+        "roadmap_root": "docs/roadmap",
+        "rootline_version": "<rootline-version>"
+      },
+      "id": "RMC_ENV_PATH",
+      "message": "roadmapctl doctor paths resolved",
+      "path": "docs/roadmap",
+      "severity": "info"
+    }
+  ],
+  "kind": "roadmapctl/doctor",
+  "roadmap_root": "<fixture:invalid-missing-stem>/docs/roadmap",
+  "root": "<fixture:invalid-missing-stem>",
+  "summary": {
+    "errors": 1,
+    "infos": 1,
+    "status": "error",
+    "warnings": 0
+  },
+  "version": 1
+}
