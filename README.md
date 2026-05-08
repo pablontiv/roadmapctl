@@ -18,6 +18,14 @@ The git hook in `.githooks/post-merge` installs that skill into the user scope:
 ~/.claude/skills/roadmap
 ```
 
+The hook delegates to an explicit sync script that only replaces the `roadmap`
+skill folder and does not touch any other user-scope skills:
+
+```bash
+scripts/sync-roadmap-skill.sh --install
+scripts/sync-roadmap-skill.sh --check
+```
+
 ## MVP
 
 First release scope:
