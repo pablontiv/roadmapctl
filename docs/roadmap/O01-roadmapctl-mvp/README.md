@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: outcome
 ---
 # O01: roadmapctl MVP obligatorio para roadmaps
