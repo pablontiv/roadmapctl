@@ -24,6 +24,18 @@ El loop opera en un repo a la vez.
 
 ## Fase 1: Discovery
 
+### Preflight obligatorio roadmapctl
+
+Antes de consultar o ejecutar tasks pendientes:
+
+```bash
+command -v roadmapctl
+roadmapctl doctor --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+```
+
+Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de seleccionar o ejecutar tasks. Reportar comando, exit code y diagnostic IDs si hubo JSON. No ejecutar tasks ni mutar estados.
+
 1. Cargar dependencias:
    ```bash
    rootline graph <roadmap-root>/ --where "<where-leaf>" --output json
@@ -89,8 +101,9 @@ Para cada task ordenada:
    ```bash
    rootline set <task.md> "estado=<status-in-progress>"
    rootline validate <task.md>
+   roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
    ```
-   Actualizar UI con `TaskUpdate`.
+   Si `roadmapctl check` falla, detenerse antes de ejecutar la task o commitear. Actualizar UI con `TaskUpdate` solo después de pasar el postcheck.
 
 4. **Leer task**
    Leer el archivo completo. La task debe ser suficiente para implementar.
@@ -122,8 +135,9 @@ Para cada task ordenada:
    ```bash
    rootline set <task.md> "estado=<status-completed>"
    rootline validate <task.md>
+   roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
    ```
-   `git add` específico, commit según `<commit-style>`, push según `<auto-push>` y `--pr`.
+   Si `roadmapctl check` falla, reportar diagnostics y detenerse antes de declarar completada la iteración o commitear. Si pasa: `git add` específico, commit según `<commit-style>`, push según `<auto-push>` y `--pr`.
 
 10. **Actualizar UI y resumen**
    ```bash

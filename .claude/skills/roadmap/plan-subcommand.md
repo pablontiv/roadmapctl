@@ -44,6 +44,18 @@ STOP hasta aprobación. No crear archivos antes.
 
 **MATERIALIZAR ≠ IMPLEMENTAR.** Crear solo archivos `.md` y `.stem` dentro de `<roadmap-root>/`.
 
+### Preflight obligatorio roadmapctl
+
+Antes de crear o modificar cualquier archivo del roadmap:
+
+```bash
+command -v roadmapctl
+roadmapctl doctor --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+```
+
+Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de escribir. Reportar comando, exit code y diagnostic IDs si hubo JSON. No crear archivos, no usar fallback `*-tasks.md`, no auto-fix.
+
 Guardrail obligatorio antes de escribir:
 
 1. Confirmar que se va a crear una de estas formas:
@@ -156,9 +168,10 @@ Al final:
 ```bash
 rootline validate --all <roadmap-root>/
 rootline graph <roadmap-root>/ --check
+roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
 ```
 
-Si hay errores corregibles, usar `rootline fix` con criterio conservador. Un warning `scope.match "*.md" matches no files in directory` es aceptable cuando la raíz solo contiene directorios `OXX-*` y ninguna task directa.
+Si `roadmapctl check` falla, detenerse antes de declarar éxito o commitear. Reportar diagnostics; no auto-fix salvo aprobación explícita de una task de reparación. Si hay errores Rootline corregibles, usar `rootline fix` con criterio conservador. Un warning `scope.match "*.md" matches no files in directory` es aceptable cuando la raíz solo contiene directorios `OXX-*` y ninguna task directa.
 
 ### Paso 6: Commit + push
 

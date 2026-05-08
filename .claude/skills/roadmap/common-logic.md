@@ -2,6 +2,28 @@
 
 > En workspace mode, `<roadmap-root>` se reemplaza por `<abs-roadmap-root>` y los comandos git usan `git -C <repo-path>`.
 
+## Guard obligatorio: roadmapctl
+
+Para cualquier flujo que escriba, mute, ejecute tasks o declare validez del roadmap, `roadmapctl` es obligatorio además de Rootline.
+
+Antes de escribir, mutar o ejecutar:
+
+```bash
+command -v roadmapctl
+roadmapctl doctor --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+```
+
+Después de cualquier materialización o mutación del roadmap:
+
+```bash
+roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+```
+
+Si `roadmapctl` no existe o cualquier comando sale non-zero, detenerse antes de continuar. Reportar comando, exit code y diagnostic IDs si hubo JSON. No auto-fix, no fallback a markdown libre, no ejecutar tasks y no commitear mutaciones del roadmap.
+
+La planificación conceptual que no escribe, no muta, no ejecuta y no declara validez puede continuar sin `roadmapctl`.
+
 ## Modelo
 
 El roadmap usa máximo dos niveles:

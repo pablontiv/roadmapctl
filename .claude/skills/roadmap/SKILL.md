@@ -170,7 +170,9 @@ rootline describe <roadmap-root>/ --field schema.estado
 
 Verificar que los status configurados existan en el schema.
 
-## Dependencia: rootline CLI
+## Dependencias CLI
+
+### rootline
 
 Requerido para materializar, consultar y ejecutar roadmaps.
 
@@ -187,7 +189,30 @@ Si no está disponible, informar:
 Instalar con: curl -fsSL https://raw.githubusercontent.com/pablontiv/rootline/master/install.sh | bash
 ```
 
-La generación conceptual de planes puede continuar sin rootline.
+### roadmapctl
+
+Requerido para comandos implementados de `/roadmap` que escriben, mutan,
+ejecutan tasks o declaran validez del roadmap.
+
+Gate antes de escribir/mutar/ejecutar/declarar validez:
+
+```bash
+command -v roadmapctl
+roadmapctl doctor --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+```
+
+Postcheck obligatorio después de materializar o mutar:
+
+```bash
+roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+```
+
+Si `roadmapctl` falta o sale non-zero, detenerse y reportar diagnostics. No
+hacer auto-fix, no fallback a markdown libre, no commitear y no ejecutar tasks.
+
+La generación conceptual de planes puede continuar sin rootline/roadmapctl solo
+si no escribe, no muta, no ejecuta y no declara validez.
 
 ## Routing por subcomando
 
