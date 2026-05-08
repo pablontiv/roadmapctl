@@ -76,6 +76,9 @@ func executeLeafCommand(args []string, stdout io.Writer, stderr io.Writer, name 
 	if name == "doctor" {
 		report = runDoctor(context.Background(), options)
 	}
+	if name == "check" {
+		report = runCheck(context.Background(), options)
+	}
 	if options.Output == "json" {
 		if err := diagnostics.RenderJSON(stdout, report); err != nil {
 			fmt.Fprintf(stderr, "%s: render JSON report: %v\n", name, err)
