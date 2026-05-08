@@ -27,6 +27,13 @@ First release scope:
 
 The public CLI contract is documented in [docs/cli-contract.md](docs/cli-contract.md). Implemented `/roadmap` commands that write, mutate, execute tasks, or claim roadmap validity must use `roadmapctl` as a blocking guard.
 
+## Development
+
+```bash
+go test ./...
+go build ./cmd/roadmapctl
+```
+
 Non-goals for MVP:
 
 - no roadmap decomposition intelligence;
