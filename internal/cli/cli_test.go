@@ -68,7 +68,7 @@ func TestUnknownCommandIsUsageError(t *testing.T) {
 
 func TestJSONOutputEmitsOnlyParseableReport(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"doctor", "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"doctor", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr)
 
 	if code != 0 {
 		t.Fatalf("Execute doctor --output json exit = %d, want 0; stderr=%q", code, stderr.String())

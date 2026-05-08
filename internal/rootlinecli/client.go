@@ -142,6 +142,14 @@ func ResolveBinary(explicit string, env []string) (string, error) {
 	}
 }
 
+func (c *Client) Version(ctx context.Context) (*Result, error) {
+	result, err := c.run(ctx, []string{"--version"})
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 func (c *Client) Validate(ctx context.Context, paths ...string) (*JSONResult, error) {
 	args := append([]string{"validate"}, paths...)
 	args = append(args, "--output", "json")
@@ -176,9 +184,27 @@ func (c *Client) Graph(ctx context.Context, root string, wheres ...string) (*JSO
 }
 
 func (c *Client) runJSON(ctx context.Context, args []string) (*JSONResult, error) {
-	binary, err := ResolveBinary(c.binary, c.env)
+	result, err := c.run(ctx, args)
 	if err != nil {
 		return nil, err
+	}
+
+	decoded := map[string]any{}
+	if err := json.Unmarshal(result.Stdout, &decoded); err != nil {
+		return nil, &Error{Kind: ErrorInvalidJSON, Message: "rootline returned invalid JSON", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
+	}
+	return &JSONResult{
+		Stdout:   append([]byte(nil), result.Stdout...),
+		Stderr:   append([]byte(nil), result.Stderr...),
+		ExitCode: result.ExitCode,
+		Decoded:  decoded,
+	}, nil
+}
+
+func (c *Client) run(ctx context.Context, args []string) (Result, error) {
+	binary, err := ResolveBinary(c.binary, c.env)
+	if err != nil {
+		return Result{}, err
 	}
 
 	commandCtx := ctx
@@ -196,21 +222,11 @@ func (c *Client) runJSON(ctx context.Context, args []string) (*JSONResult, error
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(commandCtx.Err(), context.DeadlineExceeded) {
-			return nil, &Error{Kind: ErrorTimeout, Message: "rootline command timed out", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
+			return Result{}, &Error{Kind: ErrorTimeout, Message: "rootline command timed out", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
 		}
-		return nil, &Error{Kind: ErrorExecution, Message: "rootline command failed", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
+		return Result{}, &Error{Kind: ErrorExecution, Message: "rootline command failed", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
 	}
-
-	decoded := map[string]any{}
-	if err := json.Unmarshal(result.Stdout, &decoded); err != nil {
-		return nil, &Error{Kind: ErrorInvalidJSON, Message: "rootline returned invalid JSON", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
-	}
-	return &JSONResult{
-		Stdout:   append([]byte(nil), result.Stdout...),
-		Stderr:   append([]byte(nil), result.Stderr...),
-		ExitCode: result.ExitCode,
-		Decoded:  decoded,
-	}, nil
+	return result, nil
 }
 
 type OSExecutor struct{}

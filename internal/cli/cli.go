@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -72,6 +73,9 @@ func executeLeafCommand(args []string, stdout io.Writer, stderr io.Writer, name 
 	}
 
 	report := diagnostics.NewReport("roadmapctl/"+name, options.Repo, options.RoadmapRoot, nil)
+	if name == "doctor" {
+		report = runDoctor(context.Background(), options)
+	}
 	if options.Output == "json" {
 		if err := diagnostics.RenderJSON(stdout, report); err != nil {
 			fmt.Fprintf(stderr, "%s: render JSON report: %v\n", name, err)
