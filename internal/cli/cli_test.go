@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -62,5 +63,31 @@ func TestUnknownCommandIsUsageError(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "unknown command") {
 		t.Fatalf("stderr missing unknown command message: %q", stderr.String())
+	}
+}
+
+func TestJSONOutputEmitsOnlyParseableReport(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"doctor", "--output", "json"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("Execute doctor --output json exit = %d, want 0; stderr=%q", code, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+	var report struct {
+		Version     int    `json:"version"`
+		Kind        string `json:"kind"`
+		Diagnostics []any  `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout is not parseable JSON report: %v\n%s", err, stdout.String())
+	}
+	if report.Version != 1 || report.Kind != "roadmapctl/doctor" || report.Diagnostics == nil {
+		t.Fatalf("unexpected report: %#v", report)
+	}
+	if strings.Contains(stdout.String(), "not implemented") {
+		t.Fatalf("stdout contains extra text: %q", stdout.String())
 	}
 }

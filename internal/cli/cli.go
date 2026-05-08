@@ -6,14 +6,16 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"github.com/pablontiv/roadmapctl/internal/diagnostics"
 )
 
 const (
-	ExitOK          = 0
-	ExitValidation  = 1
-	ExitUsage       = 2
-	ExitEnvironment = 3
-	ExitInternal    = 4
+	ExitOK          = diagnostics.ExitOK
+	ExitValidation  = diagnostics.ExitValidation
+	ExitUsage       = diagnostics.ExitUsage
+	ExitEnvironment = diagnostics.ExitEnvironment
+	ExitInternal    = diagnostics.ExitInternal
 )
 
 type Options struct {
@@ -49,13 +51,14 @@ func Execute(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func executeLeafCommand(args []string, stdout io.Writer, stderr io.Writer, name string, description string) int {
+	options := Options{Repo: ".", Output: "text", Timeout: 10 * time.Second}
 	if len(args) > 0 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help") {
-		fs := newFlagSet(name, stdout)
+		fs := newFlagSet(name, stdout, &options)
 		fs.Usage()
 		return ExitOK
 	}
 
-	fs := newFlagSet(name, stderr)
+	fs := newFlagSet(name, stderr, &options)
 	if err := fs.Parse(args); err != nil {
 		return ExitUsage
 	}
@@ -63,20 +66,36 @@ func executeLeafCommand(args []string, stdout io.Writer, stderr io.Writer, name 
 		fmt.Fprintf(stderr, "%s: unexpected argument %q\n", name, fs.Arg(0))
 		return ExitUsage
 	}
-	fmt.Fprintf(stdout, "%s: not implemented yet\n", name)
-	return ExitOK
+	if options.Output != "text" && options.Output != "json" {
+		fmt.Fprintf(stderr, "%s: unsupported output format %q\n", name, options.Output)
+		return ExitUsage
+	}
+
+	report := diagnostics.NewReport("roadmapctl/"+name, options.Repo, options.RoadmapRoot, nil)
+	if options.Output == "json" {
+		if err := diagnostics.RenderJSON(stdout, report); err != nil {
+			fmt.Fprintf(stderr, "%s: render JSON report: %v\n", name, err)
+			return ExitInternal
+		}
+		return diagnostics.ExitCode(report, options.Strict)
+	}
+	if err := diagnostics.RenderText(stdout, report); err != nil {
+		fmt.Fprintf(stderr, "%s: render text report: %v\n", name, err)
+		return ExitInternal
+	}
+	return diagnostics.ExitCode(report, options.Strict)
 }
 
-func newFlagSet(name string, output io.Writer) *flag.FlagSet {
+func newFlagSet(name string, output io.Writer, options *Options) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(output)
-	fs.String("repo", ".", "repository root or workspace member to inspect")
-	fs.String("roadmap-root", "", "override configured roadmap root")
-	fs.Bool("workspace", false, "treat repo as workspace")
-	fs.String("output", "text", "output format: text or json")
-	fs.Bool("strict", false, "treat warnings as failures")
-	fs.String("rootline", "", "rootline executable path")
-	fs.Duration("timeout", 10*time.Second, "timeout for each Rootline call")
+	fs.StringVar(&options.Repo, "repo", options.Repo, "repository root or workspace member to inspect")
+	fs.StringVar(&options.RoadmapRoot, "roadmap-root", options.RoadmapRoot, "override configured roadmap root")
+	fs.BoolVar(&options.Workspace, "workspace", options.Workspace, "treat repo as workspace")
+	fs.StringVar(&options.Output, "output", options.Output, "output format: text or json")
+	fs.BoolVar(&options.Strict, "strict", options.Strict, "treat warnings as failures")
+	fs.StringVar(&options.Rootline, "rootline", options.Rootline, "rootline executable path")
+	fs.DurationVar(&options.Timeout, "timeout", options.Timeout, "timeout for each Rootline call")
 	fs.Usage = func() {
 		fmt.Fprintf(output, "%s\n\nUsage:\n  roadmapctl %s [flags]\n\nFlags:\n", commandDescription(name), name)
 		fs.PrintDefaults()
