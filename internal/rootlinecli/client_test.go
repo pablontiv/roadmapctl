@@ -1,0 +1,258 @@
+package rootlinecli
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+)
+
+func TestResolveBinaryPrefersExplicitThenRootlineBinThenPath(t *testing.T) {
+	dir := t.TempDir()
+	explicit := writeExecutable(t, dir, "explicit-rootline")
+	envRootline := writeExecutable(t, dir, "env-rootline")
+	pathRootline := writeExecutable(t, dir, "rootline")
+
+	got, err := ResolveBinary(explicit, []string{"ROOTLINE_BIN=" + envRootline, "PATH=" + dir})
+	if err != nil {
+		t.Fatalf("ResolveBinary explicit error = %v", err)
+	}
+	if got != explicit {
+		t.Fatalf("ResolveBinary explicit = %q, want %q", got, explicit)
+	}
+
+	got, err = ResolveBinary("", []string{"ROOTLINE_BIN=" + envRootline, "PATH=" + dir})
+	if err != nil {
+		t.Fatalf("ResolveBinary ROOTLINE_BIN error = %v", err)
+	}
+	if got != envRootline {
+		t.Fatalf("ResolveBinary ROOTLINE_BIN = %q, want %q", got, envRootline)
+	}
+
+	got, err = ResolveBinary("", []string{"PATH=" + dir})
+	if err != nil {
+		t.Fatalf("ResolveBinary PATH error = %v", err)
+	}
+	if got != pathRootline {
+		t.Fatalf("ResolveBinary PATH = %q, want %q", got, pathRootline)
+	}
+}
+
+func TestMissingRootlineProducesEnvironmentDiagnostic(t *testing.T) {
+	_, err := ResolveBinary("", []string{"PATH=" + t.TempDir()})
+	if err == nil {
+		t.Fatal("ResolveBinary error = nil, want missing binary error")
+	}
+
+	var rootlineErr *Error
+	if !errors.As(err, &rootlineErr) {
+		t.Fatalf("error type = %T, want *Error", err)
+	}
+	if rootlineErr.Kind != ErrorMissingBinary {
+		t.Fatalf("Kind = %q, want %q", rootlineErr.Kind, ErrorMissingBinary)
+	}
+	if rootlineErr.ExitCode != diagnostics.ExitEnvironment {
+		t.Fatalf("ExitCode = %d, want %d", rootlineErr.ExitCode, diagnostics.ExitEnvironment)
+	}
+	diagnostic := rootlineErr.Diagnostic()
+	if diagnostic.ID != diagnostics.DiagnosticRootlineMissing || diagnostic.ExitCode != diagnostics.ExitEnvironment || diagnostic.Severity != diagnostics.SeverityError {
+		t.Fatalf("Diagnostic() = %#v", diagnostic)
+	}
+}
+
+func TestClientUsesArgsWithoutShellAndControlsDirEnvAndTimeout(t *testing.T) {
+	executor := &recordingExecutor{stdout: []byte(`{"version":1,"kind":"rootline/validate","valid":true}`)}
+	binary := writeExecutable(t, t.TempDir(), "rootline")
+	client := New(Options{
+		Binary:   binary,
+		Dir:      "/repo",
+		Env:      []string{"PATH=/bin", "ROOTLINE_BIN=" + binary, "EXTRA=value"},
+		Timeout:  250 * time.Millisecond,
+		Executor: executor,
+	})
+
+	_, err := client.Validate(context.Background(), "docs/roadmap/T001-task.md")
+	if err != nil {
+		t.Fatalf("Validate error = %v", err)
+	}
+
+	if len(executor.commands) != 1 {
+		t.Fatalf("recorded commands = %d, want 1", len(executor.commands))
+	}
+	command := executor.commands[0]
+	if command.Path != binary {
+		t.Fatalf("Path = %q", command.Path)
+	}
+	wantArgs := []string{"validate", "docs/roadmap/T001-task.md", "--output", "json"}
+	if !reflect.DeepEqual(command.Args, wantArgs) {
+		t.Fatalf("Args = %#v, want %#v", command.Args, wantArgs)
+	}
+	if strings.Contains(strings.Join(command.Args, " "), "|") || strings.Contains(strings.Join(command.Args, " "), ">") || strings.Contains(strings.Join(command.Args, " "), "sh -c") {
+		t.Fatalf("Args look shell-like: %#v", command.Args)
+	}
+	if command.Dir != "/repo" {
+		t.Fatalf("Dir = %q, want /repo", command.Dir)
+	}
+	if !reflect.DeepEqual(command.Env, []string{"PATH=/bin", "ROOTLINE_BIN=" + binary, "EXTRA=value"}) {
+		t.Fatalf("Env = %#v", command.Env)
+	}
+	deadline := executor.deadlines[0]
+	if deadline.IsZero() {
+		t.Fatal("context has no deadline, want timeout deadline")
+	}
+	if time.Until(deadline) <= 0 || time.Until(deadline) > time.Second {
+		t.Fatalf("deadline = %v, want near future", deadline)
+	}
+}
+
+func TestClientCapturesStdoutStderrSeparately(t *testing.T) {
+	executor := &recordingExecutor{
+		stdout: []byte(`{"version":1,"kind":"rootline/query","meta":{"count":0},"rows":[]}`),
+		stderr: []byte("warning on stderr"),
+	}
+	client := New(Options{Binary: writeExecutable(t, t.TempDir(), "rootline"), Executor: executor})
+
+	result, err := client.Query(context.Background(), "docs/roadmap", "tipo == \"task\"")
+	if err != nil {
+		t.Fatalf("Query error = %v", err)
+	}
+	if !strings.Contains(string(result.Stdout), "rootline/query") {
+		t.Fatalf("Stdout = %s", result.Stdout)
+	}
+	if string(result.Stderr) != "warning on stderr" {
+		t.Fatalf("Stderr = %q", result.Stderr)
+	}
+	wantArgs := []string{"query", "docs/roadmap", "--where", "tipo == \"task\"", "--output", "json"}
+	if !reflect.DeepEqual(executor.commands[0].Args, wantArgs) {
+		t.Fatalf("Args = %#v, want %#v", executor.commands[0].Args, wantArgs)
+	}
+}
+
+func TestClientParsesJSONForValidateDescribeQueryAndGraph(t *testing.T) {
+	tests := []struct {
+		name string
+		call func(*Client) (*JSONResult, error)
+		want []string
+		json string
+	}{
+		{
+			name: "validate",
+			call: func(c *Client) (*JSONResult, error) { return c.Validate(context.Background(), "a.md") },
+			want: []string{"validate", "a.md", "--output", "json"},
+			json: `{"version":1,"kind":"rootline/validate","valid":true}`,
+		},
+		{
+			name: "describe",
+			call: func(c *Client) (*JSONResult, error) {
+				return c.Describe(context.Background(), "docs/roadmap", "schema.estado")
+			},
+			want: []string{"describe", "docs/roadmap", "--field", "schema.estado", "--output", "json"},
+			json: `{"type":"enum","values":["Pending"]}`,
+		},
+		{
+			name: "query",
+			call: func(c *Client) (*JSONResult, error) {
+				return c.Query(context.Background(), "docs/roadmap", "isIndex == false")
+			},
+			want: []string{"query", "docs/roadmap", "--where", "isIndex == false", "--output", "json"},
+			json: `{"version":1,"kind":"rootline/query","rows":[]}`,
+		},
+		{
+			name: "graph",
+			call: func(c *Client) (*JSONResult, error) {
+				return c.Graph(context.Background(), "docs/roadmap", "isIndex == false")
+			},
+			want: []string{"graph", "docs/roadmap", "--where", "isIndex == false", "--output", "json"},
+			json: `{"version":1,"kind":"rootline/graph","nodes":[],"edges":[]}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executor := &recordingExecutor{stdout: []byte(tt.json)}
+			client := New(Options{Binary: writeExecutable(t, t.TempDir(), "rootline"), Executor: executor})
+			result, err := tt.call(client)
+			if err != nil {
+				t.Fatalf("call error = %v", err)
+			}
+			if len(result.Decoded) == 0 || len(result.Stdout) == 0 {
+				t.Fatalf("result = %#v", result)
+			}
+			if !reflect.DeepEqual(executor.commands[0].Args, tt.want) {
+				t.Fatalf("Args = %#v, want %#v", executor.commands[0].Args, tt.want)
+			}
+		})
+	}
+}
+
+func TestTimeoutProducesControlledEnvironmentError(t *testing.T) {
+	executor := &recordingExecutor{err: context.DeadlineExceeded}
+	client := New(Options{Binary: writeExecutable(t, t.TempDir(), "rootline"), Timeout: time.Nanosecond, Executor: executor})
+
+	_, err := client.Graph(context.Background(), "docs/roadmap")
+	if err == nil {
+		t.Fatal("Graph error = nil, want timeout")
+	}
+	var rootlineErr *Error
+	if !errors.As(err, &rootlineErr) {
+		t.Fatalf("error type = %T, want *Error", err)
+	}
+	if rootlineErr.Kind != ErrorTimeout || rootlineErr.ExitCode != diagnostics.ExitEnvironment {
+		t.Fatalf("error = %#v", rootlineErr)
+	}
+}
+
+func TestInvalidJSONProducesControlledError(t *testing.T) {
+	executor := &recordingExecutor{stdout: []byte("not json"), stderr: []byte("rootline stderr")}
+	client := New(Options{Binary: writeExecutable(t, t.TempDir(), "rootline"), Executor: executor})
+
+	_, err := client.Describe(context.Background(), "docs/roadmap")
+	if err == nil {
+		t.Fatal("Describe error = nil, want invalid JSON")
+	}
+	var rootlineErr *Error
+	if !errors.As(err, &rootlineErr) {
+		t.Fatalf("error type = %T, want *Error", err)
+	}
+	if rootlineErr.Kind != ErrorInvalidJSON {
+		t.Fatalf("Kind = %q, want %q", rootlineErr.Kind, ErrorInvalidJSON)
+	}
+	if rootlineErr.Stderr != "rootline stderr" {
+		t.Fatalf("Stderr = %q", rootlineErr.Stderr)
+	}
+}
+
+func writeExecutable(t *testing.T, dir string, name string) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+type recordingExecutor struct {
+	stdout []byte
+	stderr []byte
+	err    error
+
+	commands  []Command
+	deadlines []time.Time
+}
+
+func (e *recordingExecutor) Run(ctx context.Context, command Command) (Result, error) {
+	e.commands = append(e.commands, command)
+	deadline, _ := ctx.Deadline()
+	e.deadlines = append(e.deadlines, deadline)
+	return Result{Stdout: e.stdout, Stderr: e.stderr}, e.err
+}
