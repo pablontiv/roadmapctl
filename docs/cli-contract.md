@@ -17,6 +17,8 @@ Any implemented `/roadmap` command that writes, mutates, executes tasks, or clai
 - Structural/dependency validation before and after materialization or mutation: `roadmapctl check`.
 - Conceptual planning that does not write files may proceed without `roadmapctl`, but must not claim materialization or validity.
 
+See [roadmap skill integration](roadmap-skill-integration.md) for exact preflight/postcheck commands, blocking policy, `/roadmap plan` and `/roadmap loop` snippets, and expected failure handling.
+
 ## Command summary
 
 ```text
