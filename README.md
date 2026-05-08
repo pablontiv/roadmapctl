@@ -35,6 +35,16 @@ First release scope:
 
 The public CLI contract is documented in [docs/cli-contract.md](docs/cli-contract.md). Implemented `/roadmap` commands that write, mutate, execute tasks, or claim roadmap validity must use `roadmapctl` as a blocking guard. Skill integration details live in [docs/roadmap-skill-integration.md](docs/roadmap-skill-integration.md).
 
+## Installation
+
+Until packaged releases are published, install from source:
+
+```bash
+go install github.com/pablontiv/roadmapctl/cmd/roadmapctl@latest
+```
+
+`roadmapctl` expects a compatible `rootline` binary via `--rootline`, `ROOTLINE_BIN`, or `PATH`. See [docs/release.md](docs/release.md) for the release outline and compatibility notes.
+
 ## Development
 
 ```bash
