@@ -1,0 +1,53 @@
+{
+  "active_statuses": [
+    "Pending",
+    "Specified",
+    "In Progress"
+  ],
+  "config_path": ".claude/roadmap.local.md",
+  "config_source": "legacy",
+  "diagnostics": [],
+  "done_statuses": [
+    "Completed",
+    "Obsolete"
+  ],
+  "helpers": {
+    "where_active": "estado in [\"Pending\", \"Specified\", \"In Progress\"]",
+    "where_leaf": "isIndex == false",
+    "where_not_done": "not (estado in [\"Completed\", \"Obsolete\"])"
+  },
+  "kind": "roadmapctl/context",
+  "roadmap_root": "<fixture:valid-legacy-config-fallback>/docs/roadmap",
+  "root": "<fixture:valid-legacy-config-fallback>",
+  "rootline_version": "<rootline-version>",
+  "schema": {
+    "estado": [
+      "Pending",
+      "Specified",
+      "In Progress",
+      "Completed",
+      "Blocked",
+      "On Hold",
+      "Obsolete"
+    ],
+    "tipo": [
+      "outcome",
+      "task"
+    ]
+  },
+  "status_values": {
+    "blocked": "Blocked",
+    "completed": "Completed",
+    "in_progress": "In Progress",
+    "obsolete": "Obsolete",
+    "pending": "Pending",
+    "specified": "Specified"
+  },
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "ok",
+    "warnings": 0
+  },
+  "version": 1
+}

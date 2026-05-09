@@ -73,12 +73,12 @@ type MigrationPlan struct {
 }
 
 type StatusValues struct {
-	Pending    string
-	Specified  string
-	InProgress string
-	Completed  string
-	Blocked    string
-	Obsolete   string
+	Pending    string `json:"pending"`
+	Specified  string `json:"specified"`
+	InProgress string `json:"in_progress"`
+	Completed  string `json:"completed"`
+	Blocked    string `json:"blocked"`
+	Obsolete   string `json:"obsolete"`
 }
 
 func Load(repo string, opts Options) (*Config, error) {

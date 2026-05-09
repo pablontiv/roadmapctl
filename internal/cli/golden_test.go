@@ -35,6 +35,7 @@ func TestCheckGoldenJSONFixtures(t *testing.T) {
 		{name: "missing stem", command: "doctor", fixture: "invalid-missing-stem", wantExit: 2, wantID: "RMC_CONFIG_STEM_MISSING", goldenName: "doctor-invalid-missing-stem.json"},
 		{name: "bare blocked_by", command: "check", fixture: "invalid-bare-blocked-by", wantExit: 1, wantID: "RMC_ROOTLINE_VALIDATE_FAILED", goldenName: "check-invalid-bare-blocked-by.json"},
 		{name: "root escape", command: "check", fixture: "invalid-root-escape", wantExit: 2, wantID: "RMC_CONFIG_ROADMAP_ROOT_ESCAPE", goldenName: "check-invalid-root-escape.json"},
+		{name: "context legacy", command: "context", fixture: "valid-legacy-config-fallback", wantExit: 0, goldenName: "context-valid-legacy-config-fallback.json"},
 	}
 
 	for _, tt := range tests {

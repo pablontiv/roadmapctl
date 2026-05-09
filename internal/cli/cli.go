@@ -65,6 +65,7 @@ func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Co
 
 	cmd.AddCommand(newLeafCommand("doctor", "Diagnose repo, roadmap configuration and Rootline availability.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newLeafCommand("check", "Validate canonical roadmap structure, metadata and dependency graph.", &options, stdout, stderr, exitCode))
+	cmd.AddCommand(newLeafCommand("context", "Show effective roadmapctl context for skill bootstrap.", &options, stdout, stderr, exitCode))
 	return cmd
 }
 
@@ -86,6 +87,22 @@ func executeLeafCommand(ctx context.Context, name string, options Options, stdou
 	if options.Output != "text" && options.Output != "json" {
 		fmt.Fprintf(stderr, "%s: unsupported output format %q\n", name, options.Output)
 		return ExitUsage
+	}
+
+	if name == "context" {
+		report := runContext(ctx, options)
+		if options.Output == "json" {
+			if err := renderContextJSON(stdout, report); err != nil {
+				fmt.Fprintf(stderr, "%s: render JSON report: %v\n", name, err)
+				return ExitInternal
+			}
+			return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
+		}
+		if err := renderContextText(stdout, report); err != nil {
+			fmt.Fprintf(stderr, "%s: render text report: %v\n", name, err)
+			return ExitInternal
+		}
+		return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
 	}
 
 	report := diagnostics.NewReport("roadmapctl/"+name, options.Repo, options.RoadmapRoot, nil)
