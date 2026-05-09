@@ -1,19 +1,38 @@
-# /roadmap loop [--filter PATTERN] [--max N] [--pr]
+# /roadmap loop [--filter PATTERN] [--max N]
 
 > Pre-requisito: leer [common-logic.md](common-logic.md).
 
-Ejecutar tasks pendientes en loop con confirmación entre cada una.
+Ejecutar tasks pendientes usando la configuración efectiva devuelta por `roadmapctl context`. El loop acepta solo `--filter`, `--max` y el flag global `--repo` (workspace mode).
 
-## Opciones
+## Opciones CLI permitidas
 
 - `--filter PATTERN`: filtrar por path (`O01`, `T003`, slug, etc.).
-- `--max N`: limitar a N tasks.
-- `--checkpoint-interval N`: checkpoint de calidad cada N tasks (default 5).
-- `--skip-reviews`: desactivar quality gates.
-- `--pr`: crear branch/PR por Outcome o grupo de tasks directas.
-- `--worktree`: crear git worktree aislado por Outcome via `EnterWorktree`/`ExitWorktree` si esas tools están disponibles. Al entrar a un Outcome se crea un worktree; al cerrar se limpia con `ExitWorktree`. Requiere que el repo soporte worktrees.
-- `--self-pace`: usar `ScheduleWakeup` si está disponible entre tasks para loops de larga duración. Mantiene el cache caliente (delay ~270s) sin bloquear la sesión.
-- `--parallel`: ejecutar tasks independientes dentro de un Outcome en paralelo via `Agent` tool usando el `execution-model` declarado en el frontmatter del skill.
+- `--max N`: límite de esta ejecución. Tiene precedencia sobre `loop_max_tasks`.
+
+Los flags de comportamiento históricos `--parallel`, `--worktree`, `--self-pace`, `--skip-reviews`, `--checkpoint-interval` y `--pr` están obsoletos; no documentarlos ni aceptarlos como comportamiento activo. Usar los campos de configuración `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode`, `pr_merge_strategy`, `commit_style`, `auto_push` y `outcome_close_verify` expuestos por `roadmapctl context`.
+
+## Config efectiva
+
+Del JSON de bootstrap/context leer:
+
+- `loop_max_tasks`: límite repo-local; `0` significa sin límite.
+- `parallel`: permite waves oportunistas cuando sea seguro.
+- `autonomy`: `manual`, `supervised` o `until_done`.
+- `compact_after_task_commit`: compactar contexto tras una task durable.
+- `pr_mode`: activar workflow de PR por scope.
+- `pr_merge_strategy`, `commit_style`, `auto_push`, `outcome_close_verify`.
+
+Calcular `effective_max` así:
+
+1. Si `--max N` está presente, `effective_max = N`.
+2. Si no, `effective_max = loop_max_tasks`.
+3. Si `effective_max == 0`, no limitar la cola.
+
+## Autonomy
+
+- `manual`: ejecutar una task/wave y preguntar antes de continuar. Si se descubre dependencia faltante, sugerir el `blocked_by` requerido y detenerse.
+- `supervised`: continuar entre tasks/waves sin preguntar; preguntar antes de ediciones estructurales del roadmap como agregar `blocked_by`.
+- `until_done`: continuar hasta agotar ready queue o `effective_max`. Puede aplicar reparaciones estructurales seguras de `blocked_by`, pero cada mutación debe ir seguida de `roadmapctl check --strict` antes de continuar. Si no hay ruta determinística segura para editar, detenerse y reportar la dependencia requerida.
 
 ## Workspace mode
 
@@ -42,7 +61,7 @@ Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de sele
    ```
    - Si `summary.status != "ok"` o el comando sale non-zero: reportar diagnostics y parar.
    - Usar `ready[]` como cola ejecutable; usar `blocked[]` solo para explicar skips/bloqueos.
-   - No recalcular dependencias en prompt: `roadmapctl next` es la fuente canónica de `blocking_dependencies`/blockers.
+   - `roadmapctl next`/`blocked_by` es la única fuente de dependencias para readiness y parallel waves.
    - No ejecutar `rootline graph`, `rootline query` o `rootline tree` ni postprocesar JSON crudo de Rootline para reconstruir la cola.
 2. Obtener listado activo para tabla y conteos:
    ```bash
@@ -51,7 +70,7 @@ Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de sele
    - Si `summary.status != "ok"` o el comando sale non-zero: reportar diagnostics y parar.
 3. Aplicar `--filter` por path sobre `ready[]` si existe.
 4. Mantener el orden determinístico devuelto por `roadmapctl next`; no hacer topological sort manual.
-5. Aplicar `--max`.
+5. Aplicar `effective_max` si es mayor que cero.
 6. Renderizar tabla desde JSON (`ready[]`, `blocked[]` y `pending.tasks[]`).
 7. Si no hay tasks en `ready[]` después del filtro: informar pendientes bloqueadas y parar.
 
@@ -67,16 +86,7 @@ Mostrar `TaskList`.
 
 ## Fase 2.5: PR mode
 
-Si `--pr`, leer [pr-workflow.md](pr-workflow.md) y ejecutar Branch & PR Detection.
-
-## Fase 2.6: Worktree setup
-
-Solo si `--worktree` (o `worktree-per-outcome: true` en el frontmatter del skill). Sin este flag → skip.
-
-Al entrar a un Outcome en el loop:
-- `EnterWorktree` con nombre derivado del Outcome ID (ej: `outcome-O01`).
-- Todos los commits de ese Outcome ocurren dentro del worktree.
-- Al cerrar el Outcome (última task completada, o loop interrumpido): `ExitWorktree`.
+Si `pr_mode == true`, leer [pr-workflow.md](pr-workflow.md) y ejecutar Branch & PR Detection. Si `pr_mode == false`, omitir workflow de PR.
 
 ## Fase 3: Loop
 
@@ -85,9 +95,25 @@ Variables:
 - `checkpoint_commit`: HEAD inicial.
 - `checkpoint_task_count`: 0.
 - `current_scope`: Outcome actual o `direct-tasks`.
-- `checkpoint_interval`: default 5.
+- `checkpoint_interval`: 5 (quality gates siempre activos).
 
-Para cada task ordenada:
+### Parallel waves
+
+Si `parallel == true`, formar waves oportunistas desde `ready[]` usando solo la información canónica de `roadmapctl next` y `blocked_by`:
+
+- Tasks en una misma wave no tienen dependencia explícita entre sí según `roadmapctl next`.
+- No inferir dependencias por heurísticas de paths, nombres o secciones; si aparece un conflicto real durante integración, tratarlo como dependencia faltante.
+- La ejecución paralela debe usar worktrees aislados o una ruta de integración equivalente con control de conflictos. Si no hay aislamiento/control seguro, ejecutar secuencialmente aunque `parallel == true`.
+
+Conflictos por dependencia faltante:
+
+- `manual`: reportar el `blocked_by` recomendado y detenerse.
+- `supervised`: pedir aprobación antes de aplicar `blocked_by`; luego `roadmapctl check --strict`.
+- `until_done`: aplicar solo si la edición es determinística y segura; ejecutar `roadmapctl check --strict`; recalcular con `roadmapctl next`. Si no es seguro, detenerse y reportar.
+
+Si `parallel == false`, ejecutar tasks en orden secuencial de `ready[]`.
+
+Para cada task o wave ordenada:
 
 1. **Verificar transición de inicio**
    ```bash
@@ -98,8 +124,8 @@ Para cada task ordenada:
    - No llamar `rootline set` directamente para iniciar tasks.
 
 2. **Scope change**
-   - Si cambia Outcome/direct scope y `--pr`, cerrar PR anterior si corresponde y ejecutar Outcome Setup.
-   - Sin `--pr`, solo actualizar `current_scope`.
+   - Si cambia Outcome/direct scope y `pr_mode == true`, cerrar PR anterior si corresponde y ejecutar Outcome Setup.
+   - Sin PR mode, solo actualizar `current_scope`.
 
 3. **Marcar inicio**
    ```bash
@@ -113,31 +139,22 @@ Para cada task ordenada:
 5. **Implementar**
    Ejecutar exactamente el alcance de la task. Si hay una sección `## Especificación Técnica`, seguirla.
 
-5.5. **Paralelismo** (solo si `--parallel`):
-   Solo paralelizar si se puede probar que las tasks son independientes:
-   - no hay dependencia `blocked_by` entre ellas,
-   - sus secciones `## Fuente de verdad` no solapan paths,
-   - ninguna toca archivos globales/sensibles,
-   - cada subagente trabaja en worktree aislado o en archivos disjuntos.
-
-   Si cualquiera de esas condiciones no puede probarse, ejecutar secuencialmente. Si procede, invocarlas como subagentes en paralelo via `Agent` tool con `model` igual al `execution-model` del frontmatter del skill. Consolidar resultados antes de continuar a verificación de ACs.
-
 6. **Verificar ACs e invariantes**
    - Ejecutar cada AC.
    - Ejecutar cada verificación en `## Preserva` si existe.
    - Si falla algo: parar y reportar.
 
 7. **Outcome close check**
-   Si es la última task pendiente del Outcome, ejecutar comandos de `<outcome-close-cmds>` si existen. Warning informativo, no bloqueo automático.
+   Si es la última task pendiente del Outcome, ejecutar comandos de `outcome_close_verify` si existen. Warning informativo, no bloqueo automático.
 
 8. **Security review selectivo**
    Si se tocaron archivos sensibles (`secret`, `credentials`, `.env`, `auth`, `crypto`) o la task lo pide, ejecutar review de seguridad. Findings HIGH bloquean.
 
-9. **Commit**
+9. **Complete + commit**
    ```bash
    roadmapctl transition complete <task.md> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
    ```
-   Ejecutar este comando solo después de que ACs e invariantes pasaron. Si `allowed=false`, `summary.status="error"`, o el comando sale non-zero, reportar diagnostics y detenerse antes de declarar completada la iteración o commitear. Si pasa: `git add` específico, commit según `<commit-style>`, push según `<auto-push>` y `--pr`.
+   Ejecutar este comando solo después de que ACs e invariantes pasaron. Si `allowed=false`, `summary.status="error"`, o el comando sale non-zero, reportar diagnostics y detenerse antes de declarar completada la iteración o commitear. Si pasa: `git add` específico, commit según `commit_style`, push según `auto_push`, y PR bookkeeping según `pr_mode`.
 
 10. **Actualizar UI y resumen**
    ```bash
@@ -146,25 +163,29 @@ Para cada task ordenada:
    ```
    Mostrar resultado de iteración.
 
-10.5. **Self-pace** (solo si `--self-pace`):
-   Si quedan más de 3 tasks en la cola:
-   ```
-   ScheduleWakeup(delaySeconds: 270, reason: "loop roadmap: <N> tasks restantes — <siguiente task>")
-   ```
-   Mantiene el cache caliente (< 5 min TTL) entre iteraciones largas.
+11. **Compaction opcional**
+   Si `compact_after_task_commit == true`, compactar solo después de que la task sea durable:
+   1. ACs e invariantes pasaron.
+   2. `roadmapctl transition complete --apply` pasó.
+   3. Commit creado.
+   4. Push/PR bookkeeping terminado o bloqueo reportado.
 
-11. **Checkpoint**
+   Preferir la herramienta `compact_roadmap_context` con `task_path`, `commit_hash`, `validation_summary`, `next_work` y `config_summary`. Si no está disponible, usar `/compact <instrucciones roadmap>` como fallback. Fallar al compactar debe advertir claramente, pero no invalida una task ya completada y commiteada.
+
+12. **Checkpoint**
    Activar si:
    - `checkpoint_task_count >= checkpoint_interval`,
    - cambia scope,
+   - autonomía `manual` solicita pausa,
    - usuario decide parar.
 
    Revisar diff acumulado, reportar findings informativos y resetear checkpoint.
 
-12. **Confirmar continuación**
-   Preguntar: continuar, saltar siguiente, o parar.
+13. **Continuación**
+   - `manual`: preguntar continuar, saltar siguiente o parar después de cada task/wave.
+   - `supervised` y `until_done`: no preguntar entre tasks/waves; recalcular cola con `roadmapctl next` y continuar hasta agotar ready queue o `effective_max`.
 
-13. **Reintentar bloqueadas**
+14. **Reintentar bloqueadas**
    Al final, reintentar tasks cuyas dependencias pasaron a done. Si no progresa ninguna, parar por deadlock.
 
 ## Fase 4: Resumen final
@@ -176,7 +197,7 @@ RESUMEN LOOP
 ├─ ACs: passed/total
 ├─ Security reviews: N
 ├─ Quality checkpoints: N
-├─ PRs: ... (si --pr)
+├─ PRs: ... (si pr_mode)
 ├─ Commits: ...
 └─ Tasks restantes: ...
 ```

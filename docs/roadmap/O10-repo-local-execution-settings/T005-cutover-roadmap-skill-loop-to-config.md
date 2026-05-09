@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T005: Cut over roadmap skill loop to config-driven behavior

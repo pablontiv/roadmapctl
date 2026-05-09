@@ -67,18 +67,17 @@ o tasks directas:
 Si no se puede crear esa estructura, detenerse y explicar el bloqueo. No hacer
 fallback a markdown libre.
 
-## Invariante de granularidad de ejecución
+## Invariante de escritura segura
 
-Además del criterio canónico, ninguna operación de materialización puede
-crear/reescribir más de un archivo roadmap en una sola tool call.
+Además del criterio canónico, el skill no puede crear/reescribir archivos roadmap manualmente ni hacer dumps multi-file fuera de `roadmapctl`.
 
 Prohibido:
 
 - `bash` con múltiples heredocs/cats dirigidos a archivos distintos.
 - loops de shell que llamen `rootline new` o escritura en varios paths.
-- llamadas a `roadmapctl materialize --plan <plan-json> --apply` que aplican N archivos del plan en una sola ejecución dentro del skill.
+- `write`/`edit` directo para crear o reescribir archivos canónicos del roadmap.
 
-Para un plan que genera N archivos canónicos, guardar el dry-run como change-set congelado y materializar como N unidades independientes con `roadmapctl materialize --changes <dry-run-json> --target <target.path> --apply`, cada una con una sola ruta destino canónica.
+Permitido: `roadmapctl materialize --plan <plan-json> --apply` o `roadmapctl materialize --changes <dry-run-json> --apply` puede aplicar múltiples archivos en una ejecución, porque roadmapctl owns canonical writes, per-file diagnostics, validation, ordering and postcheck.
 
 ## Bootstrap obligatorio
 
@@ -95,7 +94,7 @@ test -d .git
 
 ### Fuente primaria de contexto
 
-Preferir `roadmapctl context` para resolver configuración efectiva, schema y helpers. `.roadmapctl.toml` dentro de `<roadmap-root>/` es la configuración preferida; `.claude/roadmap.local.md` queda como fallback legacy mientras se completa la migración.
+Preferir `roadmapctl context` para resolver configuración efectiva, schema, helpers y comportamiento operacional. `.roadmapctl.toml` dentro de `<roadmap-root>/` es la configuración canónica; `.claude/roadmap.local.md` es solo input de migración gestionado por roadmapctl.
 
 Gate inicial:
 
@@ -117,26 +116,25 @@ Usar el JSON devuelto como fuente de verdad para:
 - `<where-leaf>` = `helpers.where_leaf`
 - `<where-not-done>` = `helpers.where_not_done`
 - `<where-active>` = `helpers.where_active`
-- status/config operacional = campos `status_values`, `done_statuses`, `active_statuses`
+- status/config operacional = campos `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `pr_merge_strategy`, `commit_style`, `auto_push`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode`
 
 Si `roadmapctl context` falla o `roadmapctl` no existe:
 
 - Para writes, mutaciones, ejecución o declaraciones de validez: detenerse; no fallback.
-- Para planificación conceptual sin writes/mutaciones/ejecución/validez: se permite fallback legacy leyendo `.claude/roadmap.local.md` y defaults, dejando claro que los guards faltan para materializar/ejecutar.
+- Para planificación conceptual sin writes/mutaciones/ejecución/validez: se permite usar defaults explícitos solo como ayuda conceptual, dejando claro que los guards faltan para materializar/ejecutar. El skill no migra ni parsea legacy para flujos implementados.
 
 ### Workspace mode
 
-1. Si existe `.claude/roadmap.local.md` en cwd con `mode: workspace`, leer `repos:` como base solo para descubrir candidatos.
-2. Escanear subdirectorios inmediatos con `.git` + config roadmap (`<roadmap-root>/.roadmapctl.toml` o `.claude/roadmap.local.md`).
-3. Para cada repo, ejecutar `roadmapctl context` si está disponible y calcular helpers desde su JSON.
-4. Imprimir checkpoint con repos detectados.
+1. Escanear subdirectorios inmediatos con `.git` + config roadmap (`<roadmap-root>/.roadmapctl.toml`; legacy solo como señal de migración para roadmapctl).
+2. Para cada repo, ejecutar `roadmapctl context` si está disponible y calcular helpers desde su JSON.
+3. Imprimir checkpoint con repos detectados.
 
 ### Single-repo mode
 
 1. Resolver repo actual.
 2. Ejecutar `roadmapctl context` si está disponible.
-3. Si context no está disponible y el flujo es conceptual/no-write, leer fallback legacy `.claude/roadmap.local.md`; si falta, preguntar dónde vive el roadmap.
-4. Imprimir checkpoint desde JSON de `roadmapctl context` o desde fallback legacy explícitamente marcado.
+3. Si context no está disponible y el flujo es conceptual/no-write, preguntar dónde vive el roadmap o usar defaults explícitos marcados como no verificados.
+4. Imprimir checkpoint desde JSON de `roadmapctl context` o desde defaults conceptuales explícitamente marcados.
 
 Template mínimo:
 
@@ -162,11 +160,11 @@ auto-push: true
 
 ## Configuración
 
-Preferencia de fuentes:
+Fuente de configuración:
 
-1. `<roadmap-root>/.roadmapctl.toml`
-2. `.claude/roadmap.local.md` legacy
-3. defaults solo para modo conceptual/no-write
+1. `<roadmap-root>/.roadmapctl.toml` vía `roadmapctl context`.
+2. `.claude/roadmap.local.md` es solo input de migración para roadmapctl, no fuente durable que el skill deba parsear en flujos implementados.
+3. defaults solo para modo conceptual/no-write.
 
 | Config key | Default | Placeholder |
 |------------|---------|-------------|
@@ -183,6 +181,11 @@ Preferencia de fuentes:
 | `pr-merge-strategy` | `'squash'` | `<pr-merge-strategy>` |
 | `commit-style` | `'conventional'` | `<commit-style>` |
 | `auto-push` | `true` | `<auto-push>` |
+| `loop-max-tasks` | `0` | `<loop-max-tasks>` |
+| `parallel` | `true` | `<parallel>` |
+| `autonomy` | `'until_done'` | `<autonomy>` |
+| `compact-after-task-commit` | `true` | `<compact-after-task-commit>` |
+| `pr-mode` | `false` | `<pr-mode>` |
 
 Helpers:
 
@@ -283,7 +286,7 @@ Después del bootstrap:
 | `pending` | [pending-subcommand.md](pending-subcommand.md) | Trabajo pendiente |
 | `plan` | [plan-subcommand.md](plan-subcommand.md) | Materializar plan como `.md` |
 | *(sin argumentos)* | [decision-tree-subcommand.md](decision-tree-subcommand.md) | Priorizar qué ejecutar |
-| `loop [--filter] [--max] [--pr]` | [loop-subcommand.md](loop-subcommand.md) | Ejecutar tasks pendientes |
+| `loop [--filter] [--max]` | [loop-subcommand.md](loop-subcommand.md) | Ejecutar tasks pendientes |
 | *(texto libre)* | [autonomous-mode.md](autonomous-mode.md) | Descomponer en Outcome/Tasks |
 
 ## Flag global `--repo`
