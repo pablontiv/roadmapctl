@@ -53,23 +53,25 @@ Si falta schema, `.stem`, `rootline`, permisos o estructura para crear archivos
 canónicos, detenerse. No usar `Write` directo para inventar una estructura
 alternativa.
 
-## Invariante de granularidad de escritura
+## Invariante de escritura segura
 
-Materializar implica N operaciones canónicas de escritura, no un dump multi-file en una sola operación.
+Materializar implica delegar las escrituras canónicas a `roadmapctl`; el skill no escribe markdown del roadmap directamente ni arma dumps multi-file manuales.
 
-**Prohibido en una misma tool call:**
+**Prohibido en una misma tool call del skill:**
 
 - `bash`/`sh` con múltiples `cat >`, heredocs multi-file o loops de escritura.
 - una sola llamada que genere `rootline new` para múltiples rutas.
-- `roadmapctl materialize --plan <plan-json> --apply` en batch sobre múltiples archivos del plan dentro del skill.
-- cualquier llamada que cree/reescriba más de un archivo canónico del roadmap.
+- `write`/`edit` directo para crear o reescribir archivos canónicos del roadmap.
+- cualquier escritura manual que cree/reescriba más de un archivo canónico del roadmap.
 
-La escritura granular se considera obligatoria en los flujos con `/roadmap plan`:
+Permitido: un único comando `roadmapctl materialize --plan <plan-json> --apply` o `roadmapctl materialize --changes <dry-run-json> --apply` puede aplicar múltiples archivos, porque `roadmapctl` valida el plan/change-set, ordena padres antes de hijos, reporta diagnostics por path, ejecuta validaciones y corre postcheck antes de éxito.
 
-1. Cada file-path canónico de la dry-run (`OXX-*/README.md`, `OXX-*/TXXX-*.md`, `TXXX-*.md`) se trata como unidad separada.
-2. Una operación puede afectar **exactamente un** archivo canónico y su path objetivo.
-3. Si el batch tiene N targets, ejecutar N operaciones independientes con `roadmapctl materialize --changes <dry-run-json> --target <target.path> --apply`, sin mezclar destinos.
-4. Excepción: bootstrap explícito (`.` / `.stem` / `.roadmapctl.toml`) conserva su flujo canónico propio.
+En `/roadmap plan`:
+
+1. Revisar siempre un dry-run determinístico antes de aplicar.
+2. Guardar el dry-run JSON como change-set congelado cuando se use `--changes`.
+3. Preferir batch apply owned by roadmapctl cuando `parallel = true`; usar `--target` granular solo para recuperación puntual, selección humana de un único archivo, o troubleshooting.
+4. Bootstrap explícito (`.` / `.stem` / `.roadmapctl.toml`) conserva su flujo canónico propio.
 
 ## Materialización determinística
 
@@ -80,7 +82,7 @@ roadmapctl materialize --plan <plan-json> --dry-run --repo <repo-path> --roadmap
 roadmapctl materialize --plan <plan-json> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
 ```
 
-El skill no debe duplicar numbering, `rootline new`, writes, actualización de tablas ni escritura de `blocked_by`; debe producir plan estructurado, revisar dry-run y delegar en `roadmapctl materialize`.
+El skill no debe duplicar numbering, `rootline new`, writes, actualización de tablas ni escritura final de `blocked_by`; debe producir plan estructurado, revisar dry-run y delegar en `roadmapctl materialize`. El skill sí debe decidir si una relación es un hard blocker antes de serializarla como `blocked_by`.
 
 ## Auto-numbering
 
@@ -104,10 +106,19 @@ crear directorios ad-hoc.
 
 El skill no edita manualmente la tabla `## Tasks`. `roadmapctl materialize` actualiza el README del Outcome y mantiene la tabla sin columna Estado; el estado se lee desde frontmatter.
 
-## Dependencias
+## Dependencias duras
 
-Declarar `blocked_by` en la task bloqueada, con path relativo explícito.
+`blocked_by` es una dependencia dura, no una sugerencia de orden. Declararlo en la task bloqueada solo cuando la task actual no pueda ejecutarse o validarse si el target no está completado.
 
+Guardrail obligatorio antes de serializar `blocked_by`:
+
+```text
+¿Qué fallaría objetivamente si ejecuto esta task antes?
+```
+
+- Si hay una falla concreta: usar `blocked_by` con path relativo explícito.
+- Si solo hay orden sugerido, secuencia narrativa, relación temática, provenance, “conviene después de” o “usar su output si existe”: no usar `blocked_by`; ponerlo en `Contexto`, `Fuente de verdad` o prose.
+- No usar `blocked_by` para orden sugerido ni para forzar serialización artificial dentro o entre Outcomes.
 - Misma carpeta/Outcome: `[[blocked_by:./T001-prerequisite.md]]`
 - Otro Outcome: `[[blocked_by:../O01-setup/T001-prerequisite.md]]`
 - No usar targets bare como `[[blocked_by:T001-prerequisite]]`; rootline solo los resuelve por basename único y pueden romperse con duplicados.

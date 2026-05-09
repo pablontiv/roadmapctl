@@ -31,7 +31,7 @@ Usar `<abs-roadmap-root>` y `git -C <repo-path>`.
 4. Producir:
    - tasks directas, o
    - Outcome(s) + tasks.
-5. Cada task debe tener nombre, descripción, dependencias `blocked_by` con paths relativos explícitos y ACs principales.
+5. Cada task debe tener nombre, descripción, ACs principales y, solo si aplica, `hard_blockers` explícitos. Un hard blocker es una dependencia objetiva: si no está completada, la task actual no debe ejecutarse.
 
 ## Fase 2: Aprobación
 
@@ -94,8 +94,10 @@ Reglas:
 
 - No pasar prose libre a `roadmapctl materialize`.
 - Cada Outcome/task aprobado debe tener `slug`, `title`, `description`, ACs, `source_of_truth` y límites suficientes.
-- Las dependencias deben representarse como `blocked_by` con `ref` plan-local o `path` explícito; nunca targets bare.
-- Si falta información para poblar campos requeridos, preguntar antes de materializar.
+- Serializar `blocked_by` **solo** desde hard blockers aprobados, con `ref` plan-local o `path` explícito; nunca targets bare.
+- Antes de incluir cualquier `blocked_by`, responder: “¿Qué fallaría objetivamente si ejecuto esta task antes?”. Si la respuesta es “nada; solo es mejor orden/contexto”, no es hard blocker.
+- No usar `blocked_by` para orden sugerido, secuencia narrativa, agrupación por Outcome, relación temática, provenance, “conviene después de”, ni “usar su output si existe”. Poner ese contexto en `context`, `source_of_truth` o prose de la task.
+- Si falta información para poblar campos requeridos o justificar un hard blocker, preguntar antes de materializar.
 
 ### Paso 2: Dry-run determinístico
 
@@ -118,24 +120,26 @@ Revisar el JSON:
 
 Si el dry-run falla o propone rutas fuera del allowlist, detenerse y reportar diagnostics. No escribir archivos manualmente.
 
-### Paso 3: Aplicación granular por archivo
+### Paso 3: Aplicación batch gobernada por roadmapctl
 
-El comportamiento estricto es materializar **por archivo** (no batch): ninguna operación puede escribir más de un archivo roadmap canónico.
+Solo después del dry-run válido y aprobación humana explícita, aplicar con una única operación owned by roadmapctl:
 
-Solo después del dry-run válido y aprobación humana explícita:
+```bash
+roadmapctl materialize --plan <plan-json> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
+```
 
-1. Guardar el JSON completo del dry-run como change-set congelado (`<dry-run-json>`).
-2. Derivar `targets[]` desde `changes[]` del dry-run (solo archivos permitidos: `OXX-slug/README.md`, `OXX-slug/TXXX-*.md`, `TXXX-*.md`).
-3. Si `targets` está vacío, detenerse con error.
-4. Para cada target aprobado, ejecutar una operación independiente:
-   ```bash
-   roadmapctl materialize --changes <dry-run-json> --target <target.path> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
-   ```
-5. Cada invocación debe reportar exactamente un `changes[]` aplicado. Si `summary.status != "ok"`, detener la materialización y reportar diagnostics.
+Alternativa con change-set congelado revisado:
 
-Este paso no permite ejecutar un único `roadmapctl materialize --plan <plan-json> --apply` sobre el plan completo dentro del skill. Tampoco permite escribir el `content` del dry-run manualmente desde el prompt o un subagente.
+```bash
+roadmapctl materialize --changes <dry-run-json> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
+```
 
-Si algún target falla, detener la materialización y reportar su diagnóstico; no continuar ni hacer fallback.
+Reglas:
+
+1. El skill no escribe `content` del dry-run manualmente y no usa shell heredocs/loops para crear archivos.
+2. `roadmapctl` debe reportar `summary.status == "ok"`, `applied == true`, y `changes[]` con todos los paths aplicados.
+3. Si `summary.status != "ok"`, detener la materialización y reportar diagnostics; no continuar ni hacer fallback.
+4. Usar `--changes <dry-run-json> --target <target.path> --apply` solo para recuperación puntual o cuando se aprobó explícitamente aplicar un único archivo.
 
 ### Paso 4: Postcheck explícito
 

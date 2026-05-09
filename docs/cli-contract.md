@@ -400,12 +400,13 @@ Implemented modes:
 ```bash
 roadmapctl materialize --plan plan.json --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json
 roadmapctl materialize --plan plan.json --apply --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl materialize --changes dry-run.json --apply --repo <repo> --roadmap-root <roadmap-root> --output json
 roadmapctl materialize --changes dry-run.json --target O02-new-outcome/README.md --apply --repo <repo> --roadmap-root <roadmap-root> --output json
 ```
 
 JSON adds `applied` and `changes[]`. Each change has `path`, `operation`, `applied`, optional `content`, optional `diff`, and `preconditions[]`. Dry-run must not write. Batch `--plan ... --apply` remains backward-compatible: it writes only allowlisted bootstrap/config/schema files and canonical roadmap markdown, validates created markdown through Rootline, and runs a postcheck before reporting success.
 
-Granular target apply uses a previously saved dry-run JSON report as a frozen change-set. `--changes <dry-run-json> --target <path> --apply` applies exactly one matching canonical roadmap markdown `create` change and validates the created markdown through Rootline. Empty, unknown, duplicate, non-create, or non-canonical targets fail before writing. This mode does not recompute numbering from the plan and does not create sibling roadmap files.
+Frozen change-set apply uses a previously saved dry-run JSON report. `--changes <dry-run-json> --apply` applies the whole allowlisted change-set in one roadmapctl-owned batch, validates created markdown through Rootline, and runs a postcheck before success. Optional granular target apply (`--changes <dry-run-json> --target <path> --apply`) applies exactly one matching canonical roadmap markdown `create` change for recovery/troubleshooting or explicit one-file approval. Empty, unknown, duplicate, non-create, or non-canonical targets fail before writing. Neither mode recomputes numbering from the plan.
 
 ## Transition controller contract
 

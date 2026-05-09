@@ -73,7 +73,11 @@ func runMaterialize(ctx context.Context, options Options, planPath string, chang
 		changes, readFound := readMaterializeChanges(changesPath)
 		found = append(found, readFound...)
 		if len(found) == 0 {
-			result, found, err = materialize.ApplyTarget(cfg.RoadmapRoot, changes, target)
+			if target != "" {
+				result, found, err = materialize.ApplyTarget(cfg.RoadmapRoot, changes, target)
+			} else {
+				result, found, err = materialize.ApplyChanges(cfg.RoadmapRoot, changes)
+			}
 		}
 	} else {
 		var plan materialize.Plan
@@ -91,7 +95,7 @@ func runMaterialize(ctx context.Context, options Options, planPath string, chang
 	}
 	if apply && len(found) == 0 {
 		found = append(found, validateMaterializedFiles(ctx, cfg, options, result.Changes)...)
-		if changesPath == "" {
+		if changesPath == "" || target == "" {
 			postOptions := options
 			postOptions.Repo = cfg.RepoRoot
 			postOptions.RoadmapRoot = cfg.RoadmapRootRel

@@ -126,6 +126,63 @@ func TestMaterializeApplyWritesFilesAndRunsPostcheck(t *testing.T) {
 	}
 }
 
+func TestMaterializeChangesApplyWritesWholeFrozenChangeSet(t *testing.T) {
+	fixture := copyFixture(t, "valid-outcome-with-tasks")
+	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
+	changesPath := filepath.Join(t.TempDir(), "dry-run.json")
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	if err := os.WriteFile(changesPath, stdout.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"materialize", "--changes", changesPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	report := testutil.DecodeJSON(t, stdout.Bytes())
+	changes, _ := report["changes"].([]any)
+	if report["applied"] != true || len(changes) != 3 {
+		t.Fatalf("batch apply report = %#v", report)
+	}
+	for _, rel := range []string{"O02-new-outcome/README.md", "O02-new-outcome/T001-first-task.md", "T001-direct-task.md"} {
+		if _, err := os.Stat(filepath.Join(fixture, "docs", "roadmap", filepath.FromSlash(rel))); err != nil {
+			t.Fatalf("batch target missing %s: %v", rel, err)
+		}
+	}
+}
+
+func TestMaterializeChangesApplyReportsConflictPathBeforeWriting(t *testing.T) {
+	fixture := copyFixture(t, "valid-outcome-with-tasks")
+	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
+	changesPath := filepath.Join(t.TempDir(), "dry-run.json")
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	if err := os.WriteFile(changesPath, stdout.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fixture, "docs", "roadmap", "T001-direct-task.md"), []byte("existing"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"materialize", "--changes", changesPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 1, &stdout, &stderr)
+	report := testutil.DecodeJSON(t, stdout.Bytes())
+	testutil.RequireDiagnosticID(t, report, "RMC_MATERIALIZE_PLAN_CONFLICT")
+	if !strings.Contains(stdout.String(), "T001-direct-task.md") {
+		t.Fatalf("conflict report missing concrete path:\n%s", stdout.String())
+	}
+	if _, err := os.Stat(filepath.Join(fixture, "docs", "roadmap", "O02-new-outcome", "README.md")); !os.IsNotExist(err) {
+		t.Fatalf("batch conflict wrote sibling before failing: %v", err)
+	}
+}
+
 func TestMaterializeTargetApplyWritesOnlySelectedDryRunChange(t *testing.T) {
 	fixture := copyFixture(t, "valid-outcome-with-tasks")
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")

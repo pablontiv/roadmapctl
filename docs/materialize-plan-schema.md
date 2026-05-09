@@ -166,21 +166,21 @@ Additional target-apply diagnostics:
 
 All diagnostics use the standard report shape with `kind: roadmapctl/materialize` once the command exists. `details` should include JSON pointer-like paths such as `/items/0/tasks/1/slug` when possible.
 
-## Frozen change-set target apply
+## Frozen change-set apply
 
-`roadmapctl materialize --plan <plan-json> --dry-run --output json` returns `changes[]` with deterministic `path`, `operation`, `content`, `diff`, and preconditions. Saving that JSON creates a frozen change-set for granular apply:
+`roadmapctl materialize --plan <plan-json> --dry-run --output json` returns `changes[]` with deterministic `path`, `operation`, `content`, `diff`, and preconditions. Saving that JSON creates a frozen change-set that can be applied in one roadmapctl-owned batch:
 
 ```bash
-roadmapctl materialize --changes dry-run.json --target O02-new-outcome/README.md --apply --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl materialize --changes dry-run.json --apply --repo <repo> --roadmap-root <roadmap-root> --output json
 ```
 
 Rules:
 
-- `--changes` requires `--apply` and exactly one `--target`.
-- The target must match exactly one `changes[].path` entry.
-- The matched change must be a `create` operation for one canonical roadmap markdown file (`TXXX-*.md`, `OXX-*/README.md`, or `OXX-*/TXXX-*.md`).
-- Target apply writes only that selected file, does not recompute numbering from the plan, and does not create sibling roadmap files.
-- Existing target paths fail before writing via `RMC_MATERIALIZE_PLAN_CONFLICT`.
+- `--changes` requires `--apply`; `--target` is optional.
+- Without `--target`, roadmapctl validates the whole frozen change-set before writing, orders parent/container changes before child tasks, writes all allowed changes, validates created markdown, and runs the standard postcheck before reporting success.
+- Batch apply accepts only allowlisted bootstrap changes (`.`, `.stem`, `.roadmapctl.toml`) and canonical roadmap markdown files (`TXXX-*.md`, `OXX-*/README.md`, or `OXX-*/TXXX-*.md`).
+- Existing planned paths fail before writing via `RMC_MATERIALIZE_PLAN_CONFLICT`, and diagnostics identify the concrete blocking path.
+- With `--target`, the target must match exactly one `changes[].path` entry; target apply writes only that selected canonical markdown file, does not recompute numbering from the plan, and does not create sibling roadmap files.
 
 ## Skill integration
 
@@ -190,7 +190,7 @@ The `/roadmap plan` skill must:
 2. stop for explicit approval;
 3. serialize the approved tree to this JSON shape;
 4. pass it to roadmapctl for dry-run materialization;
-5. save the dry-run JSON and apply approved files one target at a time with `--changes <dry-run-json> --target <path> --apply`;
-6. avoid writing roadmap markdown directly once roadmapctl materialization exists.
+5. save the dry-run JSON when using a frozen change-set and apply approved files with roadmapctl-owned batch apply (`--plan ... --apply` or `--changes <dry-run-json> --apply`);
+6. avoid writing roadmap markdown directly once roadmapctl materialization exists. Granular `--target` apply is reserved for recovery/troubleshooting or explicit one-file approval.
 
 roadmapctl must reject free-form prose input. If the skill lacks enough information to populate required fields, the skill asks the user before calling roadmapctl.

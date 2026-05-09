@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
@@ -182,6 +183,62 @@ func Apply(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, err
 	return result, nil, nil
 }
 
+func ApplyChanges(roadmapRoot string, changes []Change) (Result, []diagnostics.Diagnostic, error) {
+	ordered := append([]Change(nil), changes...)
+	if len(ordered) == 0 {
+		return Result{}, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputEmpty, "", "change set must contain at least one change", "/changes")}, nil
+	}
+	sort.SliceStable(ordered, func(i int, j int) bool {
+		return batchApplyOrder(ordered[i]) < batchApplyOrder(ordered[j])
+	})
+	for _, change := range ordered {
+		if diagnostic, ok := validateBatchChange(change); !ok {
+			return Result{Changes: ordered}, []diagnostics.Diagnostic{diagnostic}, nil
+		}
+		abs := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(change.Path))
+		if change.Operation == "mkdir" {
+			if info, err := os.Stat(abs); err == nil && !info.IsDir() {
+				return Result{Changes: ordered}, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, change.Path, "planned directory path exists as a file", change.Path)}, nil
+			} else if err != nil && !os.IsNotExist(err) {
+				return Result{Changes: ordered}, nil, fmt.Errorf("stat planned directory: %w", err)
+			}
+			continue
+		}
+		if _, err := os.Stat(abs); err == nil {
+			return Result{Changes: ordered}, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, change.Path, "planned path now exists; dry-run is stale", change.Path)}, nil
+		} else if !os.IsNotExist(err) {
+			return Result{Changes: ordered}, nil, fmt.Errorf("stat planned path: %w", err)
+		}
+	}
+	for i := range ordered {
+		change := &ordered[i]
+		abs := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(change.Path))
+		if change.Operation == "mkdir" {
+			if err := os.MkdirAll(abs, 0o755); err != nil {
+				return Result{Changes: ordered}, nil, fmt.Errorf("create materialization directory: %w", err)
+			}
+			change.Applied = true
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+			return Result{Changes: ordered}, nil, fmt.Errorf("create parent directory: %w", err)
+		}
+		file, err := os.OpenFile(abs, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if err != nil {
+			return Result{Changes: ordered}, nil, fmt.Errorf("create materialized file: %w", err)
+		}
+		if _, err := file.WriteString(change.Content); err != nil {
+			_ = file.Close()
+			return Result{Changes: ordered}, nil, fmt.Errorf("write materialized file: %w", err)
+		}
+		if err := file.Close(); err != nil {
+			return Result{Changes: ordered}, nil, fmt.Errorf("close materialized file: %w", err)
+		}
+		change.Applied = true
+	}
+	return Result{Changes: ordered}, nil, nil
+}
+
 func ApplyTarget(roadmapRoot string, changes []Change, target string) (Result, []diagnostics.Diagnostic, error) {
 	cleanTarget := filepath.ToSlash(filepath.Clean(strings.TrimSpace(target)))
 	if strings.TrimSpace(target) == "" || cleanTarget == "." {
@@ -225,6 +282,42 @@ func ApplyTarget(roadmapRoot string, changes []Change, target string) (Result, [
 	}
 	change.Applied = true
 	return Result{Changes: []Change{change}}, nil, nil
+}
+
+func batchApplyOrder(change Change) int {
+	if change.Operation == "mkdir" {
+		return 0
+	}
+	if change.Path == ".stem" || change.Path == ".roadmapctl.toml" {
+		return 1
+	}
+	if strings.HasSuffix(change.Path, "/README.md") {
+		return 2
+	}
+	return 3
+}
+
+func validateBatchChange(change Change) (diagnostics.Diagnostic, bool) {
+	cleanPath := filepath.ToSlash(filepath.Clean(strings.TrimSpace(change.Path)))
+	if strings.TrimSpace(change.Path) == "" || cleanPath != change.Path || strings.HasPrefix(cleanPath, "../") || filepath.IsAbs(change.Path) {
+		return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "change path must be a clean roadmap-root-relative path", change.Path), false
+	}
+	if change.Operation == "mkdir" {
+		if cleanPath == "." || isOutcomeDir(filepath.Base(cleanPath)) {
+			return diagnostics.Diagnostic{}, true
+		}
+		return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "mkdir change must target roadmap root or an outcome directory", change.Path), false
+	}
+	if change.Operation != "create" {
+		return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "batch apply supports only mkdir and create changes", change.Path), false
+	}
+	if change.Content == "" {
+		return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "create change must include content", change.Path), false
+	}
+	if change.Path == ".stem" || change.Path == ".roadmapctl.toml" || isCanonicalMaterializeFileTarget(change.Path) {
+		return diagnostics.Diagnostic{}, true
+	}
+	return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "create change must target an allowlisted bootstrap or canonical roadmap file", change.Path), false
 }
 
 func isCanonicalMaterializeFileTarget(path string) bool {
