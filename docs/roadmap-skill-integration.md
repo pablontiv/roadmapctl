@@ -219,7 +219,7 @@ roadmapctl decision --repo <repo> --roadmap-root <roadmap-root> --output json
 
 Workspace mode uses `roadmapctl pending --workspace --repo <workspace-root> --output json` for pending summaries. For decision/next, bootstrap resolves repos and the skill runs the single-repo command per repo, then only renders/group labels the returned JSON.
 
-The skill must not call `rootline tree`, `rootline graph`, or `rootline query` directly for pending/next/decision. It must not postprocess Rootline JSON with Python snippets or recalculate done filters, blockers, reverse dependencies, quick wins, or scoring in prompt text.
+The skill must not call `rootline tree`, `rootline graph`, or `rootline query` directly for pending/next/decision. It must not postprocess Rootline JSON with Python snippets or recalculate done filters, blockers, reverse dependencies, quick wins, or scoring in prompt text. `roadmapctl` is the postprocessing boundary for roadmap workflows: agents consume its JSON fields directly instead of projecting raw Rootline JSON.
 
 Headless verification for this cutover must show the read-only commands selected/used in addition to the mandatory doctor/check preflight:
 
