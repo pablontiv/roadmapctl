@@ -26,10 +26,11 @@ type BlockingDependency struct {
 }
 
 type TransitionChange struct {
-	Path  string `json:"path"`
-	Field string `json:"field"`
-	From  string `json:"from"`
-	To    string `json:"to"`
+	Path    string `json:"path"`
+	Field   string `json:"field"`
+	Before  string `json:"before"`
+	After   string `json:"after"`
+	Applied bool   `json:"applied"`
 }
 
 func CanStart(model ReadModel, roles TransitionRoles, path string) TransitionResult {
@@ -65,7 +66,7 @@ func CanStart(model ReadModel, roles TransitionRoles, path string) TransitionRes
 	}
 	result.Allowed = true
 	result.Reasons = append(result.Reasons, "all dependencies are done")
-	result.Changes = append(result.Changes, TransitionChange{Path: path, Field: "estado", From: task.Status, To: roles.InProgressStatus})
+	result.Changes = append(result.Changes, TransitionChange{Path: path, Field: "estado", Before: task.Status, After: roles.InProgressStatus})
 	return result
 }
 
@@ -82,7 +83,24 @@ func CanComplete(model ReadModel, roles TransitionRoles, path string) Transition
 	}
 	result.Allowed = true
 	result.Reasons = append(result.Reasons, "task can be completed after caller verification")
-	result.Changes = append(result.Changes, TransitionChange{Path: path, Field: "estado", From: task.Status, To: roles.CompletedStatus})
+	result.Changes = append(result.Changes, TransitionChange{Path: path, Field: "estado", Before: task.Status, After: roles.CompletedStatus})
+	return result
+}
+
+func SetStatus(model ReadModel, roles TransitionRoles, path string, targetStatus string) TransitionResult {
+	if targetStatus == roles.InProgressStatus {
+		return CanStart(model, roles, path)
+	}
+	task := model.TaskByPath[path]
+	if task == nil {
+		return transitionTaskNotFound(path)
+	}
+	role := "custom"
+	if targetStatus == roles.CompletedStatus {
+		role = "completed"
+	}
+	result := TransitionResult{Allowed: true, CurrentStatus: task.Status, TargetStatus: targetStatus, Role: role, Reasons: []string{"explicit status change planned"}}
+	result.Changes = append(result.Changes, TransitionChange{Path: path, Field: "estado", Before: task.Status, After: targetStatus})
 	return result
 }
 
