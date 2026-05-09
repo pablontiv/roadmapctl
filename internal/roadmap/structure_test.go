@@ -3,6 +3,8 @@ package roadmap
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/pablontiv/roadmapctl/internal/diagnostics"
 )
 
 func TestCheckStructureRejectsSingleSummaryFileFallback(t *testing.T) {
@@ -40,6 +42,17 @@ func TestCheckStructureAcceptsValidOutcomeWithTasks(t *testing.T) {
 	}
 	if len(diagnostics) != 0 {
 		t.Fatalf("diagnostics = %#v, want none", diagnostics)
+	}
+}
+
+func TestCheckStructureDetectsBareBlockedByTarget(t *testing.T) {
+	found, err := CheckStructure(fixturePath("invalid-bare-blocked-by"))
+	if err != nil {
+		t.Fatalf("CheckStructure error = %v", err)
+	}
+	assertHasDiagnostic(t, found, diagnostics.DiagnosticInvalidBlockedBy, "O01-work/T001-task.md")
+	if !hasDiagnosticDetail(found, diagnostics.DiagnosticInvalidBlockedBy, "target", "T002-prereq.md") {
+		t.Fatalf("missing bare target detail in %#v", found)
 	}
 }
 

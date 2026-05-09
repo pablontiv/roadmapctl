@@ -2,6 +2,16 @@
   "diagnostics": [
     {
       "details": {
+        "source": "raw-scan",
+        "target": "T002-prereq.md"
+      },
+      "id": "RMC_GRAPH_INVALID_BLOCKED_BY",
+      "message": "blocked_by target must use explicit relative path to a task file",
+      "path": "O01-work/T001-task.md",
+      "severity": "error"
+    },
+    {
+      "details": {
         "invalid": 1,
         "kind": "execution",
         "operation": "validate",
@@ -16,7 +26,7 @@
   "roadmap_root": "<fixture:invalid-bare-blocked-by>/docs/roadmap",
   "root": "<fixture:invalid-bare-blocked-by>",
   "summary": {
-    "errors": 1,
+    "errors": 2,
     "infos": 0,
     "status": "error",
     "warnings": 0

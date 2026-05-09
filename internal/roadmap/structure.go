@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
@@ -20,6 +21,8 @@ const (
 
 type Diagnostic = diagnostics.Diagnostic
 
+var blockedByLinkPattern = regexp.MustCompile(`\[\[blocked_by:([^\]]+)\]\]`)
+
 func CheckStructure(roadmapRoot string) ([]Diagnostic, error) {
 	root := filepath.Clean(roadmapRoot)
 	entries, err := os.ReadDir(root)
@@ -30,6 +33,12 @@ func CheckStructure(roadmapRoot string) ([]Diagnostic, error) {
 	var found []Diagnostic
 	outcomeIDs := map[string]string{}
 	directTaskIDs := map[string]string{}
+
+	rawLinkDiagnostics, err := checkRawBlockedByLinks(root)
+	if err != nil {
+		return nil, err
+	}
+	found = append(found, rawLinkDiagnostics...)
 
 	for _, entry := range entries {
 		name := entry.Name()
@@ -126,6 +135,77 @@ func checkOutcomeStructure(root string, outcomePath string) ([]Diagnostic, error
 	}
 
 	return found, nil
+}
+
+func checkRawBlockedByLinks(root string) ([]Diagnostic, error) {
+	var found []Diagnostic
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			if ignoredEntry(entry.Name()) && path != root {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(entry.Name(), ".md") {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read roadmap record %s: %w", relPath(root, path), err)
+		}
+		for _, match := range blockedByLinkPattern.FindAllStringSubmatch(string(data), -1) {
+			target := strings.TrimSpace(match[1])
+			if diagnostic, ok := invalidBlockedByDiagnostic(root, path, target); ok {
+				found = append(found, diagnostic)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return found, nil
+}
+
+func invalidBlockedByDiagnostic(root string, sourcePath string, target string) (Diagnostic, bool) {
+	if !isExplicitBlockedByTarget(target) {
+		return blockedByDiagnostic(root, sourcePath, target, "blocked_by target must use explicit relative path to a task file"), true
+	}
+	resolved := filepath.Clean(filepath.Join(filepath.Dir(sourcePath), filepath.FromSlash(target)))
+	if !strings.HasPrefix(resolved, root+string(filepath.Separator)) && resolved != root {
+		return blockedByDiagnostic(root, sourcePath, target, "blocked_by target must stay inside roadmap root"), true
+	}
+	info, err := os.Stat(resolved)
+	if err != nil {
+		return Diagnostic{}, false
+	}
+	if info.IsDir() {
+		return blockedByDiagnostic(root, sourcePath, target, "blocked_by target must point to a task file"), true
+	}
+	if _, ok := TaskID(filepath.Base(resolved)); !ok {
+		return blockedByDiagnostic(root, sourcePath, target, "blocked_by target must point to a TXXX task file"), true
+	}
+	return Diagnostic{}, false
+}
+
+func isExplicitBlockedByTarget(target string) bool {
+	if !(strings.HasPrefix(target, "./") || strings.HasPrefix(target, "../") || strings.Contains(target, "/")) {
+		return false
+	}
+	return strings.HasPrefix(filepath.Base(target), "T") && strings.HasSuffix(target, ".md")
+}
+
+func blockedByDiagnostic(root string, sourcePath string, target string, message string) Diagnostic {
+	return Diagnostic{
+		ID:       diagnostics.DiagnosticInvalidBlockedBy,
+		Severity: diagnostics.SeverityError,
+		Message:  message,
+		Path:     relPath(root, sourcePath),
+		Details:  map[string]any{"target": target, "source": "raw-scan"},
+	}
 }
 
 func structureDiagnostic(id string, path string, message string) Diagnostic {
