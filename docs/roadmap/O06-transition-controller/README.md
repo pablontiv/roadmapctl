@@ -1,5 +1,4 @@
 ---
-estado: Pending
 tipo: outcome
 ---
 # O06: Controlador de transiciones de estado

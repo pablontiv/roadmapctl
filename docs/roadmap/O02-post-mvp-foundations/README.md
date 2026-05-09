@@ -1,5 +1,4 @@
 ---
-estado: Pending
 tipo: outcome
 ---
 # O02: Fundaciones post-MVP y frontera de schema

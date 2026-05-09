@@ -1,5 +1,4 @@
 ---
-estado: Pending
 tipo: outcome
 ---
 # O09: Release, CI, distribución y compatibilidad

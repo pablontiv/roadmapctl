@@ -1,5 +1,4 @@
 ---
-estado: Pending
 tipo: outcome
 ---
 # O07: Controlador de materialización

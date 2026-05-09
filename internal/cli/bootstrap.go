@@ -21,7 +21,7 @@ schema:
   estado:
     type: enum
     required:
-      match: ["O*", "T*"]
+      match: ["T*"]
     match: ["O*", "T*"]
     values: [Pending, Specified, In Progress, Completed, Blocked, On Hold, Obsolete]
 
@@ -45,8 +45,6 @@ links:
     target: ".*"
 
 validate:
-  - field: estado
-    rule: non_empty
   - field: tipo
     rule: non_empty
 `

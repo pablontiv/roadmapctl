@@ -1,5 +1,4 @@
 ---
-estado: Pending
 tipo: outcome
 ---
 # O03: Config, context, workspace y bootstrap
