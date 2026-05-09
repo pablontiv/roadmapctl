@@ -47,6 +47,16 @@ const (
 	DiagnosticLintSchemaLinkMissing         = "RMC_LINT_SCHEMA_LINK_MISSING"
 )
 
+const (
+	DiagnosticTransitionTaskNotFound      = "RMC_TRANSITION_TASK_NOT_FOUND"
+	DiagnosticTransitionStatusUnknown     = "RMC_TRANSITION_STATUS_UNKNOWN"
+	DiagnosticTransitionDependencyBlocked = "RMC_TRANSITION_DEPENDENCY_BLOCKED"
+	DiagnosticTransitionRoleMissing       = "RMC_TRANSITION_ROLE_MISSING"
+	DiagnosticTransitionNotActive         = "RMC_TRANSITION_NOT_ACTIVE"
+	DiagnosticTransitionAlreadyDone       = "RMC_TRANSITION_ALREADY_DONE"
+	DiagnosticTransitionApplyFailed       = "RMC_TRANSITION_APPLY_FAILED"
+)
+
 type Severity string
 
 type Report struct {

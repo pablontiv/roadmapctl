@@ -29,7 +29,8 @@ roadmapctl [global flags] <command> [command flags]
 Commands:
   doctor    Diagnose repo/workspace, roadmap config, Rootline availability and schema prerequisites.
   check     Validate canonical roadmap structure, metadata, Rootline graph and blocking dependencies.
-  lint      Planned: validate deterministic semantic roadmap conventions.
+  lint        Validate deterministic semantic roadmap conventions.
+  transition  Planned: evaluate and apply policy-checked status transitions.
 ```
 
 Commands support `--output text` and `--output json`.
@@ -340,6 +341,10 @@ Severity policy:
 - `warning`: deterministic semantic or documentation consistency issue; exits `0` unless `--strict` is set.
 - `error`: deterministic portability or schema problem that can break roadmapctl operation or supported filesystems.
 - `lint` must not reclassify MVP `RMC_STRUCTURE_*`, `RMC_GRAPH_*`, `RMC_ROOTLINE_*`, or `RMC_STATUS_*` diagnostics without compatibility notes.
+
+## Transition controller contract
+
+The planned `roadmapctl transition` command is specified in [transition-controller.md](transition-controller.md). It defines actions `can-start`, `can-complete`, `start`, `complete`, and `set-status`; required status roles; dependency satisfaction via `done_statuses`; behavior for schema-valid non-role statuses such as `On Hold`; and `RMC_TRANSITION_*` diagnostics.
 
 ## Rootline integration boundary
 
