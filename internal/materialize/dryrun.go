@@ -21,7 +21,7 @@ schema:
   estado:
     type: enum
     required:
-      match: ["O*", "T*"]
+      match: ["T*"]
     match: ["O*", "T*"]
     values: [Pending, Specified, In Progress, Completed, Blocked, On Hold, Obsolete]
 
@@ -45,8 +45,6 @@ links:
     target: ".*"
 
 validate:
-  - field: estado
-    rule: non_empty
   - field: tipo
     rule: non_empty
 `
@@ -364,7 +362,7 @@ func explicitRelative(currentPath string, targetPath string) string {
 
 func renderOutcome(item Item, plan roadmap.OutcomePathPlan) string {
 	var b strings.Builder
-	b.WriteString("---\nestado: Pending\ntipo: outcome\n---\n")
+	b.WriteString("---\ntipo: outcome\n---\n")
 	fmt.Fprintf(&b, "# %s\n\n", item.Title)
 	b.WriteString(item.Description)
 	b.WriteString("\n\n## Criterios de Aceptación\n\n")

@@ -131,6 +131,12 @@ func TestDryRunPlansOutcomeAndDirectTaskWithoutWriting(t *testing.T) {
 	if result.Changes[0].Content == "" || result.Changes[1].Content == "" || result.Changes[2].Content == "" {
 		t.Fatalf("changes must include proposed content: %#v", result.Changes)
 	}
+	if !strings.Contains(result.Changes[0].Content, "tipo: outcome") {
+		t.Fatalf("outcome content should include outcome type: %s", result.Changes[0].Content)
+	}
+	if strings.Contains(result.Changes[0].Content, "estado:") {
+		t.Fatalf("outcome content should not include manual estado:\n%s", result.Changes[0].Content)
+	}
 	if !strings.Contains(result.Changes[1].Content, "# T001: First task") {
 		t.Fatalf("task content did not use planned task ID:\n%s", result.Changes[1].Content)
 	}

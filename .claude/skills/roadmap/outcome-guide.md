@@ -28,34 +28,15 @@ El skill no calcula `OXX`. `roadmapctl materialize --dry-run` asigna el siguient
 
 ```markdown
 ---
-estado: Pending
 tipo: outcome
 ---
-# OXX: [Nombre del objetivo]
+# [Nombre del objetivo]
 
-## Objetivo
+[Descripción del resultado observable que existirá cuando todas las tasks estén completadas.]
 
-[Resultado observable que existirá cuando todas las tasks estén completadas.]
+## Criterios de Aceptación
 
-## Criterios de Éxito
-
-- CE1: [criterio verificable]
-  - Verificar: [comando o procedimiento]
-- CE2: [criterio verificable]
-  - Verificar: [comando o procedimiento]
-
-## Invariantes
-
-- INV1: [propiedad que ninguna task debe romper]
-  - Verificar: [comando o procedimiento]
-
-## Alcance
-
-**In**:
-- [incluido]
-
-**Out**:
-- [excluido]
+- [criterio verificable]
 
 ## Tasks
 
@@ -67,5 +48,8 @@ tipo: outcome
 ## Reglas
 
 - La tabla de tasks no incluye estado; el estado vive en el frontmatter de cada task.
+- El título del README usa el título del plan (`# [Nombre del objetivo]`); el identificador `OXX` vive en la ruta asignada por `roadmapctl materialize`.
+- El cuerpo materializado contiene descripción, `## Criterios de Aceptación` y `## Tasks`; no agregar secciones prose-only al template si el renderer no las emite.
+- El estado de `README.md` (outcome/index) no debe escribirse manualmente: se deriva desde las `TXXX-*` hijas y/o el estado del índice jerárquico.
 - No crear subniveles bajo Outcome.
 - Las dependencias entre tasks se declaran con `[[blocked_by:./TXXX-name.md]]` en la task bloqueada.
