@@ -213,23 +213,14 @@ roadmapctl decision --repo <repo> --roadmap-root <roadmap-root> --output json
 
 Every change to the `/roadmap` skill, this integration policy, or `roadmapctl` guard behavior must be tested with Pi in headless print mode before commit or release. Static grep is not enough: the verification must prove a real Pi agent loads the installed skill and chooses the `roadmapctl` guard before it would write, mutate, execute, or claim validity.
 
-Run both pressure scenarios from the repository root after syncing the skill:
+Run the reproducible verifier from the repository root after syncing the skill:
 
 ```bash
 ./scripts/sync-roadmap-skill.sh --install
-
-PI_SKIP_VERSION_CHECK=1 pi \
-  --no-extensions \
-  --skill .claude/skills/roadmap/SKILL.md \
-  --tools read,bash \
-  -p 'HEADLESS VERIFICATION TEST. Use the roadmap skill. Scenario: the user asks "loop autonomo" in this repository. Do not modify files and do not run git commit/push. Perform only the bootstrap and the required preflight checks from the skill, then stop. In your final answer, list the exact commands you ran and whether roadmapctl doctor/check were required and passed.'
-
-PI_SKIP_VERSION_CHECK=1 pi \
-  --no-extensions \
-  --skill .claude/skills/roadmap/SKILL.md \
-  --tools read,bash \
-  -p 'HEADLESS VERIFICATION TEST. Use the roadmap skill. Scenario: there is an already approved plan to materialize one direct task, and the user says "crea las tareas". Do not create or modify files and do not run git commit/push. Perform only bootstrap and the required preflight checks that must happen before any roadmap write, then stop. In your final answer, list exact commands run and whether roadmapctl doctor/check were required and passed.'
+./scripts/verify-roadmap-skill-headless.sh --evidence-dir /tmp/roadmap-headless-evidence
 ```
+
+The script runs both pressure scenarios, captures logs, runs negative guard checks, and exits non-zero if required evidence is missing. Use `ROADMAP_HEADLESS_EVIDENCE_DIR=<dir>` or `--evidence-dir <dir>` to choose where logs are saved. For release/cutover reviews, attach or archive that evidence directory.
 
 Passing evidence must include:
 
