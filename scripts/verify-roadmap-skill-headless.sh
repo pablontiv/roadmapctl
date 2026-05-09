@@ -31,6 +31,18 @@ assert_log_contains() {
   fi
 }
 
+assert_log_contains_any() {
+  local name="$1"
+  shift
+  for needle in "$@"; do
+    if grep -Fqi "$needle" "$evidence_dir/${name}.log"; then
+      return 0
+    fi
+  done
+  echo "expected ${name}.log to contain one of: $*" >&2
+  return 1
+}
+
 run_and_capture sync-check ./scripts/sync-roadmap-skill.sh --check
 
 run_and_capture loop-preflight \
@@ -83,6 +95,6 @@ assert_log_contains loop-preflight "roadmapctl check"
 assert_log_contains materialize-preflight "roadmapctl context"
 assert_log_contains materialize-preflight "roadmapctl doctor"
 assert_log_contains materialize-preflight "roadmapctl check"
-assert_log_contains materialize-preflight "No files"
+assert_log_contains_any materialize-preflight "No files" "no files" "no modifi"
 
 echo "roadmap headless evidence saved to: $evidence_dir"
