@@ -100,6 +100,43 @@ func TestCheckRootlineDetectsTypeOutsideSchema(t *testing.T) {
 	assertHasDiagnostic(t, diagnostics, DiagnosticTypeUnknown, "O01-work/T001-task.md")
 }
 
+func TestCheckRootlineDetectsOperationalStatusOutsideSchema(t *testing.T) {
+	client := &fakeRootlineClient{
+		validate: map[string]any{"version": float64(1), "kind": "rootline/validate-batch", "summary": map[string]any{"invalid": float64(0)}},
+		describe: map[string]any{"schema": map[string]any{
+			"estado": map[string]any{"values": []any{"Pending", "Completed"}},
+			"tipo":   map[string]any{"values": []any{"task", "outcome"}},
+		}},
+		query: map[string]any{"rows": []any{
+			map[string]any{"path": "O01-work/T001-task.md", "frontmatter": map[string]any{"estado": "Pending", "tipo": "task"}},
+		}},
+		graph: map[string]any{},
+	}
+
+	diagnostics, err := CheckRootline(context.Background(), client, RootlineCheckOptions{
+		RoadmapRoot: "/repo/docs/roadmap",
+		LeafFilter:  "isIndex == false",
+		OperationalStatuses: []OperationalStatus{
+			{Source: "status-values.completed", Value: "Done"},
+			{Source: "done-statuses", Value: "Archived"},
+			{Source: "active-statuses", Value: "Doing"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CheckRootline error = %v", err)
+	}
+	assertHasDiagnostic(t, diagnostics, DiagnosticConfigStatusSchemaMismatch, ".claude/roadmap.local.md")
+	if !hasDiagnosticDetail(diagnostics, DiagnosticConfigStatusSchemaMismatch, "status", "Done") {
+		t.Fatalf("missing status-values mismatch in %#v", diagnostics)
+	}
+	if !hasDiagnosticDetail(diagnostics, DiagnosticConfigStatusSchemaMismatch, "status", "Archived") {
+		t.Fatalf("missing done-statuses mismatch in %#v", diagnostics)
+	}
+	if !hasDiagnosticDetail(diagnostics, DiagnosticConfigStatusSchemaMismatch, "status", "Doing") {
+		t.Fatalf("missing active-statuses mismatch in %#v", diagnostics)
+	}
+}
+
 func TestCheckRootlineMissingRootlineDiagnosticExit3(t *testing.T) {
 	client := &fakeRootlineClient{err: &rootlinecli.Error{Kind: rootlinecli.ErrorMissingBinary, Message: "missing rootline", ExitCode: diagnostics.ExitEnvironment}}
 

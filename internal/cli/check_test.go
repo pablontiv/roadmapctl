@@ -37,6 +37,14 @@ func TestCheckAllowsStatusDeclaredOnlyInStem(t *testing.T) {
 	}
 }
 
+func TestCheckConfigRoleOutsideSchemaExitsValidation(t *testing.T) {
+	code, report, stderr := runCheckJSON(t, "invalid-config-role-not-in-schema")
+	if code != 1 {
+		t.Fatalf("check exit = %d, want 1; stderr=%q report=%#v", code, stderr, report)
+	}
+	assertDiagnostic(t, report, "RMC_CONFIG_STATUS_SCHEMA_MISMATCH")
+}
+
 func TestCheckMissingRootlineExitsEnvironment(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	missingRootline := filepath.Join(t.TempDir(), "missing-rootline")

@@ -33,9 +33,10 @@ func runCheck(ctx context.Context, options Options) diagnostics.Report {
 		Timeout: options.Timeout,
 	})
 	rootlineDiagnostics, err := roadmap.CheckRootline(ctx, client, roadmap.RootlineCheckOptions{
-		RoadmapRoot:     cfg.RoadmapRoot,
-		LeafFilter:      cfg.LeafFilter,
-		AllowedStatuses: configuredStatuses(cfg),
+		RoadmapRoot:         cfg.RoadmapRoot,
+		LeafFilter:          cfg.LeafFilter,
+		AllowedStatuses:     configuredStatuses(cfg),
+		OperationalStatuses: operationalStatuses(cfg),
 	})
 	if err != nil {
 		found = append(found, diagnostics.Diagnostic{
@@ -52,22 +53,33 @@ func runCheck(ctx context.Context, options Options) diagnostics.Report {
 }
 
 func configuredStatuses(cfg *config.Config) []string {
-	values := []string{
-		cfg.StatusValues.Pending,
-		cfg.StatusValues.Specified,
-		cfg.StatusValues.InProgress,
-		cfg.StatusValues.Completed,
-		cfg.StatusValues.Blocked,
-		cfg.StatusValues.Obsolete,
-	}
+	statuses := operationalStatuses(cfg)
 	seen := map[string]bool{}
-	result := make([]string, 0, len(values))
-	for _, value := range values {
-		if value == "" || seen[value] {
+	result := make([]string, 0, len(statuses))
+	for _, status := range statuses {
+		if status.Value == "" || seen[status.Value] {
 			continue
 		}
-		seen[value] = true
-		result = append(result, value)
+		seen[status.Value] = true
+		result = append(result, status.Value)
 	}
 	return result
+}
+
+func operationalStatuses(cfg *config.Config) []roadmap.OperationalStatus {
+	values := []roadmap.OperationalStatus{
+		{Source: "status-values.pending", Value: cfg.StatusValues.Pending},
+		{Source: "status-values.specified", Value: cfg.StatusValues.Specified},
+		{Source: "status-values.in-progress", Value: cfg.StatusValues.InProgress},
+		{Source: "status-values.completed", Value: cfg.StatusValues.Completed},
+		{Source: "status-values.blocked", Value: cfg.StatusValues.Blocked},
+		{Source: "status-values.obsolete", Value: cfg.StatusValues.Obsolete},
+	}
+	for _, value := range cfg.DoneStatuses {
+		values = append(values, roadmap.OperationalStatus{Source: "done-statuses", Value: value})
+	}
+	for _, value := range cfg.ActiveStatuses {
+		values = append(values, roadmap.OperationalStatus{Source: "active-statuses", Value: value})
+	}
+	return values
 }

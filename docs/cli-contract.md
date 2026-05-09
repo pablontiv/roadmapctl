@@ -86,7 +86,8 @@ It checks:
 5. Rootline query results for task leaves;
 6. Rootline graph results for cycles and broken links;
 7. `blocked_by` links use explicit relative paths and resolve to task files;
-8. configured statuses are present in the effective Rootline schema.
+8. markdown `estado`/`tipo` values are valid according to the effective Rootline schema;
+9. operational status roles from config (`status-values`, `done-statuses`, `active-statuses`) refer to statuses present in the effective Rootline schema.
 
 `check` must not write, materialize, fix, or normalize roadmap files.
 
@@ -244,6 +245,7 @@ Additional MVP diagnostics should reuse the same convention, for example:
 
 - `RMC_CONFIG_MISSING`
 - `RMC_CONFIG_ROADMAP_ROOT_ESCAPE`
+- `RMC_CONFIG_STATUS_SCHEMA_MISMATCH`
 - `RMC_STRUCTURE_MISSING_OUTCOME_README`
 - `RMC_STRUCTURE_DUPLICATE_ID`
 - `RMC_ROOTLINE_VALIDATE_FAILED`

@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	DiagnosticGraphCycle             = "RMC_GRAPH_CYCLE"
-	DiagnosticStatusUnknown          = "RMC_STATUS_UNKNOWN"
-	DiagnosticTypeUnknown            = "RMC_STATUS_TYPE_UNKNOWN"
-	DiagnosticRootlineValidateFailed = "RMC_ROOTLINE_VALIDATE_FAILED"
-	DiagnosticRootlineDescribeFailed = "RMC_ROOTLINE_DESCRIBE_FAILED"
-	DiagnosticRootlineQueryFailed    = "RMC_ROOTLINE_QUERY_FAILED"
-	DiagnosticRootlineGraphFailed    = "RMC_ROOTLINE_GRAPH_FAILED"
+	DiagnosticGraphCycle                 = "RMC_GRAPH_CYCLE"
+	DiagnosticStatusUnknown              = "RMC_STATUS_UNKNOWN"
+	DiagnosticTypeUnknown                = "RMC_STATUS_TYPE_UNKNOWN"
+	DiagnosticRootlineValidateFailed     = "RMC_ROOTLINE_VALIDATE_FAILED"
+	DiagnosticRootlineDescribeFailed     = "RMC_ROOTLINE_DESCRIBE_FAILED"
+	DiagnosticRootlineQueryFailed        = "RMC_ROOTLINE_QUERY_FAILED"
+	DiagnosticRootlineGraphFailed        = "RMC_ROOTLINE_GRAPH_FAILED"
+	DiagnosticConfigStatusSchemaMismatch = "RMC_CONFIG_STATUS_SCHEMA_MISMATCH"
 )
 
 type RootlineClient interface {
@@ -26,10 +27,16 @@ type RootlineClient interface {
 	Graph(ctx context.Context, root string, wheres ...string) (*rootlinecli.JSONResult, error)
 }
 
+type OperationalStatus struct {
+	Source string
+	Value  string
+}
+
 type RootlineCheckOptions struct {
-	RoadmapRoot     string
-	LeafFilter      string
-	AllowedStatuses []string
+	RoadmapRoot         string
+	LeafFilter          string
+	AllowedStatuses     []string
+	OperationalStatuses []OperationalStatus
 }
 
 func CheckRootline(ctx context.Context, client RootlineClient, options RootlineCheckOptions) ([]Diagnostic, error) {
@@ -62,6 +69,7 @@ func CheckRootline(ctx context.Context, client RootlineClient, options RootlineC
 	} else {
 		schemaStatuses = extractStatusValues(describeResult.Decoded)
 		schemaTypes = extractTypeValues(describeResult.Decoded)
+		found = append(found, operationalStatusDiagnostics(options.OperationalStatuses, schemaStatuses)...)
 	}
 
 	queryResult, err := client.Query(ctx, options.RoadmapRoot, options.LeafFilter, `tipo == "task"`)

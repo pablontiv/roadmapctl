@@ -44,6 +44,33 @@ func statusDiagnostics(decoded map[string]any, configured []string, schemaStatus
 	return found
 }
 
+func operationalStatusDiagnostics(statuses []OperationalStatus, schemaStatuses []string) []Diagnostic {
+	if len(statuses) == 0 || len(schemaStatuses) == 0 {
+		return nil
+	}
+	allowed := stringSet(schemaStatuses)
+	seen := map[string]bool{}
+	var found []Diagnostic
+	for _, status := range statuses {
+		if status.Value == "" || allowed[status.Value] {
+			continue
+		}
+		key := status.Source + "\x00" + status.Value
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		found = append(found, Diagnostic{
+			ID:       DiagnosticConfigStatusSchemaMismatch,
+			Severity: diagnostics.SeverityError,
+			Message:  "configured operational status is not allowed by Rootline schema",
+			Path:     ".claude/roadmap.local.md",
+			Details:  map[string]any{"source": status.Source, "status": status.Value},
+		})
+	}
+	return found
+}
+
 func extractStatusValues(decoded map[string]any) []string {
 	if values := stringsFromArray(decoded["values"]); len(values) > 0 {
 		return values
