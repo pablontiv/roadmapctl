@@ -16,6 +16,7 @@ func TestMaterializeUsageErrors(t *testing.T) {
 		{"materialize", "--dry-run", "--repo", testutil.FixturePath(t, "valid-outcome-with-tasks"), "--output", "json"},
 		{"materialize", "--plan", filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json"), "--repo", testutil.FixturePath(t, "valid-outcome-with-tasks"), "--output", "json"},
 		{"materialize", "--plan", filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json"), "--dry-run", "--apply", "--repo", testutil.FixturePath(t, "valid-outcome-with-tasks"), "--output", "json"},
+		{"materialize", "--plan", filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json"), "--target", "T001-direct-task.md", "--apply", "--repo", copyFixture(t, "valid-outcome-with-tasks"), "--output", "json"},
 	} {
 		var stdout, stderr bytes.Buffer
 		code := Execute(args, &stdout, &stderr)
@@ -122,6 +123,60 @@ func TestMaterializeApplyWritesFilesAndRunsPostcheck(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(fixture, "docs", "roadmap", filepath.FromSlash(rel))); err != nil {
 			t.Fatalf("expected applied file %s: %v", rel, err)
 		}
+	}
+}
+
+func TestMaterializeTargetApplyWritesOnlySelectedDryRunChange(t *testing.T) {
+	fixture := copyFixture(t, "valid-outcome-with-tasks")
+	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
+	changesPath := filepath.Join(t.TempDir(), "dry-run.json")
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	if err := os.WriteFile(changesPath, stdout.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"materialize", "--changes", changesPath, "--target", "T001-direct-task.md", "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	report := testutil.DecodeJSON(t, stdout.Bytes())
+	changes, _ := report["changes"].([]any)
+	if report["applied"] != true || len(changes) != 1 {
+		t.Fatalf("target apply report = %#v", report)
+	}
+	if _, err := os.Stat(filepath.Join(fixture, "docs", "roadmap", "T001-direct-task.md")); err != nil {
+		t.Fatalf("selected target missing: %v", err)
+	}
+	for _, sibling := range []string{"O02-new-outcome/README.md", "O02-new-outcome/T001-first-task.md"} {
+		if _, err := os.Stat(filepath.Join(fixture, "docs", "roadmap", filepath.FromSlash(sibling))); !os.IsNotExist(err) {
+			t.Fatalf("sibling %s was written: %v", sibling, err)
+		}
+	}
+}
+
+func TestMaterializeTargetApplyRejectsUnknownTargetBeforeWriting(t *testing.T) {
+	fixture := copyFixture(t, "valid-outcome-with-tasks")
+	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
+	changesPath := filepath.Join(t.TempDir(), "dry-run.json")
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	if err := os.WriteFile(changesPath, stdout.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	before := listRoadmapFiles(t, fixture)
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"materialize", "--changes", changesPath, "--target", "T999-missing.md", "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 1, &stdout, &stderr)
+	after := listRoadmapFiles(t, fixture)
+	if !bytes.Equal([]byte(before), []byte(after)) {
+		t.Fatalf("unknown target wrote files\nbefore:\n%s\nafter:\n%s", before, after)
 	}
 }
 

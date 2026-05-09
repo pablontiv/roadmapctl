@@ -146,12 +146,13 @@ Before creating or modifying any roadmap file:
 After approval, the skill serializes non-bootstrap plans to `roadmapctl/materialize-plan` JSON and delegates deterministic writes:
   1. Run:
      roadmapctl materialize --plan <plan-json> --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json
-  2. Verify the dry-run proposes only canonical allowlisted paths and no `*-tasks.md` fallback.
-  3. After explicit human approval of the dry-run, run:
-     roadmapctl materialize --plan <plan-json> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
-  4. Run:
+  2. Save that dry-run JSON as the frozen change-set and verify it proposes only canonical allowlisted paths and no `*-tasks.md` fallback.
+  3. After explicit human approval of the dry-run, apply each canonical file target independently:
+     roadmapctl materialize --changes <dry-run-json> --target <target.path> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
+  4. Never use prompt-side raw writes for dry-run `content`, and never use one batch `--plan ... --apply` from the `/roadmap` skill for multi-file plans.
+  5. Run:
      roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
-  5. If any command exits non-zero, report diagnostics and stop before claiming success or committing.
+  6. If any command exits non-zero, report diagnostics and stop before claiming success or committing.
 ```
 
 The materialized shape must remain canonical:
@@ -167,7 +168,7 @@ or:
 <roadmap-root>/TXXX-task.md
 ```
 
-Never create a single fallback file such as `<roadmap-root>/feature-tasks.md` for multiple tasks. The skill must not duplicate numbering, `rootline new`, README task-table edits, or dependency-link writing once `roadmapctl materialize` is available; those deterministic writes belong to the CLI.
+Never create a single fallback file such as `<roadmap-root>/feature-tasks.md` for multiple tasks. The skill must not duplicate numbering, `rootline new`, README task-table edits, dependency-link writing, or dry-run content writes once `roadmapctl materialize` is available; those deterministic writes belong to the CLI. Granular writes use `--changes <dry-run-json> --target <path> --apply` so the target content comes from a frozen CLI change-set.
 
 ## `/roadmap loop` integration snippet
 

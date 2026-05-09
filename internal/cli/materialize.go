@@ -29,54 +29,75 @@ type materializeReport struct {
 
 func newMaterializeCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
 	var planPath string
+	var changesPath string
+	var target string
 	var dryRun bool
 	var apply bool
 	cmd := &cobra.Command{Use: "materialize", Short: "Validate and materialize approved structured roadmap plans.", Args: cobra.NoArgs, SilenceUsage: true, SilenceErrors: true, RunE: func(cmd *cobra.Command, args []string) error {
-		report := runMaterialize(context.Background(), *options, planPath, dryRun, apply)
+		report := runMaterialize(context.Background(), *options, planPath, changesPath, target, dryRun, apply)
 		*exitCode = renderMaterialize(report, options.Output, stdout, stderr)
 		return nil
 	}}
 	cmd.Flags().StringVar(&planPath, "plan", "", "structured materialize plan JSON file")
+	cmd.Flags().StringVar(&changesPath, "changes", "", "materialize dry-run JSON report used as a frozen change set")
+	cmd.Flags().StringVar(&target, "target", "", "single canonical roadmap file path to apply from --changes")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show proposed materialization without writing")
 	cmd.Flags().BoolVar(&apply, "apply", false, "write approved materialization plan")
 	return cmd
 }
 
-func runMaterialize(ctx context.Context, options Options, planPath string, dryRun bool, apply bool) materializeReport {
+func runMaterialize(ctx context.Context, options Options, planPath string, changesPath string, target string, dryRun bool, apply bool) materializeReport {
 	repoRoot := absoluteClean(options.Repo)
 	if options.Output != "text" && options.Output != "json" {
 		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{{ID: "RMC_MATERIALIZE_OUTPUT_INVALID", Severity: diagnostics.SeverityError, Message: "unsupported output format", ExitCode: diagnostics.ExitUsage}})
 	}
-	if planPath == "" {
-		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticMaterializeInputFieldMissing, Severity: diagnostics.SeverityError, Message: "--plan is required", ExitCode: diagnostics.ExitUsage}})
+	if (planPath == "") == (changesPath == "") {
+		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticMaterializeInputFieldMissing, Severity: diagnostics.SeverityError, Message: "materialize requires exactly one of --plan or --changes", ExitCode: diagnostics.ExitUsage}})
 	}
 	if dryRun == apply {
 		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{{ID: "RMC_MATERIALIZE_MODE_INVALID", Severity: diagnostics.SeverityError, Message: "materialize requires exactly one of --dry-run or --apply", ExitCode: diagnostics.ExitUsage}})
+	}
+	if changesPath != "" && (!apply || dryRun) {
+		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{{ID: "RMC_MATERIALIZE_MODE_INVALID", Severity: diagnostics.SeverityError, Message: "--changes requires --apply", ExitCode: diagnostics.ExitUsage}})
+	}
+	if target != "" && changesPath == "" {
+		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{{ID: "RMC_MATERIALIZE_MODE_INVALID", Severity: diagnostics.SeverityError, Message: "--target requires --changes", ExitCode: diagnostics.ExitUsage}})
 	}
 	cfg, err := loadMaterializeConfig(options)
 	if err != nil {
 		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{configDiagnostic(repoRoot, err)})
 	}
-	plan, found := readMaterializePlan(planPath)
-	if len(found) > 0 {
-		return newMaterializeReport(cfg.RepoRoot, cfg.RoadmapRoot, false, nil, found)
-	}
 	var result materialize.Result
-	if apply {
-		result, found, err = materialize.Apply(cfg.RoadmapRoot, plan)
+	var found []diagnostics.Diagnostic
+	if changesPath != "" {
+		changes, readFound := readMaterializeChanges(changesPath)
+		found = append(found, readFound...)
+		if len(found) == 0 {
+			result, found, err = materialize.ApplyTarget(cfg.RoadmapRoot, changes, target)
+		}
 	} else {
-		result, found, err = materialize.DryRun(cfg.RoadmapRoot, plan)
+		var plan materialize.Plan
+		plan, found = readMaterializePlan(planPath)
+		if len(found) == 0 {
+			if apply {
+				result, found, err = materialize.Apply(cfg.RoadmapRoot, plan)
+			} else {
+				result, found, err = materialize.DryRun(cfg.RoadmapRoot, plan)
+			}
+		}
 	}
 	if err != nil {
 		found = append(found, diagnostics.Diagnostic{ID: "RMC_MATERIALIZE_DRY_RUN_FAILED", Severity: diagnostics.SeverityError, Message: err.Error(), ExitCode: diagnostics.ExitValidation})
 	}
 	if apply && len(found) == 0 {
 		found = append(found, validateMaterializedFiles(ctx, cfg, options, result.Changes)...)
-		postOptions := options
-		postOptions.Repo = cfg.RepoRoot
-		postOptions.RoadmapRoot = cfg.RoadmapRootRel
-		postcheck := runCheck(ctx, postOptions)
-		found = append(found, postcheck.Diagnostics...)
+		if changesPath == "" {
+			postOptions := options
+			postOptions.Repo = cfg.RepoRoot
+			postOptions.RoadmapRoot = cfg.RoadmapRootRel
+			postcheck := runCheck(ctx, postOptions)
+			found = append(found, postcheck.Diagnostics...)
+		}
 	}
 	return newMaterializeReport(cfg.RepoRoot, cfg.RoadmapRoot, apply && len(found) == 0, result.Changes, found)
 }
@@ -109,6 +130,20 @@ func validateMaterializedFiles(ctx context.Context, cfg *config.Config, options 
 		}
 	}
 	return found
+}
+
+func readMaterializeChanges(path string) ([]materialize.Change, []diagnostics.Diagnostic) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticMaterializeInputFieldMissing, Severity: diagnostics.SeverityError, Message: "read materialize changes: " + err.Error(), Path: path, ExitCode: diagnostics.ExitUsage}}
+	}
+	var report struct {
+		Changes []materialize.Change `json:"changes"`
+	}
+	if err := json.Unmarshal(data, &report); err != nil {
+		return nil, []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticMaterializeInputKindInvalid, Severity: diagnostics.SeverityError, Message: "parse materialize changes JSON: " + err.Error(), Path: path, ExitCode: diagnostics.ExitUsage}}
+	}
+	return report.Changes, nil
 }
 
 func readMaterializePlan(path string) (materialize.Plan, []diagnostics.Diagnostic) {

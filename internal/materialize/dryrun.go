@@ -177,6 +177,74 @@ func Apply(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, err
 	return result, nil, nil
 }
 
+func ApplyTarget(roadmapRoot string, changes []Change, target string) (Result, []diagnostics.Diagnostic, error) {
+	cleanTarget := filepath.ToSlash(filepath.Clean(strings.TrimSpace(target)))
+	if strings.TrimSpace(target) == "" || cleanTarget == "." {
+		return Result{}, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputFieldMissing, cleanTarget, "target is required", "/target")}, nil
+	}
+	var matches []Change
+	for _, change := range changes {
+		if change.Path == cleanTarget {
+			matches = append(matches, change)
+		}
+	}
+	if len(matches) == 0 {
+		return Result{}, []diagnostics.Diagnostic{materializeDiagnostic("RMC_MATERIALIZE_TARGET_UNKNOWN", cleanTarget, "target is not present in change set", cleanTarget)}, nil
+	}
+	if len(matches) > 1 {
+		return Result{}, []diagnostics.Diagnostic{materializeDiagnostic("RMC_MATERIALIZE_TARGET_DUPLICATE", cleanTarget, "target appears multiple times in change set", cleanTarget)}, nil
+	}
+	change := matches[0]
+	if change.Operation != "create" || change.Content == "" || !isCanonicalMaterializeFileTarget(change.Path) {
+		return Result{}, []diagnostics.Diagnostic{materializeDiagnostic("RMC_MATERIALIZE_TARGET_INVALID", cleanTarget, "target must be one canonical roadmap markdown file create change", cleanTarget)}, nil
+	}
+	abs := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(change.Path))
+	if _, err := os.Stat(abs); err == nil {
+		return Result{}, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, change.Path, "planned path now exists; dry-run is stale", change.Path)}, nil
+	} else if !os.IsNotExist(err) {
+		return Result{}, nil, fmt.Errorf("stat planned path: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		return Result{}, nil, fmt.Errorf("create parent directory: %w", err)
+	}
+	file, err := os.OpenFile(abs, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return Result{}, nil, fmt.Errorf("create materialized file: %w", err)
+	}
+	if _, err := file.WriteString(change.Content); err != nil {
+		_ = file.Close()
+		return Result{}, nil, fmt.Errorf("write materialized file: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return Result{}, nil, fmt.Errorf("close materialized file: %w", err)
+	}
+	change.Applied = true
+	return Result{Changes: []Change{change}}, nil, nil
+}
+
+func isCanonicalMaterializeFileTarget(path string) bool {
+	parts := strings.Split(path, "/")
+	if len(parts) == 1 {
+		return isTaskMarkdown(parts[0])
+	}
+	if len(parts) == 2 && isOutcomeDir(parts[0]) {
+		return parts[1] == "README.md" || isTaskMarkdown(parts[1])
+	}
+	return false
+}
+
+func isOutcomeDir(name string) bool {
+	return len(name) > 4 && name[0] == 'O' && isDigit(name[1]) && isDigit(name[2]) && name[3] == '-'
+}
+
+func isTaskMarkdown(name string) bool {
+	return len(name) > 8 && name[0] == 'T' && isDigit(name[1]) && isDigit(name[2]) && isDigit(name[3]) && name[4] == '-' && strings.HasSuffix(name, ".md")
+}
+
+func isDigit(value byte) bool {
+	return value >= '0' && value <= '9'
+}
+
 func DryRun(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, error) {
 	if found := validatePlan(plan); len(found) > 0 {
 		return Result{}, found, nil

@@ -67,6 +67,19 @@ o tasks directas:
 Si no se puede crear esa estructura, detenerse y explicar el bloqueo. No hacer
 fallback a markdown libre.
 
+## Invariante de granularidad de ejecución
+
+Además del criterio canónico, ninguna operación de materialización puede
+crear/reescribir más de un archivo roadmap en una sola tool call.
+
+Prohibido:
+
+- `bash` con múltiples heredocs/cats dirigidos a archivos distintos.
+- loops de shell que llamen `rootline new` o escritura en varios paths.
+- llamadas a `roadmapctl materialize --plan <plan-json> --apply` que aplican N archivos del plan en una sola ejecución dentro del skill.
+
+Para un plan que genera N archivos canónicos, guardar el dry-run como change-set congelado y materializar como N unidades independientes con `roadmapctl materialize --changes <dry-run-json> --target <target.path> --apply`, cada una con una sola ruta destino canónica.
+
 ## Bootstrap obligatorio
 
 Ejecutar SIEMPRE antes de cualquier operación.

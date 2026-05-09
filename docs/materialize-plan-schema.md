@@ -156,7 +156,31 @@ Planned input validation diagnostics:
 | `RMC_MATERIALIZE_INPUT_DEPENDENCY_UNRESOLVED` | error | Dependency cannot be resolved to a task. |
 | `RMC_MATERIALIZE_PLAN_CONFLICT` | error | Planned path collides with an existing unrelated roadmap item. |
 
+Additional target-apply diagnostics:
+
+| ID | Severity | Meaning |
+|----|----------|---------|
+| `RMC_MATERIALIZE_TARGET_UNKNOWN` | error | `--target` is absent from the frozen change-set. |
+| `RMC_MATERIALIZE_TARGET_DUPLICATE` | error | `--target` appears multiple times in the frozen change-set. |
+| `RMC_MATERIALIZE_TARGET_INVALID` | error | `--target` is not a single canonical roadmap markdown create change. |
+
 All diagnostics use the standard report shape with `kind: roadmapctl/materialize` once the command exists. `details` should include JSON pointer-like paths such as `/items/0/tasks/1/slug` when possible.
+
+## Frozen change-set target apply
+
+`roadmapctl materialize --plan <plan-json> --dry-run --output json` returns `changes[]` with deterministic `path`, `operation`, `content`, `diff`, and preconditions. Saving that JSON creates a frozen change-set for granular apply:
+
+```bash
+roadmapctl materialize --changes dry-run.json --target O02-new-outcome/README.md --apply --repo <repo> --roadmap-root <roadmap-root> --output json
+```
+
+Rules:
+
+- `--changes` requires `--apply` and exactly one `--target`.
+- The target must match exactly one `changes[].path` entry.
+- The matched change must be a `create` operation for one canonical roadmap markdown file (`TXXX-*.md`, `OXX-*/README.md`, or `OXX-*/TXXX-*.md`).
+- Target apply writes only that selected file, does not recompute numbering from the plan, and does not create sibling roadmap files.
+- Existing target paths fail before writing via `RMC_MATERIALIZE_PLAN_CONFLICT`.
 
 ## Skill integration
 
@@ -165,7 +189,8 @@ The `/roadmap plan` skill must:
 1. decompose and present the proposed tree to the user;
 2. stop for explicit approval;
 3. serialize the approved tree to this JSON shape;
-4. pass it to roadmapctl for dry-run/apply materialization;
-5. avoid writing roadmap markdown directly once roadmapctl materialization exists.
+4. pass it to roadmapctl for dry-run materialization;
+5. save the dry-run JSON and apply approved files one target at a time with `--changes <dry-run-json> --target <path> --apply`;
+6. avoid writing roadmap markdown directly once roadmapctl materialization exists.
 
 roadmapctl must reject free-form prose input. If the skill lacks enough information to populate required fields, the skill asks the user before calling roadmapctl.

@@ -145,6 +145,76 @@ func TestDryRunPlansOutcomeAndDirectTaskWithoutWriting(t *testing.T) {
 	}
 }
 
+func TestApplyTargetCreatesOnlySelectedCanonicalFile(t *testing.T) {
+	root := t.TempDir()
+	writeBootstrapFiles(t, root)
+	result, diagnostics, err := DryRun(root, samplePlan())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+
+	directPath := result.Changes[len(result.Changes)-1].Path
+	applied, diagnostics, err := ApplyTarget(root, result.Changes, directPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+	if len(applied.Changes) != 1 || !applied.Changes[0].Applied || applied.Changes[0].Path != directPath {
+		t.Fatalf("applied result = %#v", applied)
+	}
+	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(directPath))); err != nil {
+		t.Fatalf("selected target missing: %v", err)
+	}
+	for _, sibling := range []string{"O02-new-outcome/README.md", "O02-new-outcome/T001-first-task.md"} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(sibling))); !os.IsNotExist(err) {
+			t.Fatalf("sibling %s was written: %v", sibling, err)
+		}
+	}
+}
+
+func TestApplyTargetRejectsInvalidTargetsBeforeWriting(t *testing.T) {
+	root := t.TempDir()
+	writeBootstrapFiles(t, root)
+	result, diagnostics, err := DryRun(root, samplePlan())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+	directPath := result.Changes[len(result.Changes)-1].Path
+	withDuplicate := append(append([]Change{}, result.Changes...), result.Changes[len(result.Changes)-1])
+	tests := []struct {
+		name    string
+		target  string
+		changes []Change
+	}{
+		{name: "empty", target: "", changes: result.Changes},
+		{name: "unknown", target: "T999-missing.md", changes: result.Changes},
+		{name: "duplicate", target: directPath, changes: withDuplicate},
+		{name: "non-file", target: ".", changes: []Change{{Path: ".", Operation: "mkdir"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, diagnostics, err := ApplyTarget(root, tt.changes, tt.target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(diagnostics) == 0 {
+				t.Fatalf("expected diagnostics for target %q", tt.target)
+			}
+			if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(directPath))); !os.IsNotExist(err) {
+				t.Fatalf("invalid target wrote file: %v", err)
+			}
+		})
+	}
+}
+
 func writeBootstrapFiles(t *testing.T, root string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(root, ".stem"), []byte(baseStemContent), 0o644); err != nil {

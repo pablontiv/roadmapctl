@@ -53,6 +53,24 @@ Si falta schema, `.stem`, `rootline`, permisos o estructura para crear archivos
 canónicos, detenerse. No usar `Write` directo para inventar una estructura
 alternativa.
 
+## Invariante de granularidad de escritura
+
+Materializar implica N operaciones canónicas de escritura, no un dump multi-file en una sola operación.
+
+**Prohibido en una misma tool call:**
+
+- `bash`/`sh` con múltiples `cat >`, heredocs multi-file o loops de escritura.
+- una sola llamada que genere `rootline new` para múltiples rutas.
+- `roadmapctl materialize --plan <plan-json> --apply` en batch sobre múltiples archivos del plan dentro del skill.
+- cualquier llamada que cree/reescriba más de un archivo canónico del roadmap.
+
+La escritura granular se considera obligatoria en los flujos con `/roadmap plan`:
+
+1. Cada file-path canónico de la dry-run (`OXX-*/README.md`, `OXX-*/TXXX-*.md`, `TXXX-*.md`) se trata como unidad separada.
+2. Una operación puede afectar **exactamente un** archivo canónico y su path objetivo.
+3. Si el batch tiene N targets, ejecutar N operaciones independientes con `roadmapctl materialize --changes <dry-run-json> --target <target.path> --apply`, sin mezclar destinos.
+4. Excepción: bootstrap explícito (`.` / `.stem` / `.roadmapctl.toml`) conserva su flujo canónico propio.
+
 ## Materialización determinística
 
 La ruta primaria para crear archivos del roadmap es:
