@@ -35,12 +35,16 @@ See [roadmap skill integration](roadmap-skill-integration.md) for exact prefligh
 roadmapctl [global flags] <command> [command flags]
 
 Commands:
-  doctor    Diagnose repo/workspace, roadmap config, Rootline availability and schema prerequisites.
-  check     Validate canonical roadmap structure, metadata, Rootline graph and blocking dependencies.
-  lint        Validate deterministic semantic roadmap conventions.
-  transition  Evaluate and apply policy-checked status transitions.
-  materialize  Validate and write approved structured roadmap plans.
-  bootstrap    Inspect or initialize missing bootstrap files.
+  doctor       Diagnose repo/workspace, roadmap config, Rootline availability and schema prerequisites.
+  check        Validate canonical roadmap structure, metadata, Rootline graph and blocking dependencies.
+  context      Show effective roadmapctl context for skill bootstrap.
+  pending      List active roadmap tasks that are not done.
+  next         Split active tasks into ready and blocked sets.
+  decision     Provide deterministic prioritization recommendations.
+  lint         Validate deterministic semantic roadmap conventions.
+  transition   Evaluate and apply policy-checked status transitions.
+  materialize   Validate and write approved structured roadmap plans.
+  bootstrap     Inspect or initialize missing bootstrap files.
 ```
 
 Commands support `--output text` and `--output json`.
