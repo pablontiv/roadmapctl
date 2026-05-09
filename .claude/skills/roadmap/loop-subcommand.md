@@ -20,7 +20,7 @@ Ejecutar tasks pendientes en loop con confirmación entre cada una.
 El loop opera en un repo a la vez.
 
 - Con `--repo <name>`: usar ese repo.
-- Sin `--repo`: contar pendientes por repo con `rootline tree ... --output json` y pedir selección.
+- Sin `--repo`: contar pendientes por repo con `roadmapctl pending --repo <repo-path> --roadmap-root <roadmap-root> --output json` y pedir selección.
 
 ## Fase 1: Discovery
 
@@ -36,23 +36,23 @@ roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json 
 
 Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de seleccionar o ejecutar tasks. Reportar comando, exit code y diagnostic IDs si hubo JSON. No ejecutar tasks ni mutar estados.
 
-1. Cargar dependencias:
+1. Obtener estado determinístico de ejecución:
    ```bash
-   rootline graph <roadmap-root>/ --where "<where-leaf>" --output json
+   roadmapctl next --repo <repo-path> --roadmap-root <roadmap-root> --output json
    ```
-   - Si hay ciclos: reportar y parar.
-   - Si hay broken links de tipo `blocked_by`: bloquear la task fuente afectada hasta corregir el link.
-   - Si hay otros broken links: warning.
-   - Construir `dependency_map` desde edges `type == "blocked_by"`; usar los targets ya resueltos por `rootline graph`.
-2. Obtener tasks activas:
+   - Si `summary.status != "ok"` o el comando sale non-zero: reportar diagnostics y parar.
+   - Usar `ready[]` como cola ejecutable; usar `blocked[]` solo para explicar skips/bloqueos.
+   - No recalcular dependencias en prompt: `roadmapctl next` es la fuente canónica de `blocking_dependencies`/blockers.
+2. Obtener listado activo para tabla y conteos:
    ```bash
-   rootline query <roadmap-root>/ --where '<where-leaf>' --where '<where-active>' --where 'tipo == "task"' --output json
+   roadmapctl pending --repo <repo-path> --roadmap-root <roadmap-root> --output json
    ```
-3. Aplicar `--filter` por path si existe.
-4. Ordenar con topological sort sobre `dependency_map`; desempate por `path`, luego `id`.
+   - Si `summary.status != "ok"` o el comando sale non-zero: reportar diagnostics y parar.
+3. Aplicar `--filter` por path sobre `ready[]` si existe.
+4. Mantener el orden determinístico devuelto por `roadmapctl next`; no hacer topological sort manual.
 5. Aplicar `--max`.
-6. Renderizar tabla desde JSON.
-7. Si no hay tasks: informar y parar.
+6. Renderizar tabla desde JSON (`ready[]`, `blocked[]` y `pending.tasks[]`).
+7. Si no hay tasks en `ready[]` después del filtro: informar pendientes bloqueadas y parar.
 
 ## Fase 2: TodoList
 
