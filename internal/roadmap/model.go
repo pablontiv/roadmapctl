@@ -113,6 +113,9 @@ func ReadModelFromRootline(tree map[string]any, query map[string]any, graph map[
 		statusByPath[path] = stringField(frontmatter, "estado")
 		typeByPath[path] = stringField(frontmatter, "tipo")
 	}
+	if len(model.Tasks) == 0 {
+		model.Tasks = tasksFromQueryRows(query)
+	}
 	doneSet := stringSet(roles.Done)
 	activeSet := stringSet(roles.Active)
 	for i := range model.Tasks {
@@ -140,6 +143,32 @@ func ReadModelFromRootline(tree map[string]any, query map[string]any, graph map[
 		}
 	}
 	return model, graphDiagnostics(graph)
+}
+
+func tasksFromQueryRows(query map[string]any) []Task {
+	var tasks []Task
+	for _, rowValue := range arrayValue(query["rows"]) {
+		row, ok := rowValue.(map[string]any)
+		if !ok {
+			continue
+		}
+		path := cleanSlashPath(stringField(row, "path"))
+		frontmatter, _ := row["frontmatter"].(map[string]any)
+		if stringField(frontmatter, "tipo") != "task" {
+			continue
+		}
+		tasks = append(tasks, Task{Name: filepath.Base(path), Path: path, OutcomePath: outcomePathForTask(path), Status: stringField(frontmatter, "estado"), Type: "task"})
+	}
+	return tasks
+}
+
+func outcomePathForTask(path string) string {
+	for i := len(path) - 1; i >= 0; i-- {
+		if path[i] == '/' {
+			return path[:i]
+		}
+	}
+	return ""
 }
 
 func taskFromTreeNode(node map[string]any, outcomePath string) Task {

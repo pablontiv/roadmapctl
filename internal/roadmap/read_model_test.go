@@ -34,6 +34,19 @@ func TestReadModelFromRootlineNormalizesDependenciesAndStatusRoles(t *testing.T)
 	}
 }
 
+func TestReadModelFromRootlineFallsBackToQueryRowsWhenTreeOmitsCustomStatuses(t *testing.T) {
+	query := map[string]any{"rows": []any{
+		map[string]any{"path": "O01-work/T001-ready.md", "frontmatter": map[string]any{"tipo": "task", "estado": "Ready"}},
+	}}
+	model, diagnostics := ReadModelFromRootline(map[string]any{"root": map[string]any{}}, query, map[string]any{"edges": []any{}, "cycles": []any{}, "broken_links": []any{}}, StatusRoleConfig{Done: []string{"Done"}, Active: []string{"Ready"}})
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+	if len(model.Tasks) != 1 || model.Tasks[0].Name != "T001-ready.md" || model.Tasks[0].OutcomePath != "O01-work" || !model.Tasks[0].Active {
+		t.Fatalf("model = %#v", model)
+	}
+}
+
 func TestReadModelFromRootlineReportsGraphDiagnostics(t *testing.T) {
 	model, diagnostics := ReadModelFromRootline(map[string]any{"root": map[string]any{}}, map[string]any{"rows": []any{}}, map[string]any{"cycles": []any{[]any{"a", "b"}}, "broken_links": []any{map[string]any{"source": "a", "target": "missing", "type": "blocked_by"}}}, StatusRoleConfig{})
 	if len(model.Tasks) != 0 {

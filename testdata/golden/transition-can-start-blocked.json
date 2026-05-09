@@ -1,0 +1,36 @@
+{
+  "action": "can-start",
+  "allowed": false,
+  "blocking_dependencies": [
+    {
+      "path": "O01-work/T001-ready.md",
+      "status": "Pending"
+    }
+  ],
+  "changes": null,
+  "current_status": "Pending",
+  "diagnostics": [
+    {
+      "id": "RMC_TRANSITION_DEPENDENCY_BLOCKED",
+      "message": "task has dependencies outside done statuses",
+      "path": "O01-work/T002-blocked.md",
+      "severity": "warning"
+    }
+  ],
+  "kind": "roadmapctl/transition",
+  "path": "O01-work/T002-blocked.md",
+  "reasons": [
+    "dependencies are not done"
+  ],
+  "roadmap_root": "<fixture:valid-next-with-blocked>/docs/roadmap",
+  "role": "in_progress",
+  "root": "<fixture:valid-next-with-blocked>",
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "warning",
+    "warnings": 1
+  },
+  "target_status": "In Progress",
+  "version": 1
+}

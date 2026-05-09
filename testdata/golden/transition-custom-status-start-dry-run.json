@@ -1,0 +1,32 @@
+{
+  "action": "start",
+  "allowed": true,
+  "blocking_dependencies": null,
+  "changes": [
+    {
+      "after": "Doing",
+      "applied": false,
+      "before": "Ready",
+      "field": "estado",
+      "path": "O01-work/T001-ready.md"
+    }
+  ],
+  "current_status": "Ready",
+  "diagnostics": [],
+  "kind": "roadmapctl/transition",
+  "path": "O01-work/T001-ready.md",
+  "reasons": [
+    "all dependencies are done"
+  ],
+  "roadmap_root": "<fixture:transition-custom-status>/docs/roadmap",
+  "role": "in_progress",
+  "root": "<fixture:transition-custom-status>",
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "ok",
+    "warnings": 0
+  },
+  "target_status": "Doing",
+  "version": 1
+}
