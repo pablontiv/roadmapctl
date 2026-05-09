@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -52,7 +53,7 @@ func runMaterialize(ctx context.Context, options Options, planPath string, dryRu
 	if dryRun == apply {
 		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{{ID: "RMC_MATERIALIZE_MODE_INVALID", Severity: diagnostics.SeverityError, Message: "materialize requires exactly one of --dry-run or --apply", ExitCode: diagnostics.ExitUsage}})
 	}
-	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	cfg, err := loadMaterializeConfig(options)
 	if err != nil {
 		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{configDiagnostic(repoRoot, err)})
 	}
@@ -80,11 +81,27 @@ func runMaterialize(ctx context.Context, options Options, planPath string, dryRu
 	return newMaterializeReport(cfg.RepoRoot, cfg.RoadmapRoot, apply && len(found) == 0, result.Changes, found)
 }
 
+func loadMaterializeConfig(options Options) (*config.Config, error) {
+	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	if err == nil {
+		return cfg, nil
+	}
+	var cfgErr *config.Error
+	if !errors.As(err, &cfgErr) || cfgErr.Code != config.ErrConfigMissing {
+		return nil, err
+	}
+	root, roadmapRoot, found := bootstrapRoots(options)
+	if len(found) > 0 {
+		return nil, err
+	}
+	return &config.Config{RepoRoot: root, RoadmapRoot: roadmapRoot, RoadmapRootRel: relToRoot(root, roadmapRoot)}, nil
+}
+
 func validateMaterializedFiles(ctx context.Context, cfg *config.Config, options Options, changes []materialize.Change) []diagnostics.Diagnostic {
 	client := rootlinecli.New(rootlinecli.Options{Binary: options.Rootline, Dir: cfg.RepoRoot, Timeout: options.Timeout})
 	var found []diagnostics.Diagnostic
 	for _, change := range changes {
-		if !change.Applied {
+		if !change.Applied || filepath.Ext(change.Path) != ".md" {
 			continue
 		}
 		if _, err := client.ValidateOne(ctx, filepath.Join(cfg.RoadmapRoot, filepath.FromSlash(change.Path))); err != nil {

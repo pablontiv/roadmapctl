@@ -13,6 +13,61 @@ import (
 
 const PlanKind = "roadmapctl/materialize-plan"
 
+const baseStemContent = `version: 2
+scope:
+  match: "*.md"
+
+schema:
+  estado:
+    type: enum
+    required:
+      match: ["O*", "T*"]
+    match: ["O*", "T*"]
+    values: [Pending, Specified, In Progress, Completed, Blocked, On Hold, Obsolete]
+
+  tipo:
+    type: enum
+    required:
+      match: ["O*", "T*"]
+    match: ["O*", "T*"]
+    values: [outcome, task]
+
+  id:
+    type: sequence
+    match:
+      "O*": { prefix: O, digits: 2 }
+      "T*": { prefix: T, digits: 3 }
+
+links:
+  blocked_by:
+    target: '^(\./|\.\./|.*/)T[0-9]{3}-[^/]+\.md$'
+  reference:
+    target: ".*"
+
+validate:
+  - field: estado
+    rule: non_empty
+  - field: tipo
+    rule: non_empty
+`
+
+const defaultRoadmapctlTOML = `done_statuses = ["Completed", "Obsolete"]
+active_statuses = ["Pending", "Specified", "In Progress"]
+leaf_filter = "isIndex == false"
+outcome_close_verify = []
+pr_merge_strategy = "squash"
+commit_style = "conventional"
+auto_push = true
+
+[status_values]
+pending = "Pending"
+specified = "Specified"
+in_progress = "In Progress"
+completed = "Completed"
+blocked = "Blocked"
+obsolete = "Obsolete"
+`
+
 type Plan struct {
 	Version int    `json:"version"`
 	Kind    string `json:"kind"`
@@ -85,6 +140,9 @@ func Apply(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, err
 	}
 	for i := range result.Changes {
 		change := &result.Changes[i]
+		if change.Operation == "mkdir" {
+			continue
+		}
 		abs := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(change.Path))
 		if _, err := os.Stat(abs); err == nil {
 			return result, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, change.Path, "planned path now exists; dry-run is stale", change.Path)}, nil
@@ -95,6 +153,13 @@ func Apply(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, err
 	for i := range result.Changes {
 		change := &result.Changes[i]
 		abs := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(change.Path))
+		if change.Operation == "mkdir" {
+			if err := os.MkdirAll(abs, 0o755); err != nil {
+				return result, nil, fmt.Errorf("create materialization directory: %w", err)
+			}
+			change.Applied = true
+			continue
+		}
 		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 			return result, nil, fmt.Errorf("create parent directory: %w", err)
 		}
@@ -151,7 +216,7 @@ func DryRun(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, er
 		refs[task.Slug] = task.Path
 	}
 
-	var result Result
+	result := Result{Changes: bootstrapChanges(roadmapRoot)}
 	for _, outcomePlan := range paths.Outcomes {
 		item := outcomeBySlug[outcomePlan.Slug]
 		content := renderOutcome(item, outcomePlan)
@@ -387,6 +452,26 @@ func directItemAt(items []Item, index int) Item {
 
 func taskFromItem(item Item) Task {
 	return Task{Type: item.Type, Slug: item.Slug, Title: item.Title, Description: item.Description, Preserves: item.Preserves, Context: item.Context, ScopeIn: item.ScopeIn, ScopeOut: item.ScopeOut, InitialState: item.InitialState, AcceptanceCriteria: item.AcceptanceCriteria, SourceOfTruth: item.SourceOfTruth, BlockedBy: item.BlockedBy, TechnicalSpec: item.TechnicalSpec}
+}
+
+func bootstrapChanges(roadmapRoot string) []Change {
+	var changes []Change
+	rootMissing := false
+	if _, err := os.Stat(roadmapRoot); os.IsNotExist(err) {
+		rootMissing = true
+		changes = append(changes, Change{Path: ".", Operation: "mkdir", Applied: false, Preconditions: []string{"roadmap root must not exist or must be a directory"}})
+	}
+	stemPath := filepath.Join(roadmapRoot, ".stem")
+	if _, err := os.Stat(stemPath); os.IsNotExist(err) {
+		changes = append(changes, newCreateChange(".stem", baseStemContent))
+	}
+	configPath := filepath.Join(roadmapRoot, ".roadmapctl.toml")
+	if rootMissing {
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			changes = append(changes, newCreateChange(".roadmapctl.toml", defaultRoadmapctlTOML))
+		}
+	}
+	return changes
 }
 
 func newCreateChange(path string, content string) Change {

@@ -10,6 +10,32 @@ import (
 	"github.com/pablontiv/roadmapctl/internal/testutil"
 )
 
+func TestMaterializeDryRunMissingRootShowsBootstrap(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.Mkdir(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	report := testutil.DecodeJSON(t, stdout.Bytes())
+	changes, ok := report["changes"].([]any)
+	if !ok || len(changes) < 3 {
+		t.Fatalf("changes = %#v", report["changes"])
+	}
+	for i, want := range []string{".", ".stem", ".roadmapctl.toml"} {
+		change, _ := changes[i].(map[string]any)
+		if change["path"] != want || change["applied"] != false {
+			t.Fatalf("bootstrap change[%d] = %#v, want %s applied=false", i, change, want)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(repo, "docs", "roadmap")); !os.IsNotExist(err) {
+		t.Fatalf("dry-run created roadmap root: %v", err)
+	}
+}
+
 func TestMaterializeApplyWritesFilesAndRunsPostcheck(t *testing.T) {
 	fixture := copyFixture(t, "valid-outcome-with-tasks")
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")

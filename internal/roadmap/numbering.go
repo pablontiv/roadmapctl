@@ -58,7 +58,10 @@ func PlanMaterializePaths(roadmapRoot string, request MaterializePathRequest) (M
 	root := filepath.Clean(roadmapRoot)
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		return MaterializePathPlan{}, nil, fmt.Errorf("read roadmap root: %w", err)
+		if !os.IsNotExist(err) {
+			return MaterializePathPlan{}, nil, fmt.Errorf("read roadmap root: %w", err)
+		}
+		entries = nil
 	}
 	maxOutcome := 0
 	maxDirectTask := 0
