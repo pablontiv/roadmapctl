@@ -94,7 +94,7 @@ test -d .git
 
 ### Fuente primaria de contexto
 
-Preferir `roadmapctl context` para resolver configuración efectiva, schema, helpers y comportamiento operacional. `.roadmapctl.toml` dentro de `<roadmap-root>/` es la configuración canónica; `.claude/roadmap.local.md` es solo input de migración gestionado por roadmapctl.
+Preferir `roadmapctl context` para resolver configuración efectiva, schema, helpers y comportamiento operacional. `.roadmapctl.toml` dentro de `<roadmap-root>/` es la configuración canónica; cualquier config local legacy es solo input de migración gestionado opacamente por roadmapctl.
 
 Gate inicial:
 
@@ -125,7 +125,7 @@ Si `roadmapctl context` falla o `roadmapctl` no existe:
 
 ### Workspace mode
 
-1. Escanear subdirectorios inmediatos con `.git` + config roadmap (`<roadmap-root>/.roadmapctl.toml`; legacy solo como señal de migración para roadmapctl).
+1. Escanear subdirectorios inmediatos con `.git` + config roadmap (`<roadmap-root>/.roadmapctl.toml`; señales legacy solo habilitan que roadmapctl migre, no que el skill las lea).
 2. Para cada repo, ejecutar `roadmapctl context` si está disponible y calcular helpers desde su JSON.
 3. Imprimir checkpoint con repos detectados.
 
@@ -163,7 +163,7 @@ auto-push: true
 Fuente de configuración:
 
 1. `<roadmap-root>/.roadmapctl.toml` vía `roadmapctl context`.
-2. `.claude/roadmap.local.md` es solo input de migración para roadmapctl, no fuente durable que el skill deba parsear en flujos implementados.
+2. La config local legacy es solo input de migración para roadmapctl, no fuente durable que el skill deba parsear en flujos implementados.
 3. defaults solo para modo conceptual/no-write.
 
 | Config key | Default | Placeholder |
@@ -205,11 +205,7 @@ Bootstrap:
 
 ## Validación de configuración
 
-Si `rootline` existe y `.claude/.stem` existe:
-
-```bash
-rootline validate .claude/roadmap.local.md
-```
+`roadmapctl context`, `roadmapctl doctor` y `roadmapctl check` son los únicos validadores de configuración para flujos implementados. El skill no debe leer ni validar archivos de config legacy directamente.
 
 Si `<roadmap-root>` existe:
 
