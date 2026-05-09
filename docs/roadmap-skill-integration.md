@@ -240,6 +240,19 @@ roadmapctl check --repo testdata/fixtures/valid-outcome-with-tasks --rootline /t
 
 The first command must exit `1` with `RMC_STRUCTURE_SINGLE_FILE_FALLBACK`; the second must exit `3` with `RMC_ENV_ROOTLINE_MISSING`.
 
+## Thin adapter audit
+
+After the cutover, the `/roadmap` skill intentionally keeps only conversational and orchestration logic:
+
+| Area | Remains in skill | Owned by roadmapctl |
+|------|------------------|---------------------|
+| Bootstrap | choose repo/workspace target, render checkpoint, stop on guard failure | `context` resolves config/schema/helpers |
+| Pending/decision | human presentation and routing | `pending`, `next`, `decision` compute state, blockers and scoring |
+| Loop | read task, implement code, run ACs, commit/push according to config | `transition` owns start/complete policy, status mutation and postcheck |
+| Plan/materialize | decompose conceptually, ask approval, serialize structured plan, review dry-run | `materialize` owns numbering, canonical paths, writes, README tables, dependency links and postcheck |
+
+Rootline commands may remain only as troubleshooting/reference or for loop graph/query discovery where no roadmapctl command owns that read yet. They must not be used as the primary writer/mutator when a roadmapctl command exists.
+
 ## Expected failures and messages
 
 ### `roadmapctl` missing

@@ -2,56 +2,23 @@
 
 ## Workflow
 
+Este archivo define el contenido AI-ready de una task. No es el procedimiento primario para escribir archivos: `/roadmap plan` debe serializar el árbol aprobado a JSON y delegar rutas, numbering, creación de archivos, tabla del README y links `blocked_by` en `roadmapctl materialize`.
+
 ### Paso 1: Parsear argumentos
 
-Extraer:
+Extraer para el plan estructurado:
 
 - **task-name**: slug kebab-case, ej. `add-k8s-phase`.
 - **descripción**: qué debe hacer el agente.
-- **outcome-path opcional**: directorio `OXX-*` si la task pertenece a un Outcome.
+- **outcome opcional**: slug/título del Outcome si la task pertenece a uno.
 
-### Paso 2: Determinar destino
+### Paso 2: Poblar plan estructurado
 
-- Si pertenece a un Outcome: `<roadmap-root>/OXX-name/TXXX-task-name.md`.
-- Si es directa: `<roadmap-root>/TXXX-task-name.md`.
+Para cada task, completar campos requeridos del schema `roadmapctl/materialize-plan`: slug, título, descripción, `preserves`, contexto, `scope_in`, `scope_out`, estado inicial, criterios de aceptación, fuentes de verdad y dependencias.
 
-Verificar el directorio destino con:
+### Paso 3: Delegar materialización
 
-```bash
-rootline describe <directorio>/
-```
-
-### Paso 3: Auto-numbering
-
-Si la task va dentro de un Outcome:
-
-```bash
-rootline describe <outcome-dir>/ --field schema.id.next
-```
-
-Si la task va directa en la raíz del roadmap:
-
-```bash
-find <roadmap-root>/ -maxdepth 1 -type f -name 'T[0-9][0-9][0-9]-*.md' -printf '%f\n' | sort
-```
-
-Tomar el mayor `TXXX` y sumar 1; si no hay ninguno, usar `T001`.
-
-### Paso 4: Crear archivo
-
-```bash
-rootline new <directorio>/TXXX-task-name.md
-```
-
-Editar el contenido sin inventar campos fuera del `.stem` efectivo.
-
-### Paso 5: Actualizar README padre si existe
-
-Si la task pertenece a un Outcome, agregar fila en `OXX-*/README.md`:
-
-```markdown
-| [TXXX](TXXX-task-name.md) | Descripción breve |
-```
+`roadmapctl materialize --dry-run` asigna `TXXX`, detecta colisiones/escapes y muestra rutas. `roadmapctl materialize --apply` crea el archivo y actualiza el README padre si corresponde. El skill no debe ejecutar `rootline new` ni editar tablas manualmente.
 
 ## Dependencias
 

@@ -13,11 +13,7 @@ Si el trabajo cabe en 1–5 tasks auto-contenidas, crear tasks directas bajo `<r
 
 ## Auto-numbering
 
-```bash
-find <roadmap-root>/ -maxdepth 1 -type d -name 'O[0-9][0-9]-*' -printf '%f\n' | sort
-```
-
-Tomar el mayor `OXX` y sumar 1; si no hay ninguno, usar `O01`.
+El skill no calcula `OXX`. `roadmapctl materialize --dry-run` asigna el siguiente Outcome determinísticamente y muestra la ruta propuesta en `changes[]`; `--apply` crea el directorio/README si el dry-run fue aprobado.
 
 ## Estructura
 
