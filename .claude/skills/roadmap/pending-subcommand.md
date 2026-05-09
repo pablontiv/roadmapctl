@@ -1,27 +1,34 @@
 # /roadmap pending
 
-Vista filtrada de trabajo pendiente. Muestra Outcomes con tasks pendientes y tasks directas pendientes.
+Vista filtrada de trabajo pendiente. Muestra tasks pendientes usando `roadmapctl` como capa determinística de roadmap.
 
 ## Workspace mode
 
-Si `<repos>` existe:
+Si `<repos>` existe o bootstrap detectó workspace:
 
-1. Para cada repo, ejecutar en paralelo:
-   ```bash
-   rootline tree <abs-roadmap-root>/ --where '<where-leaf> && <where-not-done>' --output json
-   ```
-2. Procesar JSON en memoria:
-   - `pending = total - completed` por nodo.
-   - Omitir repos con `pending == 0`.
-   - Sumar totales del workspace.
-3. Renderizar agrupado por repo.
+```bash
+roadmapctl pending --workspace --repo <workspace-root> --output json
+```
 
-Si `--repo` ya fue resuelto en bootstrap, usar el procedimiento single-repo.
+Si `--repo <name>` ya fue resuelto en bootstrap, ejecutar single-repo sobre ese repo.
+
+Renderizar desde el JSON:
+
+- `kind` debe ser `roadmapctl/pending`.
+- `repos[]` agrupa por repo en workspace.
+- `count` es el total pendiente.
+- `tasks[]` contiene `path`, `outcome_path` y `status`.
+- Si `summary.status != "ok"`, detenerse y reportar `diagnostics`.
 
 ## Single-repo
 
 ```bash
-rootline tree <roadmap-root>/ --where '<where-leaf> && <where-not-done>' --output json
+roadmapctl pending --repo <repo> --roadmap-root <roadmap-root> --output json
 ```
 
-Renderizar desde JSON. No parsear tablas. No ejecutar `rootline stats`.
+Reglas:
+
+- No llamar `rootline tree` directamente para pending.
+- No parsear tablas.
+- No ejecutar `rootline stats`.
+- No recalcular `done_statuses`, `leaf_filter` o agrupación en prompt; esa lógica pertenece a `roadmapctl pending`.

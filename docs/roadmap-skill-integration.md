@@ -163,6 +163,28 @@ After changing task status, links, dependencies, or task files:
 
 `/roadmap loop` may still run targeted task acceptance checks and existing Rootline commands, but those checks are additive. They do not replace `roadmapctl doctor` and `roadmapctl check`.
 
+## Read-only state commands
+
+The `/roadmap` skill must delegate deterministic read-only state to `roadmapctl` instead of rebuilding it from Rootline JSON in prompt logic:
+
+```bash
+roadmapctl pending --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl next --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl decision --repo <repo> --roadmap-root <roadmap-root> --output json
+```
+
+Workspace mode uses `roadmapctl pending --workspace --repo <workspace-root> --output json` for pending summaries. For decision/next, bootstrap resolves repos and the skill runs the single-repo command per repo, then only renders/group labels the returned JSON.
+
+The skill must not call `rootline tree`, `rootline graph`, or `rootline query` directly for pending/next/decision. It must not recalculate done filters, blockers, reverse dependencies, quick wins, or scoring in prompt text.
+
+Headless verification for this cutover must show the read-only commands selected/used in addition to the mandatory doctor/check preflight:
+
+```bash
+roadmapctl pending --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl next --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl decision --repo <repo> --roadmap-root <roadmap-root> --output json
+```
+
 ## Mandatory headless Pi verification
 
 Every change to the `/roadmap` skill, this integration policy, or `roadmapctl` guard behavior must be tested with Pi in headless print mode before commit or release. Static grep is not enough: the verification must prove a real Pi agent loads the installed skill and chooses the `roadmapctl` guard before it would write, mutate, execute, or claim validity.
