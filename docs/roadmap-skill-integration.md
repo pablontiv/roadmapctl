@@ -75,6 +75,14 @@ Both apply flows must run a postcheck before success is reported. `bootstrap ini
 
 This exception is not an auto-fix path: if `<roadmap-root>` already exists and `doctor` or `check` fails, stop and report diagnostics. Do not use bootstrap to repair invalid roadmaps, rewrite `.stem`, or bypass normal preflight.
 
+## Roadmap context compaction extension
+
+The project-local Pi extension lives at `.pi/extensions/roadmap-context/index.ts`, which Pi auto-discovers from `.pi/extensions/*/index.ts` and reloads with `/reload`. It registers the exact tool name `compact_roadmap_context`.
+
+When `compact_after_task_commit = true`, the roadmap skill can call `compact_roadmap_context` after a task is fully durable (ACs pass, `roadmapctl transition complete --apply` succeeds, commit/push/PR bookkeeping is done). Pass concise strings for `task_path`, `commit_hash`, `validation_summary`, `next_work`, and `config_summary` so compaction preserves the current roadmap goal, completed task, validation results, next task/wave state, unresolved blockers/conflicts, and effective config values.
+
+The tool queues `ctx.compact({ customInstructions, onComplete, onError })` and returns immediately with queued/failed status. Callback failures warn through Pi UI when available; a compaction failure must not invalidate an already completed task commit.
+
 ### Preflight before writes, mutations, or execution
 
 Run `doctor` first:
