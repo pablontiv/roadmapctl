@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
@@ -28,12 +29,21 @@ type contextReport struct {
 	DoneStatuses    []string                 `json:"done_statuses"`
 	ActiveStatuses  []string                 `json:"active_statuses"`
 	Helpers         contextHelpers           `json:"helpers"`
+	Repos           []workspaceRepoContext   `json:"repos,omitempty"`
 	Diagnostics     []diagnostics.Diagnostic `json:"diagnostics"`
 }
 
 type contextSchema struct {
 	Estado []string `json:"estado"`
 	Tipo   []string `json:"tipo"`
+}
+
+type workspaceRepoContext struct {
+	Name        string         `json:"name"`
+	Root        string         `json:"root"`
+	RoadmapRoot string         `json:"roadmap_root"`
+	ConfigPath  string         `json:"config_path"`
+	Helpers     contextHelpers `json:"helpers"`
 }
 
 type contextHelpers struct {
@@ -43,6 +53,9 @@ type contextHelpers struct {
 }
 
 func runContext(ctx context.Context, options Options) contextReport {
+	if options.Workspace {
+		return runWorkspaceContext(options)
+	}
 	repoRoot := absoluteClean(options.Repo)
 	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
 	if err != nil {
@@ -68,6 +81,45 @@ func runContext(ctx context.Context, options Options) contextReport {
 	}
 
 	return newContextReport(cfg.RepoRoot, cfg.RoadmapRoot, relToRoot(cfg.RepoRoot, cfg.ConfigPath), configSource(cfg), rootlineVersion, cfg, schema, found)
+}
+
+func runWorkspaceContext(options Options) contextReport {
+	root := absoluteClean(options.Repo)
+	repos, found := discoverWorkspaceRepos(root)
+	report := newContextReport(root, "", "", "workspace", "", nil, contextSchema{}, found)
+	report.Repos = repos
+	report.Summary = diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics).Summary
+	return report
+}
+
+func discoverWorkspaceRepos(workspaceRoot string) ([]workspaceRepoContext, []diagnostics.Diagnostic) {
+	var repos []workspaceRepoContext
+	var found []diagnostics.Diagnostic
+	seen := map[string]string{}
+	_ = filepath.WalkDir(workspaceRoot, func(path string, entry os.DirEntry, err error) error {
+		if err != nil || !entry.IsDir() {
+			return nil
+		}
+		if entry.Name() != ".git" {
+			return nil
+		}
+		repoRoot := filepath.Dir(path)
+		name := filepath.Base(repoRoot)
+		if first, ok := seen[name]; ok {
+			found = append(found, diagnostics.Diagnostic{ID: "RMC_WORKSPACE_REPO_AMBIGUOUS", Severity: diagnostics.SeverityError, Message: "multiple workspace repos share the same name", Path: relToRoot(workspaceRoot, repoRoot), Details: map[string]any{"name": name, "first": first}})
+			return filepath.SkipDir
+		}
+		seen[name] = relToRoot(workspaceRoot, repoRoot)
+		cfg, err := config.Load(repoRoot, config.Options{})
+		if err != nil {
+			found = append(found, configDiagnostic(workspaceRoot, err))
+			return filepath.SkipDir
+		}
+		repos = append(repos, workspaceRepoContext{Name: name, Root: cfg.RepoRoot, RoadmapRoot: cfg.RoadmapRoot, ConfigPath: relToRoot(cfg.RepoRoot, cfg.ConfigPath), Helpers: contextHelpers{WhereLeaf: cfg.LeafFilter, WhereNotDone: statusWhere("not", cfg.DoneStatuses), WhereActive: statusWhere("", cfg.ActiveStatuses)}})
+		return filepath.SkipDir
+	})
+	sort.Slice(repos, func(i int, j int) bool { return repos[i].Name < repos[j].Name })
+	return repos, found
 }
 
 func newContextReport(root string, roadmapRoot string, configPath string, configSource string, rootlineVersion string, cfg *config.Config, schema contextSchema, found []diagnostics.Diagnostic) contextReport {
