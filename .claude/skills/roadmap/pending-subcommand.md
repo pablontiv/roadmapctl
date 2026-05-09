@@ -31,4 +31,5 @@ Reglas:
 - No llamar `rootline tree` directamente para pending.
 - No parsear tablas.
 - No ejecutar `rootline stats`.
+- No postprocesar JSON crudo de Rootline para producir la vista pending.
 - No recalcular `done_statuses`, `leaf_filter` o agrupación en prompt; esa lógica pertenece a `roadmapctl pending`.

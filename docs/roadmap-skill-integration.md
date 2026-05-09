@@ -184,8 +184,8 @@ Before querying or executing pending tasks:
   4. If either command exits non-zero, stop before selecting or executing tasks.
 
 Before each task execution:
-  1. Use Rootline graph/query data only after the preflight check passed.
-  2. Do not execute tasks whose dependencies are invalid or unresolved.
+  1. Use `roadmapctl next` or `roadmapctl decision` JSON as the canonical readiness/blocker source after the preflight check passed.
+  2. Do not execute tasks whose dependencies are reported invalid, unresolved, or blocked by `roadmapctl`.
 
 After changing task status, links, dependencies, or task files:
   1. Run:
@@ -219,7 +219,7 @@ roadmapctl decision --repo <repo> --roadmap-root <roadmap-root> --output json
 
 Workspace mode uses `roadmapctl pending --workspace --repo <workspace-root> --output json` for pending summaries. For decision/next, bootstrap resolves repos and the skill runs the single-repo command per repo, then only renders/group labels the returned JSON.
 
-The skill must not call `rootline tree`, `rootline graph`, or `rootline query` directly for pending/next/decision. It must not recalculate done filters, blockers, reverse dependencies, quick wins, or scoring in prompt text.
+The skill must not call `rootline tree`, `rootline graph`, or `rootline query` directly for pending/next/decision. It must not postprocess Rootline JSON with Python snippets or recalculate done filters, blockers, reverse dependencies, quick wins, or scoring in prompt text.
 
 Headless verification for this cutover must show the read-only commands selected/used in addition to the mandatory doctor/check preflight:
 

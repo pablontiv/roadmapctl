@@ -81,6 +81,7 @@ CRITERIOS
 Reglas:
 
 - No llamar `rootline tree`, `rootline graph` ni `rootline query` directamente para pending/next/decision.
+- No postprocesar JSON crudo de Rootline para construir blockers, reverse dependencies, quick wins, scoring o recomendaciones.
 - No buscar links con grep.
 - No usar `git log` ni Backscroll como input de scoring read-only salvo que exista una futura opción explícita en `roadmapctl`.
 - No recalcular dependencias, reverse dependencies, quick wins o scoring en prompt; esa lógica pertenece a `roadmapctl decision`/`roadmapctl next`.

@@ -114,12 +114,14 @@ Declarar `blocked_by` en la task bloqueada, con path relativo explícito.
 
 ## Comandos Rootline de Referencia (troubleshooting/legacy)
 
+Estos comandos son solo para inspección de bajo nivel, troubleshooting o reparación puntual después de que los flujos obligatorios de `roadmapctl` hayan pasado. No son la ruta primaria para descubrir pendientes, elegir siguiente task, explicar blockers ni construir el árbol de decisión; para eso usar `roadmapctl pending`, `roadmapctl next` y `roadmapctl decision`.
+
 | Comando | Cuándo usarlo |
 |---------|---------------|
-| `rootline validate <path>` | Después de crear/editar `.md` |
-| `rootline fix <path>` | Si validate falla y la propuesta es segura |
-| `rootline query <path> --where "expr"` | Listar tasks por metadata |
-| `rootline tree <path> --where "expr" --output json` | Vista jerárquica con conteos |
-| `rootline graph <path> --where "expr" --check` | Validar dependencias |
+| `rootline validate <path>` | Troubleshooting después de crear/editar `.md` |
+| `rootline fix <path>` | Reparación puntual si validate falla y la propuesta es segura |
+| `rootline query <path> --where "expr"` | Inspección legacy de metadata, no selección pending/next/decision |
+| `rootline tree <path> --where "expr" --output json` | Inspección legacy de jerarquía, no conteos principales del skill |
+| `rootline graph <path> --where "expr" --check` | Inspección legacy de dependencias, no readiness/blockers del skill |
 
-No usar `rootline stats`; `tree` ya incluye conteos.
+No usar `rootline stats`; `tree` ya incluye conteos. No postprocesar JSON crudo de Rootline para reconstruir lógica que pertenece a `roadmapctl`.

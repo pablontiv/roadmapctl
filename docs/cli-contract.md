@@ -184,7 +184,7 @@ roadmapctl check --repo . --output text --strict
 | `next` | `roadmapctl/next` | Separate ready and blocked active tasks. | `ready[]`, `blocked[]` |
 | `decision` | `roadmapctl/decision` | Provide deterministic prioritization data. | `recommendations[]`, `quick_wins[]`, `critical_blockers[]`, `blocked[]` |
 
-These commands must not write files or update statuses. They rely on Rootline `tree`/`query`/`graph` data and roadmapctl's status-role config.
+These commands must not write files or update statuses. They are the supported agent discovery boundary for pending, next-task, and decision flows: agents consume their JSON directly instead of calling Rootline `tree`/`query`/`graph` or postprocessing Rootline JSON with Python snippets. Internally, they rely on Rootline `tree`/`query`/`graph` data and roadmapctl's status-role config.
 
 ## `lint` contract
 

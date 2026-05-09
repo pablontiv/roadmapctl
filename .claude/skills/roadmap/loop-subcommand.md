@@ -43,6 +43,7 @@ Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de sele
    - Si `summary.status != "ok"` o el comando sale non-zero: reportar diagnostics y parar.
    - Usar `ready[]` como cola ejecutable; usar `blocked[]` solo para explicar skips/bloqueos.
    - No recalcular dependencias en prompt: `roadmapctl next` es la fuente canónica de `blocking_dependencies`/blockers.
+   - No ejecutar `rootline graph`, `rootline query` o `rootline tree` ni postprocesar JSON crudo de Rootline para reconstruir la cola.
 2. Obtener listado activo para tabla y conteos:
    ```bash
    roadmapctl pending --repo <repo-path> --roadmap-root <roadmap-root> --output json
