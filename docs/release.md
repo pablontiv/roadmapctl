@@ -84,6 +84,42 @@ The initial CI matrix runs those commands on:
 - macOS;
 - Windows.
 
+## Release governance checklist
+
+A release/cutover is blocked unless each applicable item has evidence:
+
+1. Tests/build:
+   - `go test ./...`
+   - `go build ./cmd/roadmapctl`
+   - `./scripts/check-coverage.sh` for release candidates
+2. Fixture/golden smoke:
+   - `roadmapctl check --repo testdata/fixtures/valid-outcome-with-tasks --output json --strict`
+   - `roadmapctl lint --repo testdata/fixtures/lint-valid --output json --strict`
+   - negative guard checks from `scripts/verify-roadmap-skill-headless.sh`
+3. Rootline compatibility:
+   - `roadmapctl doctor --repo . --roadmap-root docs/roadmap --output json --strict`
+   - evidence of detected `rootline --version`
+   - missing-rootline negative check exits `3` with `RMC_ENV_ROOTLINE_MISSING`
+4. Skill sync and Pi headless (required for any `/roadmap` skill or guard change):
+   - `./scripts/sync-roadmap-skill.sh --check`
+   - `./scripts/verify-roadmap-skill-headless.sh --evidence-dir <evidence-dir>`
+   - archive or attach `<evidence-dir>` in release/cutover notes
+5. Docs/release notes:
+   - `docs/cli-contract.md` reflects implemented commands only
+   - `docs/roadmap-skill-integration.md` reflects current guard policy
+   - changelog/release notes call out compatibility or behavior changes
+6. Artifacts (when tagging a release):
+   - `goreleaser check`
+   - `goreleaser release --snapshot --clean` or release workflow equivalent
+   - `checksums.txt` generated and verified
+
+Blocking policy:
+
+- Any non-zero required command blocks release/cutover.
+- Missing Pi headless evidence blocks skill/guard releases.
+- Failed negative guard checks block release/cutover.
+- Documentation that advertises unimplemented commands blocks release.
+
 ## GoReleaser artifacts
 
 The repository includes `.goreleaser.yml` for local dry-runs and tagged releases when publication is approved. It builds only the `roadmapctl` binary from this module; Rootline is not bundled and remains an external runtime dependency.

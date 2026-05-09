@@ -220,7 +220,7 @@ Run the reproducible verifier from the repository root after syncing the skill:
 ./scripts/verify-roadmap-skill-headless.sh --evidence-dir /tmp/roadmap-headless-evidence
 ```
 
-The script runs both pressure scenarios, captures logs, runs negative guard checks, and exits non-zero if required evidence is missing. Use `ROADMAP_HEADLESS_EVIDENCE_DIR=<dir>` or `--evidence-dir <dir>` to choose where logs are saved. For release/cutover reviews, attach or archive that evidence directory.
+The script runs both pressure scenarios, captures logs, runs negative guard checks, and exits non-zero if required evidence is missing. Use `ROADMAP_HEADLESS_EVIDENCE_DIR=<dir>` or `--evidence-dir <dir>` to choose where logs are saved. For release/cutover reviews, attach or archive that evidence directory. A skill or guard change must not be released without this evidence.
 
 Passing evidence must include:
 

@@ -11,6 +11,30 @@ import (
 	"github.com/pablontiv/roadmapctl/internal/testutil"
 )
 
+func TestMaterializeUsageErrors(t *testing.T) {
+	for _, args := range [][]string{
+		{"materialize", "--dry-run", "--repo", testutil.FixturePath(t, "valid-outcome-with-tasks"), "--output", "json"},
+		{"materialize", "--plan", filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json"), "--repo", testutil.FixturePath(t, "valid-outcome-with-tasks"), "--output", "json"},
+		{"materialize", "--plan", filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json"), "--dry-run", "--apply", "--repo", testutil.FixturePath(t, "valid-outcome-with-tasks"), "--output", "json"},
+	} {
+		var stdout, stderr bytes.Buffer
+		code := Execute(args, &stdout, &stderr)
+		testutil.AssertExit(t, code, 2, &stdout, &stderr)
+	}
+}
+
+func TestMaterializeTextOutputIncludesDiff(t *testing.T) {
+	fixture := testutil.FixturePath(t, "valid-outcome-with-tasks")
+	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "text"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	if !strings.Contains(stdout.String(), "# create O02-new-outcome/README.md") || !strings.Contains(stdout.String(), "+++ b/O02-new-outcome/README.md") {
+		t.Fatalf("text output missing diff:\n%s", stdout.String())
+	}
+}
+
 func TestMaterializeDryRunGolden(t *testing.T) {
 	fixture := testutil.FixturePath(t, "valid-outcome-with-tasks")
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
