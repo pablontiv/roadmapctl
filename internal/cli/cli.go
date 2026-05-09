@@ -70,6 +70,7 @@ func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Co
 	cmd.AddCommand(newLeafCommand("lint", "Run deterministic semantic roadmap lints.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newNextCommand(&options, stdout, stderr, exitCode))
 	cmd.AddCommand(newDecisionCommand(&options, stdout, stderr, exitCode))
+	cmd.AddCommand(newTransitionCommand(&options, stdout, stderr, exitCode))
 	cmd.AddCommand(newBootstrapCommand(&options, stdout, stderr, exitCode))
 	return cmd
 }
