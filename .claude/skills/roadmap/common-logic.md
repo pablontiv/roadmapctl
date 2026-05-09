@@ -53,22 +53,20 @@ Si falta schema, `.stem`, `rootline`, permisos o estructura para crear archivos
 canónicos, detenerse. No usar `Write` directo para inventar una estructura
 alternativa.
 
-## Auto-numbering
+## Materialización determinística
 
-La raíz permite dos secuencias (`OXX` para Outcomes y `TXXX` para tasks directas), por eso no usar un único `schema.id.next` en la raíz cuando puede haber mezcla.
+La ruta primaria para crear archivos del roadmap es:
 
 ```bash
-# Próximo Outcome en la raíz: listar directorios OXX-*
-find <roadmap-root>/ -maxdepth 1 -type d -name 'O[0-9][0-9]-*' -printf '%f\n' | sort
-
-# Próxima task directa en la raíz: listar archivos TXXX-*.md
-find <roadmap-root>/ -maxdepth 1 -type f -name 'T[0-9][0-9][0-9]-*.md' -printf '%f\n' | sort
-
-# Próxima task dentro de un Outcome: una sola secuencia activa, usar rootline
-rootline describe <roadmap-root>/OXX-name/ --field schema.id.next
+roadmapctl materialize --plan <plan-json> --dry-run --repo <repo-path> --roadmap-root <roadmap-root> --output json
+roadmapctl materialize --plan <plan-json> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
 ```
 
-Tomar el mayor prefijo y sumar 1; si no hay ninguno, usar `O01` o `T001`.
+El skill no debe duplicar numbering, `rootline new`, writes, actualización de tablas ni escritura de `blocked_by`; debe producir plan estructurado, revisar dry-run y delegar en `roadmapctl materialize`.
+
+## Auto-numbering
+
+El skill no calcula números `OXX`/`TXXX`. `roadmapctl materialize` asigna numbering determinístico y reporta las rutas propuestas en `changes[]` durante dry-run. Si el dry-run no produce rutas canónicas, detenerse y reportar diagnostics.
 
 ## Verificación de padre
 
@@ -86,13 +84,7 @@ crear directorios ad-hoc.
 
 ## Cascading links
 
-Después de crear una task dentro de un Outcome, actualizar la tabla `## Tasks` del README del Outcome:
-
-```markdown
-| [TXXX](TXXX-task-name.md) | Descripción breve |
-```
-
-No agregar columna Estado; el estado se lee desde frontmatter.
+El skill no edita manualmente la tabla `## Tasks`. `roadmapctl materialize` actualiza el README del Outcome y mantiene la tabla sin columna Estado; el estado se lee desde frontmatter.
 
 ## Dependencias
 
@@ -102,14 +94,12 @@ Declarar `blocked_by` en la task bloqueada, con path relativo explícito.
 - Otro Outcome: `[[blocked_by:../O01-setup/T001-prerequisite.md]]`
 - No usar targets bare como `[[blocked_by:T001-prerequisite]]`; rootline solo los resuelve por basename único y pueden romperse con duplicados.
 
-## Comandos Rootline de Referencia
+## Comandos Rootline de Referencia (troubleshooting/legacy)
 
 | Comando | Cuándo usarlo |
 |---------|---------------|
 | `rootline validate <path>` | Después de crear/editar `.md` |
 | `rootline fix <path>` | Si validate falla y la propuesta es segura |
-| `rootline describe <dir> --field schema.id.next` | Auto-numbering |
-| `rootline new <path>` | Crear archivo con frontmatter correcto |
 | `rootline query <path> --where "expr"` | Listar tasks por metadata |
 | `rootline tree <path> --where "expr" --output json` | Vista jerárquica con conteos |
 | `rootline graph <path> --where "expr" --check` | Validar dependencias |
