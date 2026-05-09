@@ -1,11 +1,16 @@
 package main
 
 import (
+	"io"
 	"os"
 
 	"github.com/pablontiv/roadmapctl/internal/cli"
 )
 
 func main() {
-	os.Exit(cli.Execute(os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+func run(args []string, stdout io.Writer, stderr io.Writer) int {
+	return cli.Execute(args, stdout, stderr)
 }

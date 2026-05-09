@@ -51,9 +51,11 @@ Warnings for versions below a recommended line may be added later, but hard vers
 Every release candidate should pass:
 
 ```bash
-go test ./...
+./scripts/check-coverage.sh
 go build ./cmd/roadmapctl
 ```
+
+`./scripts/check-coverage.sh` runs `go test ./... -coverprofile` and enforces a minimum total statement coverage of 85%. Override only for local experiments with `COVERAGE_THRESHOLD=<percent>`; release and CI runs use the default 85% gate.
 
 The initial CI matrix runs those commands on:
 

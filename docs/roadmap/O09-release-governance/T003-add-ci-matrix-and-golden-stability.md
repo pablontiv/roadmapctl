@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: task
 ---
 # T003: Fortalecer CI matrix y estabilidad de goldens
@@ -26,6 +26,7 @@ La superficie post-MVP aumenta comandos, JSON outputs y fixtures. CI debe proteg
 3. Agregar tests de help/error/stdout-stderr para Cobra.
 4. Evaluar matrix Rootline latest/minimum cuando se defina política.
 5. Documentar workflow para actualizar goldens.
+6. Enforce total Go statement coverage mínimo de 85% en CI y release gates.
 
 **Out**:
 - Publicar releases.
@@ -39,6 +40,7 @@ La superficie post-MVP aumenta comandos, JSON outputs y fixtures. CI debe proteg
 - CI pasa en OS matrix.
 - Tests detectan ruido en JSON stdout.
 - Goldens nuevos son determinísticos.
+- `./scripts/check-coverage.sh` pasa y reporta coverage total >= 85%.
 
 ## Fuente de verdad
 

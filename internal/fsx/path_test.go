@@ -1,7 +1,10 @@
 package fsx
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -46,5 +49,29 @@ func TestResolveInsideRejectsWindowsAbsolutePath(t *testing.T) {
 	_, _, err := ResolveInside(repo, `C:\\roadmap`)
 	if err == nil {
 		t.Fatal("ResolveInside() error = nil, want absolute path error")
+	}
+}
+
+func TestResolveInsideRejectsSymlinkEscape(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink privileges vary on Windows")
+	}
+	repo := t.TempDir()
+	outside := t.TempDir()
+	link := filepath.Join(repo, "link")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err := ResolveInside(repo, "link/file")
+	if !errors.Is(err, ErrPathEscape) {
+		t.Fatalf("ResolveInside error = %v, want ErrPathEscape", err)
+	}
+}
+
+func TestResolveInsideRejectsEmptyPath(t *testing.T) {
+	_, _, err := ResolveInside(t.TempDir(), "   ")
+	if err == nil {
+		t.Fatal("ResolveInside empty error = nil")
 	}
 }

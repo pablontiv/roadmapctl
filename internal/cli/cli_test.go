@@ -51,6 +51,30 @@ func TestCommandHelp(t *testing.T) {
 	}
 }
 
+func TestUnsupportedOutputIsUsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"doctor", "--output", "yaml"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("Execute unsupported output exit = %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "unsupported output format") {
+		t.Fatalf("stderr missing unsupported output message: %q", stderr.String())
+	}
+}
+
+func TestUnexpectedArgumentIsUsageError(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"doctor", "extra"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("Execute unexpected arg exit = %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "unknown command") && !strings.Contains(stderr.String(), "accepts 0 arg") {
+		t.Fatalf("stderr missing arg error: %q", stderr.String())
+	}
+}
+
 func TestUnknownCommandIsUsageError(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"plan"}, &stdout, &stderr)

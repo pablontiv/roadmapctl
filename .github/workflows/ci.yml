@@ -34,8 +34,9 @@ jobs:
         shell: bash
         run: rootline --version
 
-      - name: Test
-        run: go test ./...
+      - name: Test and coverage
+        shell: bash
+        run: ./scripts/check-coverage.sh
 
       - name: Build
         run: go build ./cmd/roadmapctl

@@ -3,6 +3,7 @@ package rootlinecli
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -42,6 +43,33 @@ func TestResolveBinaryPrefersExplicitThenRootlineBinThenPath(t *testing.T) {
 	}
 	if got != pathRootline {
 		t.Fatalf("ResolveBinary PATH = %q, want %q", got, pathRootline)
+	}
+}
+
+func TestRootlineErrorFormatsPathAndUnwrapsCause(t *testing.T) {
+	cause := errors.New("cause")
+	err := &Error{Kind: ErrorExecution, Message: "failed", Path: "docs/roadmap", Err: cause}
+	if got := err.Error(); !strings.Contains(got, "docs/roadmap: failed") {
+		t.Fatalf("Error() = %q", got)
+	}
+	if !errors.Is(err, cause) {
+		t.Fatalf("Unwrap did not expose cause")
+	}
+}
+
+func TestClientVersionUsesRootlineVersionCommand(t *testing.T) {
+	executor := &recordingExecutor{stdout: []byte("rootline version test")}
+	client := New(Options{Binary: writeExecutable(t, t.TempDir(), "rootline"), Executor: executor})
+
+	result, err := client.Version(context.Background())
+	if err != nil {
+		t.Fatalf("Version error = %v", err)
+	}
+	if string(result.Stdout) != "rootline version test" {
+		t.Fatalf("Stdout = %q", result.Stdout)
+	}
+	if !reflect.DeepEqual(executor.commands[0].Args, []string{"--version"}) {
+		t.Fatalf("Args = %#v", executor.commands[0].Args)
 	}
 }
 
@@ -278,6 +306,30 @@ func TestTimeoutProducesControlledEnvironmentError(t *testing.T) {
 	if rootlineErr.Kind != ErrorTimeout || rootlineErr.ExitCode != diagnostics.ExitEnvironment {
 		t.Fatalf("error = %#v", rootlineErr)
 	}
+}
+
+func TestOSExecutorCapturesStdoutStderrAndExitCode(t *testing.T) {
+	executor := OSExecutor{}
+	result, err := executor.Run(context.Background(), Command{
+		Path: os.Args[0],
+		Args: []string{"-test.run=TestHelperProcess", "--", "exit7"},
+		Env:  append(os.Environ(), "GO_WANT_HELPER_PROCESS=1"),
+	})
+	if err == nil {
+		t.Fatal("Run error = nil, want exit error")
+	}
+	if result.ExitCode != 7 || string(result.Stdout) != "helper stdout\n" || string(result.Stderr) != "helper stderr\n" {
+		t.Fatalf("result = %#v", result)
+	}
+}
+
+func TestHelperProcess(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	fmt.Fprintln(os.Stdout, "helper stdout")
+	fmt.Fprintln(os.Stderr, "helper stderr")
+	os.Exit(7)
 }
 
 func TestInvalidJSONProducesControlledError(t *testing.T) {

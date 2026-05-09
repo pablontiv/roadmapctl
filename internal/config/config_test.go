@@ -7,6 +7,17 @@ import (
 	"testing"
 )
 
+func TestConfigErrorFormatsPathAndUnwrapsCause(t *testing.T) {
+	cause := errors.New("cause")
+	err := &Error{Code: ErrConfigParse, Message: "bad config", Path: ".claude/roadmap.local.md", Cause: cause}
+	if got := err.Error(); got != "RMC_CONFIG_PARSE: .claude/roadmap.local.md: bad config" {
+		t.Fatalf("Error() = %q", got)
+	}
+	if !errors.Is(err, cause) {
+		t.Fatal("Unwrap did not expose cause")
+	}
+}
+
 func TestLoadResolvesValidRoadmapRootInsideRepo(t *testing.T) {
 	repo := t.TempDir()
 	writeConfig(t, repo, "roadmap-root: docs/roadmap\n")
@@ -88,9 +99,14 @@ func TestLoadAcceptsWindowsStyleSeparatorsInRoadmapRoot(t *testing.T) {
 func TestLoadAppliesDocumentedDefaultsAndParsesOverrides(t *testing.T) {
 	repo := t.TempDir()
 	writeConfig(t, repo, `roadmap-root: docs/roadmap
+done-statuses: ['Done', 'Archived']
+active-statuses: ['Ready', 'Doing']
 status-values:
   in-progress: Doing
 leaf-filter: 'isIndex == false'
+outcome-close-verify: ['go test ./...', 'go build ./cmd/roadmapctl']
+pr-merge-strategy: merge
+commit-style: conventional
 auto-push: false
 `)
 
@@ -99,8 +115,11 @@ auto-push: false
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	if got := loaded.DoneStatuses; len(got) != 2 || got[0] != "Completed" || got[1] != "Obsolete" {
-		t.Fatalf("DoneStatuses = %#v, want defaults", got)
+	if got := loaded.DoneStatuses; len(got) != 2 || got[0] != "Done" || got[1] != "Archived" {
+		t.Fatalf("DoneStatuses = %#v, want overrides", got)
+	}
+	if got := loaded.ActiveStatuses; len(got) != 2 || got[0] != "Ready" || got[1] != "Doing" {
+		t.Fatalf("ActiveStatuses = %#v, want overrides", got)
 	}
 	if loaded.StatusValues.InProgress != "Doing" {
 		t.Fatalf("StatusValues.InProgress = %q, want Doing", loaded.StatusValues.InProgress)
@@ -110,6 +129,15 @@ auto-push: false
 	}
 	if loaded.LeafFilter != "isIndex == false" {
 		t.Fatalf("LeafFilter = %q", loaded.LeafFilter)
+	}
+	if got := loaded.OutcomeCloseVerify; len(got) != 2 || got[0] != "go test ./..." || got[1] != "go build ./cmd/roadmapctl" {
+		t.Fatalf("OutcomeCloseVerify = %#v", got)
+	}
+	if loaded.PRMergeStrategy != "merge" {
+		t.Fatalf("PRMergeStrategy = %q", loaded.PRMergeStrategy)
+	}
+	if loaded.CommitStyle != "conventional" {
+		t.Fatalf("CommitStyle = %q", loaded.CommitStyle)
 	}
 	if loaded.AutoPush {
 		t.Fatal("AutoPush = true, want false override")
