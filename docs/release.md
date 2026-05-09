@@ -46,6 +46,27 @@ Rootline compatibility diagnostics should differentiate:
 
 Warnings for versions below a recommended line may be added later, but hard version gates require an explicit release-governance decision.
 
+## CI usage for consuming repos
+
+Projects can run roadmap validation in CI after installing both Rootline and roadmapctl:
+
+```yaml
+- name: Install roadmap tools
+  shell: bash
+  run: |
+    go install github.com/pablontiv/rootline/cmd/rootline@latest
+    go install github.com/pablontiv/roadmapctl/cmd/roadmapctl@latest
+    echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+- name: Validate roadmap
+  shell: bash
+  run: |
+    roadmapctl check --repo . --roadmap-root docs/roadmap --output json --strict > roadmapctl-check.json
+    roadmapctl lint --repo . --roadmap-root docs/roadmap --output json --strict > roadmapctl-lint.json
+```
+
+JSON/text remain the primary outputs. SARIF/JUnit or GitHub annotations can be layered later by wrappers that consume JSON; core commands do not depend on GitHub.
+
 ## CI release gates
 
 Every release candidate should pass:

@@ -40,3 +40,9 @@ jobs:
 
       - name: Build
         run: go build ./cmd/roadmapctl
+
+      - name: Roadmapctl CI smoke
+        shell: bash
+        run: |
+          go run ./cmd/roadmapctl check --repo testdata/fixtures/valid-outcome-with-tasks --output json --strict > roadmapctl-check.json
+          go run ./cmd/roadmapctl lint --repo testdata/fixtures/lint-valid --output json --strict > roadmapctl-lint.json

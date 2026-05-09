@@ -205,6 +205,17 @@ Example future invocation:
 roadmapctl lint --repo . --output json --strict
 ```
 
+## CI integration
+
+JSON remains the source of truth for CI. Recommended CI usage runs `check` and, when semantic conventions are desired, `lint` with `--output json --strict`:
+
+```bash
+roadmapctl check --repo . --roadmap-root docs/roadmap --output json --strict > roadmapctl-check.json
+roadmapctl lint --repo . --roadmap-root docs/roadmap --output json --strict > roadmapctl-lint.json
+```
+
+Exit codes are the stable machine contract. Additional formats such as SARIF/JUnit are deferred until explicitly approved; GitHub-specific annotations should be generated from JSON by wrapper workflows rather than changing core command semantics.
+
 ## Streams
 
 ### JSON output
