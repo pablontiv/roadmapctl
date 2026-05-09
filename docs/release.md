@@ -63,9 +63,23 @@ The initial CI matrix runs those commands on:
 - macOS;
 - Windows.
 
-## Future GoReleaser plan
+## GoReleaser artifacts
 
-When publication is approved, add a GoReleaser configuration that builds archives for:
+The repository includes `.goreleaser.yml` for local dry-runs and tagged releases when publication is approved. It builds only the `roadmapctl` binary from this module; Rootline is not bundled and remains an external runtime dependency.
+
+Validate config locally with:
+
+```bash
+goreleaser check
+```
+
+Run a local snapshot without publishing:
+
+```bash
+goreleaser release --snapshot --clean
+```
+
+The configured build matrix is:
 
 | OS | Architectures |
 |----|---------------|
@@ -75,9 +89,21 @@ When publication is approved, add a GoReleaser configuration that builds archive
 
 Expected artifacts:
 
-- compressed archives per OS/architecture;
+- compressed archives per OS/architecture (`tar.gz`, Windows `zip`);
 - `checksums.txt` for all artifacts;
 - generated release notes from git tags;
-- no Homebrew/Scoop/Winget publishing in the MVP unless explicitly approved later.
+- included docs: `README.md`, `docs/cli-contract.md`, `docs/release.md`.
 
-Signing, SBOM generation, package-manager publication, and installer channels are intentionally deferred beyond the MVP.
+Install options:
+
+```bash
+# From source
+go install github.com/pablontiv/roadmapctl/cmd/roadmapctl@latest
+
+# From a release archive
+# 1. Download the archive for your OS/arch.
+# 2. Verify it against checksums.txt.
+# 3. Put the roadmapctl binary on PATH.
+```
+
+Homebrew/Scoop/Winget publishing, signing, SBOM generation, and installer channels are intentionally deferred until explicitly approved.
