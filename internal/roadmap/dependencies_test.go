@@ -113,6 +113,25 @@ func TestCheckRootlineMissingRootlineDiagnosticExit3(t *testing.T) {
 	}
 }
 
+func TestCheckRootlineParsesValidateJSONOnNonZeroExit(t *testing.T) {
+	client := &fakeRootlineClient{
+		validate:    map[string]any{"version": float64(1), "kind": "rootline/validate", "summary": map[string]any{"invalid": float64(1)}},
+		validateErr: &rootlinecli.Error{Kind: rootlinecli.ErrorExecution, Message: "rootline command failed", Stderr: "validation failed", ExitCode: 1},
+		describe:    map[string]any{"values": []any{"Pending"}},
+		query:       map[string]any{"rows": []any{}},
+		graph:       map[string]any{},
+	}
+
+	found, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending"}})
+	if err != nil {
+		t.Fatalf("CheckRootline error = %v", err)
+	}
+	assertHasDiagnostic(t, found, DiagnosticRootlineValidateFailed, "")
+	if !hasDiagnosticDetail(found, DiagnosticRootlineValidateFailed, "invalid", 1) {
+		t.Fatalf("missing parsed invalid summary diagnostic in %#v", found)
+	}
+}
+
 func TestCheckRootlineUsesGenericRootlineJSONCommands(t *testing.T) {
 	client := &fakeRootlineClient{
 		validate: map[string]any{"summary": map[string]any{"invalid": float64(0)}},
@@ -146,23 +165,28 @@ type fakeRootlineClient struct {
 	graph    map[string]any
 	err      error
 
+	validateErr error
+	describeErr error
+	queryErr    error
+	graphErr    error
+
 	calls          []string
 	usedGraphCheck bool
 }
 
 func (f *fakeRootlineClient) Validate(ctx context.Context, paths ...string) (*rootlinecli.JSONResult, error) {
 	f.calls = append(f.calls, "validate")
-	return f.result(f.validate)
+	return f.result(f.validate, f.validateErr)
 }
 
 func (f *fakeRootlineClient) Describe(ctx context.Context, target string, fields ...string) (*rootlinecli.JSONResult, error) {
 	f.calls = append(f.calls, "describe")
-	return f.result(f.describe)
+	return f.result(f.describe, f.describeErr)
 }
 
 func (f *fakeRootlineClient) Query(ctx context.Context, root string, wheres ...string) (*rootlinecli.JSONResult, error) {
 	f.calls = append(f.calls, "query")
-	return f.result(f.query)
+	return f.result(f.query, f.queryErr)
 }
 
 func (f *fakeRootlineClient) Graph(ctx context.Context, root string, wheres ...string) (*rootlinecli.JSONResult, error) {
@@ -172,17 +196,17 @@ func (f *fakeRootlineClient) Graph(ctx context.Context, root string, wheres ...s
 			f.usedGraphCheck = true
 		}
 	}
-	return f.result(f.graph)
+	return f.result(f.graph, f.graphErr)
 }
 
-func (f *fakeRootlineClient) result(decoded map[string]any) (*rootlinecli.JSONResult, error) {
+func (f *fakeRootlineClient) result(decoded map[string]any, operationErr error) (*rootlinecli.JSONResult, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
 	if decoded == nil {
 		return nil, errors.New("missing fake response")
 	}
-	return &rootlinecli.JSONResult{Decoded: decoded}, nil
+	return &rootlinecli.JSONResult{Decoded: decoded}, operationErr
 }
 
 func diagnosticsPackageInvalidBlockedBy() string {

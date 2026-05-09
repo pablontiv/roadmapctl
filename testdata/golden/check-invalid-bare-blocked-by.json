@@ -2,12 +2,13 @@
   "diagnostics": [
     {
       "details": {
+        "invalid": 1,
         "kind": "execution",
         "operation": "validate",
         "stderr": "validation failed\n"
       },
       "id": "RMC_ROOTLINE_VALIDATE_FAILED",
-      "message": "rootline command failed",
+      "message": "rootline validation reported invalid roadmap records",
       "severity": "error"
     }
   ],

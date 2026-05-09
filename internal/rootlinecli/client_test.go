@@ -229,6 +229,31 @@ func TestInvalidJSONProducesControlledError(t *testing.T) {
 	}
 }
 
+func TestClientReturnsParsedJSONWithExecutionError(t *testing.T) {
+	executor := &recordingExecutor{
+		stdout:   []byte(`{"version":1,"kind":"rootline/validate","valid":false,"summary":{"invalid":1}}`),
+		stderr:   []byte("validation failed"),
+		exitCode: 1,
+		err:      errors.New("exit status 1"),
+	}
+	client := New(Options{Binary: writeExecutable(t, t.TempDir(), "rootline"), Executor: executor})
+
+	result, err := client.Validate(context.Background(), "--all", "docs/roadmap")
+	if err == nil {
+		t.Fatal("Validate error = nil, want execution error")
+	}
+	if result == nil || numberFromJSONResult(result, "summary", "invalid") != 1 {
+		t.Fatalf("result = %#v, want parsed invalid summary", result)
+	}
+	var rootlineErr *Error
+	if !errors.As(err, &rootlineErr) {
+		t.Fatalf("error type = %T, want *Error", err)
+	}
+	if rootlineErr.Kind != ErrorExecution || rootlineErr.Stderr != "validation failed" || rootlineErr.ExitCode != 1 {
+		t.Fatalf("error = %#v", rootlineErr)
+	}
+}
+
 func writeExecutable(t *testing.T, dir string, name string) string {
 	t.Helper()
 	if runtime.GOOS == "windows" {
@@ -242,9 +267,10 @@ func writeExecutable(t *testing.T, dir string, name string) string {
 }
 
 type recordingExecutor struct {
-	stdout []byte
-	stderr []byte
-	err    error
+	stdout   []byte
+	stderr   []byte
+	exitCode int
+	err      error
 
 	commands  []Command
 	deadlines []time.Time
@@ -254,5 +280,18 @@ func (e *recordingExecutor) Run(ctx context.Context, command Command) (Result, e
 	e.commands = append(e.commands, command)
 	deadline, _ := ctx.Deadline()
 	e.deadlines = append(e.deadlines, deadline)
-	return Result{Stdout: e.stdout, Stderr: e.stderr}, e.err
+	return Result{Stdout: e.stdout, Stderr: e.stderr, ExitCode: e.exitCode}, e.err
+}
+
+func numberFromJSONResult(result *JSONResult, keys ...string) int {
+	var current any = result.Decoded
+	for _, key := range keys {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return 0
+		}
+		current = m[key]
+	}
+	value, _ := current.(float64)
+	return int(value)
 }

@@ -37,7 +37,16 @@ func CheckRootline(ctx context.Context, client RootlineClient, options RootlineC
 
 	validateResult, err := client.Validate(ctx, "--all", options.RoadmapRoot)
 	if err != nil {
-		found = append(found, rootlineOperationDiagnostic("validate", err))
+		if validateResult == nil {
+			found = append(found, rootlineOperationDiagnostic("validate", err))
+		} else {
+			parsed := validateDiagnostics(validateResult.Decoded)
+			if len(parsed) == 0 {
+				found = append(found, rootlineOperationDiagnostic("validate", err))
+			} else {
+				found = append(found, addRootlineErrorDetails("validate", err, parsed)...)
+			}
+		}
 		if isMissingRootline(err) {
 			return found, nil
 		}
@@ -150,6 +159,22 @@ func rootlineOperationDiagnostic(operation string, err error) Diagnostic {
 		Details:  map[string]any{"operation": operation},
 		ExitCode: diagnostics.ExitEnvironment,
 	}
+}
+
+func addRootlineErrorDetails(operation string, err error, parsed []Diagnostic) []Diagnostic {
+	operationDiagnostic := rootlineOperationDiagnostic(operation, err)
+	for i := range parsed {
+		if parsed[i].Details == nil {
+			parsed[i].Details = map[string]any{}
+		}
+		for key, value := range operationDiagnostic.Details {
+			parsed[i].Details[key] = value
+		}
+		if parsed[i].ExitCode == 0 {
+			parsed[i].ExitCode = operationDiagnostic.ExitCode
+		}
+	}
+	return parsed
 }
 
 func isMissingRootline(err error) bool {

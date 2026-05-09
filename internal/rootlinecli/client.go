@@ -184,13 +184,13 @@ func (c *Client) Graph(ctx context.Context, root string, wheres ...string) (*JSO
 }
 
 func (c *Client) runJSON(ctx context.Context, args []string) (*JSONResult, error) {
-	result, err := c.run(ctx, args)
-	if err != nil {
-		return nil, err
-	}
+	result, runErr := c.run(ctx, args)
 
 	decoded := map[string]any{}
 	if err := json.Unmarshal(result.Stdout, &decoded); err != nil {
+		if runErr != nil {
+			return nil, runErr
+		}
 		return nil, &Error{Kind: ErrorInvalidJSON, Message: "rootline returned invalid JSON", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
 	}
 	return &JSONResult{
@@ -198,7 +198,7 @@ func (c *Client) runJSON(ctx context.Context, args []string) (*JSONResult, error
 		Stderr:   append([]byte(nil), result.Stderr...),
 		ExitCode: result.ExitCode,
 		Decoded:  decoded,
-	}, nil
+	}, runErr
 }
 
 func (c *Client) run(ctx context.Context, args []string) (Result, error) {
@@ -222,11 +222,18 @@ func (c *Client) run(ctx context.Context, args []string) (Result, error) {
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(commandCtx.Err(), context.DeadlineExceeded) {
-			return Result{}, &Error{Kind: ErrorTimeout, Message: "rootline command timed out", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
+			return result, &Error{Kind: ErrorTimeout, Message: "rootline command timed out", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
 		}
-		return Result{}, &Error{Kind: ErrorExecution, Message: "rootline command failed", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
+		return result, &Error{Kind: ErrorExecution, Message: "rootline command failed", Stderr: string(result.Stderr), ExitCode: executionExitCode(result), Err: err}
 	}
 	return result, nil
+}
+
+func executionExitCode(result Result) int {
+	if result.ExitCode != 0 {
+		return result.ExitCode
+	}
+	return diagnostics.ExitEnvironment
 }
 
 type OSExecutor struct{}

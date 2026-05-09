@@ -103,6 +103,15 @@ func assertNoDiagnostic(t *testing.T, diagnostics []Diagnostic, id string) {
 	}
 }
 
+func hasDiagnosticDetail(diagnostics []Diagnostic, id string, key string, want any) bool {
+	for _, diagnostic := range diagnostics {
+		if diagnostic.ID == id && diagnostic.Details[key] == want {
+			return true
+		}
+	}
+	return false
+}
+
 func containsBackslash(path string) bool {
 	for _, r := range path {
 		if r == '\\' {
