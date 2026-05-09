@@ -31,15 +31,12 @@ resolve_roadmapctl_bin() {
     echo "$ROADMAPCTL_BIN"
     return
   fi
-  if command -v roadmapctl >/dev/null 2>&1; then
-    command -v roadmapctl
-    return
-  fi
-  echo "$HOME/.local/bin/roadmapctl"
+  echo "/usr/local/bin/roadmapctl"
 }
 
 ROADMAPCTL_BIN="$(resolve_roadmapctl_bin)"
 mkdir -p "$(dirname "$ROADMAPCTL_BIN")"
+LEGACY_ROADMAPCTL_BIN="$HOME/.local/bin/roadmapctl"
 
 install_roadmapctl_binary() {
   local tmp
@@ -65,6 +62,9 @@ install_roadmapctl_binary() {
 
 echo "Rebuilding roadmapctl..."
 if install_roadmapctl_binary; then
+  if [ "$ROADMAPCTL_BIN" = "/usr/local/bin/roadmapctl" ] && [ -e "$LEGACY_ROADMAPCTL_BIN" ]; then
+    rm -f "$LEGACY_ROADMAPCTL_BIN"
+  fi
   echo "roadmapctl rebuilt: $ROADMAPCTL_BIN"
   if command -v roadmapctl >/dev/null 2>&1 && [ "$(command -v roadmapctl)" != "$ROADMAPCTL_BIN" ]; then
     echo "Warning: $(command -v roadmapctl) shadows $ROADMAPCTL_BIN in PATH" >&2

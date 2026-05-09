@@ -39,7 +39,7 @@ user-scope tools current:
 
 ```text
 ~/.claude/skills/roadmap
-$(command -v roadmapctl) or ~/.local/bin/roadmapctl   # override with ROADMAPCTL_BIN
+/usr/local/bin/roadmapctl   # override with ROADMAPCTL_BIN
 ```
 
 The hooks delegate to explicit install/sync scripts. Skill sync only replaces the
