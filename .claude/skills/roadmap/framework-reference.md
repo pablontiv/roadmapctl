@@ -52,14 +52,14 @@ La **Task** es el átomo ejecutable. Una task válida cumple todas estas condici
 4. Tiene criterios de aceptación binarios.
 5. Es verificable con comandos/checks concretos.
 6. Tiene input/output y alcance explícitos.
-7. Declara dependencias con links machine-readable.
+7. Declara hard blockers con links machine-readable solo cuando son prerequisitos objetivos.
 8. Es idempotente o descartable.
 
 Si no cumple una condición, dividirla o convertirla en Outcome + tasks.
 
-## Dependencias
+## Dependencias duras
 
-La convención canónica es:
+La convención canónica para un hard blocker es:
 
 ```markdown
 [[blocked_by:./T001-setup.md]]
@@ -68,11 +68,19 @@ La convención canónica es:
 Semántica:
 
 ```text
-Task actual depende de ./T001-setup.md.
-./T001-setup.md desbloquea la task actual.
+La task actual no debe ejecutarse hasta que ./T001-setup.md esté completada.
+./T001-setup.md desbloquea objetivamente la task actual.
 ```
 
-Para dependencias entre Outcomes, usar path relativo explícito:
+Test obligatorio antes de declarar un blocker:
+
+```text
+¿Qué fallaría objetivamente si ejecuto esta task antes?
+```
+
+Si no hay una falla concreta, no es `blocked_by`. No usar `blocked_by` para orden sugerido, secuencia narrativa, relación temática, provenance, “conviene después de” ni “usar su output si existe”; expresar eso en contexto o fuentes de verdad.
+
+Para dependencias duras entre Outcomes, usar path relativo explícito:
 
 ```markdown
 [[blocked_by:../O01-setup/T001-setup.md]]

@@ -84,8 +84,10 @@ Para cada task incluir:
 
 - nombre,
 - descripción de 1 línea,
-- dependencias `blocked_by` si existen,
+- hard blockers `blocked_by` solo si existen y están justificados,
 - criterios de aceptación principales.
+
+No proponer `blocked_by` por orden sugerido, secuencia narrativa, relación temática o “conviene después de”. Para cada blocker propuesto, incluir la razón breve: qué fallaría objetivamente si la task se ejecuta antes.
 
 ## Paso 6: Validación antes de presentar
 
@@ -94,7 +96,7 @@ Verificar:
 1. Cada task contribuye a un Outcome o resultado directo.
 2. Cada criterio de éxito tiene al menos una task que lo implementa.
 3. No hay tasks duplicadas.
-4. Dependencias no forman ciclos evidentes.
+4. Cada `blocked_by` propuesto es un hard blocker objetivo, no orden/contexto blando, y no forma ciclos evidentes.
 5. Cada task cabe en una sesión.
 6. La propuesta usa únicamente Outcomes y Tasks.
 

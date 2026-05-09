@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
+# Post-merge: install user skill and rebuild roadmapctl binary
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-exec "$REPO_ROOT/scripts/sync-roadmap-skill.sh" --install
+exec "$REPO_ROOT/scripts/install-user.sh"

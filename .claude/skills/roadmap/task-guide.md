@@ -14,27 +14,35 @@ Extraer para el plan estructurado:
 
 ### Paso 2: Poblar plan estructurado
 
-Para cada task, completar campos requeridos del schema `roadmapctl/materialize-plan`: slug, título, descripción, `preserves`, contexto, `scope_in`, `scope_out`, estado inicial, criterios de aceptación, fuentes de verdad y dependencias.
+Para cada task, completar campos requeridos del schema `roadmapctl/materialize-plan`: slug, título, descripción, `preserves`, contexto, `scope_in`, `scope_out`, estado inicial, criterios de aceptación, fuentes de verdad y hard blockers opcionales.
 
 ### Paso 3: Delegar materialización
 
 `roadmapctl materialize --dry-run` asigna `TXXX`, detecta colisiones/escapes y muestra rutas. `roadmapctl materialize --apply` crea el archivo y actualiza el README padre si corresponde. El skill no debe ejecutar `rootline new` ni editar tablas manualmente.
 
-## Dependencias
+## Dependencias duras
 
-Usar `blocked_by` en la task bloqueada, siempre con path relativo explícito:
+`blocked_by` significa hard blocker: la task actual **no debe ejecutarse** hasta que la task objetivo esté completada según `done_statuses`.
+
+Antes de declarar cualquier `blocked_by`, responder:
+
+```text
+¿Qué fallaría objetivamente si ejecuto esta task antes?
+```
+
+Usar `blocked_by` solo si hay una respuesta concreta: falta una API, contrato, archivo, migración, test base o decisión sin la cual la task actual no puede validarse. Si la relación es orden sugerido, contexto, tema compartido, provenance, “conviene después de” o “usar su output si existe”, no usar `blocked_by`; ponerlo en `Contexto`, `Fuente de verdad` o prose.
+
+Si existe hard blocker, declararlo en la task bloqueada con path relativo explícito:
 
 ```markdown
 [[blocked_by:./T001-prerequisite.md]]
 ```
 
-Si la dependencia está en otro Outcome:
+Entre Outcomes:
 
 ```markdown
 [[blocked_by:../O01-setup/T001-prerequisite.md]]
 ```
-
-Significa: la task actual no puede ejecutarse hasta que esa task esté completada.
 
 No usar targets bare como `[[blocked_by:T001-prerequisite]]`: rootline solo puede resolverlos por basename único y se rompen si hay duplicados.
 
@@ -50,7 +58,7 @@ tipo: task
 **Outcome**: [OXX Nombre](README.md) <!-- omitir si es task directa -->
 **Contribuye a**: [criterio de éxito del Outcome o resultado directo esperado]
 
-[[blocked_by:./TXXX-prerequisite.md]] <!-- omitir si no hay dependencia -->
+[[blocked_by:./TXXX-prerequisite.md]] <!-- omitir salvo hard blocker objetivo -->
 
 ## Preserva
 
@@ -103,6 +111,7 @@ Antes de finalizar una task, verificar:
 1. ¿Cabe en una sesión?
 2. ¿Contiene todo el contexto?
 3. ¿Los ACs son pass/fail?
-4. ¿Declara dependencias con `blocked_by` y path relativo explícito?
-5. ¿Lista fuentes de verdad?
-6. ¿Preserva invariantes relevantes?
+4. Si declara `blocked_by`, ¿hay respuesta concreta a “qué fallaría objetivamente si ejecuto esta task antes”?
+5. ¿Los links `blocked_by` son paths relativos explícitos y no orden/contexto blando?
+6. ¿Lista fuentes de verdad?
+7. ¿Preserva invariantes relevantes?

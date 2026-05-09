@@ -52,4 +52,4 @@ tipo: outcome
 - El cuerpo materializado contiene descripción, `## Criterios de Aceptación` y `## Tasks`; no agregar secciones prose-only al template si el renderer no las emite.
 - El estado de `README.md` (outcome/index) no debe escribirse manualmente: se deriva desde las `TXXX-*` hijas y/o el estado del índice jerárquico.
 - No crear subniveles bajo Outcome.
-- Las dependencias entre tasks se declaran con `[[blocked_by:./TXXX-name.md]]` en la task bloqueada.
+- Las dependencias duras entre tasks se declaran con `[[blocked_by:./TXXX-name.md]]` en la task bloqueada solo si la task no puede ejecutarse/validarse antes; orden sugerido o relación temática van en contexto/prose, no en `blocked_by`.

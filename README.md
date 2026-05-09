@@ -34,17 +34,20 @@ This repository is the canonical home for the `/roadmap` skill:
 .claude/skills/roadmap/
 ```
 
-The git hook in `.githooks/post-merge` installs that skill into the user scope:
+The git hooks in `.githooks/pre-push` and `.githooks/post-merge` keep the
+user-scope tools current:
 
 ```text
 ~/.claude/skills/roadmap
+$(command -v roadmapctl) or ~/.local/bin/roadmapctl   # override with ROADMAPCTL_BIN
 ```
 
-The hook delegates to an explicit sync script that only replaces the `roadmap`
-skill folder and does not touch any other user-scope skills:
+The hooks delegate to explicit install/sync scripts. Skill sync only replaces the
+`roadmap` skill folder and does not touch any other user-scope skills:
 
 ```bash
-scripts/sync-roadmap-skill.sh --install
+git config core.hooksPath .githooks
+scripts/install-user.sh
 scripts/sync-roadmap-skill.sh --check
 ```
 
