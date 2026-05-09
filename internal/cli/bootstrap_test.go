@@ -58,7 +58,7 @@ func TestBootstrapInitDryRunDoesNotWriteAndShowsChanges(t *testing.T) {
 			t.Fatalf("dry-run applied change: %#v", change)
 		}
 		if change.Path == "docs/roadmap/.roadmapctl.toml" {
-			for _, want := range []string{"loop_max_tasks = 0", "parallel = true", "autonomy = \"until_done\"", "compact_after_task_commit = true", "pr_mode = false"} {
+			for _, want := range []string{"required_code_coverage = 85.0", "loop_max_tasks = 0", "parallel = true", "autonomy = \"until_done\"", "compact_after_task_commit = true", "pr_mode = false"} {
 				if !strings.Contains(change.Content, want) {
 					t.Fatalf("bootstrap TOML missing %q:\n%s", want, change.Content)
 				}

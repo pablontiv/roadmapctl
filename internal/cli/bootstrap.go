@@ -10,66 +10,9 @@ import (
 
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
 	"github.com/pablontiv/roadmapctl/internal/fsx"
+	"github.com/pablontiv/roadmapctl/internal/templates"
 	"github.com/spf13/cobra"
 )
-
-const baseStemContent = `version: 2
-scope:
-  match: "*.md"
-
-schema:
-  estado:
-    type: enum
-    required:
-      match: ["T*"]
-    match: ["O*", "T*"]
-    values: [Pending, Specified, In Progress, Completed, Blocked, On Hold, Obsolete]
-
-  tipo:
-    type: enum
-    required:
-      match: ["O*", "T*"]
-    match: ["O*", "T*"]
-    values: [outcome, task]
-
-  id:
-    type: sequence
-    match:
-      "O*": { prefix: O, digits: 2 }
-      "T*": { prefix: T, digits: 3 }
-
-links:
-  blocked_by:
-    target: '^(\./|\.\./|.*/)T[0-9]{3}-[^/]+\.md$'
-  reference:
-    target: ".*"
-
-validate:
-  - field: tipo
-    rule: non_empty
-`
-
-const defaultRoadmapctlTOML = `done_statuses = ["Completed", "Obsolete"]
-active_statuses = ["Pending", "Specified", "In Progress"]
-leaf_filter = "isIndex == false"
-outcome_close_verify = []
-pr_merge_strategy = "squash"
-commit_style = "conventional"
-auto_push = true
-loop_max_tasks = 0
-parallel = true
-autonomy = "until_done"
-compact_after_task_commit = true
-pr_mode = false
-
-[status_values]
-pending = "Pending"
-specified = "Specified"
-in_progress = "In Progress"
-completed = "Completed"
-blocked = "Blocked"
-obsolete = "Obsolete"
-`
 
 type bootstrapReport struct {
 	Version     int                      `json:"version"`
@@ -181,11 +124,11 @@ func proposedBootstrapChanges(root string, roadmapRoot string, apply bool) []boo
 	}
 	stemPath := filepath.Join(roadmapRoot, ".stem")
 	if _, err := os.Stat(stemPath); os.IsNotExist(err) {
-		changes = append(changes, bootstrapChange{Path: relToRoot(root, stemPath), Operation: "create", Applied: apply, Content: baseStemContent})
+		changes = append(changes, bootstrapChange{Path: relToRoot(root, stemPath), Operation: "create", Applied: apply, Content: templates.BaseStemContent})
 	}
 	configPath := filepath.Join(roadmapRoot, ".roadmapctl.toml")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		changes = append(changes, bootstrapChange{Path: relToRoot(root, configPath), Operation: "create", Applied: apply, Content: defaultRoadmapctlTOML})
+		changes = append(changes, bootstrapChange{Path: relToRoot(root, configPath), Operation: "create", Applied: apply, Content: templates.DefaultRoadmapctlTOML})
 	}
 	return changes
 }

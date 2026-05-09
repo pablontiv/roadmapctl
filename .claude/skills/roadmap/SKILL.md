@@ -181,6 +181,7 @@ Fuente de configuración:
 | `pr-merge-strategy` | `'squash'` | `<pr-merge-strategy>` |
 | `commit-style` | `'conventional'` | `<commit-style>` |
 | `auto-push` | `true` | `<auto-push>` |
+| `required-code-coverage` | `85.0` | `<required-code-coverage>` |
 | `loop-max-tasks` | `0` | `<loop-max-tasks>` |
 | `parallel` | `true` | `<parallel>` |
 | `autonomy` | `'until_done'` | `<autonomy>` |

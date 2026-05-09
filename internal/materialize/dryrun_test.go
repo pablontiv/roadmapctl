@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/pablontiv/roadmapctl/internal/templates"
 )
 
 func TestDryRunMissingRootIncludesExplicitBootstrapWithoutWriting(t *testing.T) {
@@ -28,7 +30,7 @@ func TestDryRunMissingRootIncludesExplicitBootstrapWithoutWriting(t *testing.T) 
 	}
 	for _, change := range result.Changes {
 		if change.Path == ".roadmapctl.toml" {
-			for _, want := range []string{"loop_max_tasks = 0", "parallel = true", "autonomy = \"until_done\"", "compact_after_task_commit = true", "pr_mode = false"} {
+			for _, want := range []string{"required_code_coverage = 85.0", "loop_max_tasks = 0", "parallel = true", "autonomy = \"until_done\"", "compact_after_task_commit = true", "pr_mode = false"} {
 				if !strings.Contains(change.Content, want) {
 					t.Fatalf("materialize bootstrap TOML missing %q:\n%s", want, change.Content)
 				}
@@ -231,10 +233,10 @@ func TestApplyTargetRejectsInvalidTargetsBeforeWriting(t *testing.T) {
 
 func writeBootstrapFiles(t *testing.T, root string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(root, ".stem"), []byte(baseStemContent), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".stem"), []byte(templates.BaseStemContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".roadmapctl.toml"), []byte(defaultRoadmapctlTOML), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".roadmapctl.toml"), []byte(templates.DefaultRoadmapctlTOML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
