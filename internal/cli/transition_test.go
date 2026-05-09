@@ -30,6 +30,24 @@ func TestTransitionCanStartReadyTaskAllows(t *testing.T) {
 	}
 }
 
+func TestTransitionCanStartAcceptsRepoRelativeTaskPath(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"transition", "can-start", "docs/roadmap/O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		Allowed bool   `json:"allowed"`
+		Path    string `json:"path"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if !report.Allowed || report.Path != "O01-work/T001-ready.md" {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
 func TestTransitionCanStartBlockedTaskExplainsDependency(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "can-start", "O01-work/T002-blocked.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)

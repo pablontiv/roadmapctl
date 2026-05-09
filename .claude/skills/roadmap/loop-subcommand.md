@@ -88,10 +88,13 @@ Variables:
 
 Para cada task ordenada:
 
-1. **Verificar dependencias**
-   - Usar `dependency_map`; no grep.
-   - Cada dependencia debe tener `estado` en `<done-statuses>`.
-   - Si no: skip con `Bloqueado por: TXXX (estado: X)`.
+1. **Verificar transición de inicio**
+   ```bash
+   roadmapctl transition can-start <task.md> --repo <repo-path> --roadmap-root <roadmap-root> --output json
+   ```
+   - Usar el JSON de `roadmapctl`; no recalcular reglas de dependencias en prompt.
+   - Si `allowed=false`, skip con `blocking_dependencies[]`/`diagnostics[]`.
+   - No llamar `rootline set` directamente para iniciar tasks.
 
 2. **Scope change**
    - Si cambia Outcome/direct scope y `--pr`, cerrar PR anterior si corresponde y ejecutar Outcome Setup.
@@ -99,11 +102,9 @@ Para cada task ordenada:
 
 3. **Marcar inicio**
    ```bash
-   rootline set <task.md> "estado=<status-in-progress>"
-   rootline validate <task.md>
-   roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+   roadmapctl transition start <task.md> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
    ```
-   Si `roadmapctl check` falla, detenerse antes de ejecutar la task o commitear. Actualizar UI con `TaskUpdate` solo después de pasar el postcheck.
+   Si `allowed=false`, `summary.status="error"`, o el comando sale non-zero, detenerse antes de ejecutar la task o commitear. `roadmapctl transition start --apply` es responsable de `rootline set`, `rootline validate` y postcheck; no duplicar esas reglas en prompt. Actualizar UI con `TaskUpdate` solo después de pasar.
 
 4. **Leer task**
    Leer el archivo completo. La task debe ser suficiente para implementar.
@@ -133,11 +134,9 @@ Para cada task ordenada:
 
 9. **Commit**
    ```bash
-   rootline set <task.md> "estado=<status-completed>"
-   rootline validate <task.md>
-   roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+   roadmapctl transition complete <task.md> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
    ```
-   Si `roadmapctl check` falla, reportar diagnostics y detenerse antes de declarar completada la iteración o commitear. Si pasa: `git add` específico, commit según `<commit-style>`, push según `<auto-push>` y `--pr`.
+   Ejecutar este comando solo después de que ACs e invariantes pasaron. Si `allowed=false`, `summary.status="error"`, o el comando sale non-zero, reportar diagnostics y detenerse antes de declarar completada la iteración o commitear. Si pasa: `git add` específico, commit según `<commit-style>`, push según `<auto-push>` y `--pr`.
 
 10. **Actualizar UI y resumen**
    ```bash

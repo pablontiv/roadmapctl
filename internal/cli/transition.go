@@ -89,6 +89,9 @@ func runTransition(ctx context.Context, options Options, action string, taskPath
 		return newTransitionReport(repoRoot, "", action, normalizeTransitionPath("", taskPath), roadmap.TransitionResult{Diagnostics: found})
 	}
 	path := normalizeTransitionPath(cfg.RoadmapRoot, taskPath)
+	if strings.HasPrefix(path, filepath.ToSlash(cfg.RoadmapRootRel)+"/") {
+		path = strings.TrimPrefix(path, filepath.ToSlash(cfg.RoadmapRootRel)+"/")
+	}
 	model, found := readModelForConfig(ctx, cfg, options)
 	roles := roadmap.TransitionRoles{DoneStatuses: cfg.DoneStatuses, ActiveStatuses: cfg.ActiveStatuses, InProgressStatus: cfg.StatusValues.InProgress, CompletedStatus: cfg.StatusValues.Completed}
 	var result roadmap.TransitionResult

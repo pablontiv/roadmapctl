@@ -163,6 +163,18 @@ After changing task status, links, dependencies, or task files:
 
 `/roadmap loop` may still run targeted task acceptance checks and existing Rootline commands, but those checks are additive. They do not replace `roadmapctl doctor` and `roadmapctl check`.
 
+## Loop status transitions
+
+The `/roadmap loop` skill must delegate task status transition policy and mutation to `roadmapctl transition`:
+
+```bash
+roadmapctl transition can-start <task.md> --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl transition start <task.md> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl transition complete <task.md> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
+```
+
+The skill must not call `rootline set` directly for loop start/completion once `roadmapctl transition` is available. `transition start/complete --apply` owns Rootline `set`, target validation, and roadmap postcheck. The agent remains responsible for reading the task, implementing code, running task-specific ACs, committing, and pushing.
+
 ## Read-only state commands
 
 The `/roadmap` skill must delegate deterministic read-only state to `roadmapctl` instead of rebuilding it from Rootline JSON in prompt logic:
