@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestHelpListsOnlyMVPCommands(t *testing.T) {
+func TestHelpListsImplementedCommands(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"--help"}, &stdout, &stderr)
 
@@ -15,12 +15,12 @@ func TestHelpListsOnlyMVPCommands(t *testing.T) {
 		t.Fatalf("Execute(--help) exit = %d, want 0; stderr=%q", code, stderr.String())
 	}
 	out := stdout.String()
-	for _, want := range []string{"roadmapctl", "doctor", "check", "--output", "--repo"} {
+	for _, want := range []string{"roadmapctl", "doctor", "check", "materialize", "--output", "--repo"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("help output missing %q:\n%s", want, out)
 		}
 	}
-	for _, notWant := range []string{"materialize", "fix"} {
+	for _, notWant := range []string{"fix"} {
 		if strings.Contains(out, notWant) {
 			t.Fatalf("help output unexpectedly contains %q:\n%s", notWant, out)
 		}

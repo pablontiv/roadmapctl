@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "kind": "roadmapctl/materialize-plan",
+  "title": "Materialize dry-run fixture",
+  "items": [
+    {
+      "type": "outcome",
+      "slug": "new-outcome",
+      "title": "New Outcome",
+      "description": "Outcome description.",
+      "acceptance_criteria": ["Outcome works."],
+      "tasks": [
+        {
+          "slug": "first-task",
+          "title": "First task",
+          "description": "Implement first task.",
+          "preserves": ["Dry-run stays read-only."],
+          "context": "Needed for materialization.",
+          "scope_in": ["Create proposed markdown."],
+          "scope_out": ["Do not write files."],
+          "initial_state": "Roadmap root exists.",
+          "acceptance_criteria": ["Change is listed."],
+          "source_of_truth": ["docs/materialize-plan-schema.md"],
+          "blocked_by": []
+        }
+      ]
+    },
+    {
+      "type": "task",
+      "slug": "direct-task",
+      "title": "Direct task",
+      "description": "Implement direct task.",
+      "preserves": ["Direct dry-run stays read-only."],
+      "context": "Needed for direct materialization.",
+      "scope_in": ["Create proposed direct task markdown."],
+      "scope_out": ["Do not write files."],
+      "initial_state": "Roadmap root exists.",
+      "acceptance_criteria": ["Direct path is listed."],
+      "source_of_truth": ["docs/materialize-plan-schema.md"],
+      "blocked_by": []
+    }
+  ]
+}

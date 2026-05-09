@@ -1,0 +1,361 @@
+package materialize
+
+import (
+	"fmt"
+	"path/filepath"
+	"strings"
+
+	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/diff"
+	"github.com/pablontiv/roadmapctl/internal/roadmap"
+)
+
+const PlanKind = "roadmapctl/materialize-plan"
+
+type Plan struct {
+	Version int    `json:"version"`
+	Kind    string `json:"kind"`
+	Title   string `json:"title,omitempty"`
+	Items   []Item `json:"items"`
+}
+
+type Item struct {
+	Type               string       `json:"type"`
+	Slug               string       `json:"slug"`
+	Title              string       `json:"title"`
+	Description        string       `json:"description"`
+	AcceptanceCriteria []string     `json:"acceptance_criteria"`
+	Tasks              []Task       `json:"tasks,omitempty"`
+	ContributesTo      []string     `json:"contributes_to,omitempty"`
+	Preserves          []string     `json:"preserves,omitempty"`
+	Context            string       `json:"context,omitempty"`
+	ScopeIn            []string     `json:"scope_in,omitempty"`
+	ScopeOut           []string     `json:"scope_out,omitempty"`
+	InitialState       string       `json:"initial_state,omitempty"`
+	SourceOfTruth      []string     `json:"source_of_truth,omitempty"`
+	BlockedBy          []Dependency `json:"blocked_by,omitempty"`
+	TechnicalSpec      string       `json:"technical_spec,omitempty"`
+}
+
+type Task struct {
+	Type               string       `json:"type,omitempty"`
+	Slug               string       `json:"slug"`
+	Title              string       `json:"title"`
+	Description        string       `json:"description"`
+	Preserves          []string     `json:"preserves"`
+	Context            string       `json:"context"`
+	ScopeIn            []string     `json:"scope_in"`
+	ScopeOut           []string     `json:"scope_out"`
+	InitialState       string       `json:"initial_state"`
+	AcceptanceCriteria []string     `json:"acceptance_criteria"`
+	SourceOfTruth      []string     `json:"source_of_truth"`
+	BlockedBy          []Dependency `json:"blocked_by,omitempty"`
+	TechnicalSpec      string       `json:"technical_spec,omitempty"`
+}
+
+type Dependency struct {
+	Ref  string `json:"ref,omitempty"`
+	Path string `json:"path,omitempty"`
+}
+
+type Result struct {
+	Changes []Change `json:"changes"`
+}
+
+type Change struct {
+	Path          string   `json:"path"`
+	Operation     string   `json:"operation"`
+	Applied       bool     `json:"applied"`
+	Content       string   `json:"content,omitempty"`
+	Diff          string   `json:"diff,omitempty"`
+	Preconditions []string `json:"preconditions,omitempty"`
+}
+
+type plannedTask struct {
+	Ref  string
+	Path string
+	Task Task
+}
+
+func DryRun(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, error) {
+	if found := validatePlan(plan); len(found) > 0 {
+		return Result{}, found, nil
+	}
+	request := roadmap.MaterializePathRequest{}
+	for _, item := range plan.Items {
+		if item.Type == "outcome" {
+			outcome := roadmap.OutcomePathRequest{Slug: item.Slug}
+			for _, task := range item.Tasks {
+				outcome.Tasks = append(outcome.Tasks, roadmap.TaskPathRequest{Slug: task.Slug})
+			}
+			request.Outcomes = append(request.Outcomes, outcome)
+			continue
+		}
+		request.DirectTasks = append(request.DirectTasks, roadmap.TaskPathRequest{Slug: item.Slug})
+	}
+	paths, found, err := roadmap.PlanMaterializePaths(roadmapRoot, request)
+	if err != nil || len(found) > 0 {
+		return Result{}, found, err
+	}
+
+	refs := map[string]string{}
+	outcomeBySlug := map[string]Item{}
+	for _, item := range plan.Items {
+		if item.Type == "outcome" {
+			outcomeBySlug[item.Slug] = item
+		}
+	}
+	for _, outcome := range paths.Outcomes {
+		for _, task := range outcome.Tasks {
+			refs[outcome.Slug+"/"+task.Slug] = task.Path
+		}
+	}
+	for _, task := range paths.DirectTasks {
+		refs[task.Slug] = task.Path
+	}
+
+	var result Result
+	for _, outcomePlan := range paths.Outcomes {
+		item := outcomeBySlug[outcomePlan.Slug]
+		content := renderOutcome(item, outcomePlan)
+		result.Changes = append(result.Changes, newCreateChange(outcomePlan.Path, content))
+		for i, taskPath := range outcomePlan.Tasks {
+			if i >= len(item.Tasks) {
+				continue
+			}
+			task := item.Tasks[i]
+			links, depDiagnostics := dependencyLinks(taskPath.Path, task.BlockedBy, refs)
+			if len(depDiagnostics) > 0 {
+				return Result{}, depDiagnostics, nil
+			}
+			content := renderTask(task, item, links, taskID(taskPath.Path))
+			result.Changes = append(result.Changes, newCreateChange(taskPath.Path, content))
+		}
+	}
+	for i, taskPath := range paths.DirectTasks {
+		item := directItemAt(plan.Items, i)
+		task := taskFromItem(item)
+		links, depDiagnostics := dependencyLinks(taskPath.Path, task.BlockedBy, refs)
+		if len(depDiagnostics) > 0 {
+			return Result{}, depDiagnostics, nil
+		}
+		content := renderTask(task, Item{}, links, taskID(taskPath.Path))
+		result.Changes = append(result.Changes, newCreateChange(taskPath.Path, content))
+	}
+	return result, nil, nil
+}
+
+func validatePlan(plan Plan) []diagnostics.Diagnostic {
+	var found []diagnostics.Diagnostic
+	if plan.Version != 1 {
+		found = append(found, materializeDiagnostic(diagnostics.DiagnosticMaterializeInputVersionUnsupported, "", "materialize plan version must be 1", "/version"))
+	}
+	if plan.Kind != PlanKind {
+		found = append(found, materializeDiagnostic(diagnostics.DiagnosticMaterializeInputKindInvalid, "", "materialize plan kind is invalid", "/kind"))
+	}
+	if len(plan.Items) == 0 {
+		found = append(found, materializeDiagnostic(diagnostics.DiagnosticMaterializeInputEmpty, "", "materialize plan must contain at least one item", "/items"))
+	}
+	for i, item := range plan.Items {
+		pointer := fmt.Sprintf("/items/%d", i)
+		switch item.Type {
+		case "outcome":
+			found = append(found, validateOutcome(item, pointer)...)
+		case "task":
+			found = append(found, validateTask(taskFromItem(item), pointer)...)
+		default:
+			found = append(found, materializeDiagnostic(diagnostics.DiagnosticMaterializeInputFieldMissing, "", "item type must be outcome or task", pointer+"/type"))
+		}
+	}
+	return found
+}
+
+func validateOutcome(item Item, pointer string) []diagnostics.Diagnostic {
+	var found []diagnostics.Diagnostic
+	found = append(found, requireString(item.Slug, pointer+"/slug")...)
+	found = append(found, requireString(item.Title, pointer+"/title")...)
+	found = append(found, requireString(item.Description, pointer+"/description")...)
+	found = append(found, requireStrings(item.AcceptanceCriteria, pointer+"/acceptance_criteria")...)
+	if len(item.Tasks) == 0 {
+		found = append(found, materializeDiagnostic(diagnostics.DiagnosticMaterializeInputFieldMissing, "", "outcome must contain at least one task", pointer+"/tasks"))
+	}
+	for i, task := range item.Tasks {
+		found = append(found, validateTask(task, fmt.Sprintf("%s/tasks/%d", pointer, i))...)
+	}
+	return found
+}
+
+func validateTask(task Task, pointer string) []diagnostics.Diagnostic {
+	var found []diagnostics.Diagnostic
+	found = append(found, requireString(task.Slug, pointer+"/slug")...)
+	found = append(found, requireString(task.Title, pointer+"/title")...)
+	found = append(found, requireString(task.Description, pointer+"/description")...)
+	found = append(found, requireStrings(task.Preserves, pointer+"/preserves")...)
+	found = append(found, requireString(task.Context, pointer+"/context")...)
+	found = append(found, requireStrings(task.ScopeIn, pointer+"/scope_in")...)
+	found = append(found, requireStrings(task.ScopeOut, pointer+"/scope_out")...)
+	found = append(found, requireString(task.InitialState, pointer+"/initial_state")...)
+	found = append(found, requireStrings(task.AcceptanceCriteria, pointer+"/acceptance_criteria")...)
+	found = append(found, requireStrings(task.SourceOfTruth, pointer+"/source_of_truth")...)
+	for i, dep := range task.BlockedBy {
+		if (strings.TrimSpace(dep.Ref) == "") == (strings.TrimSpace(dep.Path) == "") {
+			found = append(found, materializeDiagnostic(diagnostics.DiagnosticMaterializeInputDependencyInvalid, "", "dependency must have exactly one of ref or path", fmt.Sprintf("%s/blocked_by/%d", pointer, i)))
+		}
+	}
+	return found
+}
+
+func requireString(value string, pointer string) []diagnostics.Diagnostic {
+	if strings.TrimSpace(value) == "" {
+		return []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputFieldMissing, "", "required field is empty", pointer)}
+	}
+	return nil
+}
+
+func requireStrings(values []string, pointer string) []diagnostics.Diagnostic {
+	if len(values) == 0 {
+		return []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputFieldMissing, "", "required array is empty", pointer)}
+	}
+	for i, value := range values {
+		if strings.TrimSpace(value) == "" {
+			return []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputFieldMissing, "", "required array contains an empty value", fmt.Sprintf("%s/%d", pointer, i))}
+		}
+	}
+	return nil
+}
+
+func dependencyLinks(currentPath string, dependencies []Dependency, refs map[string]string) ([]string, []diagnostics.Diagnostic) {
+	var links []string
+	for _, dep := range dependencies {
+		if dep.Ref != "" {
+			target, ok := refs[dep.Ref]
+			if !ok {
+				return nil, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputDependencyUnresolved, currentPath, "dependency ref cannot be resolved", dep.Ref)}
+			}
+			links = append(links, explicitRelative(currentPath, target))
+			continue
+		}
+		if filepath.Base(dep.Path) == dep.Path {
+			return nil, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputDependencyInvalid, currentPath, "dependency path must be explicit relative path or roadmap-root relative path", dep.Path)}
+		}
+		if strings.HasPrefix(dep.Path, "./") || strings.HasPrefix(dep.Path, "../") {
+			links = append(links, filepath.ToSlash(filepath.Clean(dep.Path)))
+			continue
+		}
+		links = append(links, explicitRelative(currentPath, dep.Path))
+	}
+	return links, nil
+}
+
+func explicitRelative(currentPath string, targetPath string) string {
+	fromDir := filepath.Dir(filepath.FromSlash(currentPath))
+	rel, err := filepath.Rel(fromDir, filepath.FromSlash(targetPath))
+	if err != nil {
+		return filepath.ToSlash(targetPath)
+	}
+	rel = filepath.ToSlash(rel)
+	if !strings.HasPrefix(rel, "../") && !strings.HasPrefix(rel, "./") {
+		rel = "./" + rel
+	}
+	return rel
+}
+
+func renderOutcome(item Item, plan roadmap.OutcomePathPlan) string {
+	var b strings.Builder
+	b.WriteString("---\nestado: Pending\ntipo: outcome\n---\n")
+	fmt.Fprintf(&b, "# %s\n\n", item.Title)
+	b.WriteString(item.Description)
+	b.WriteString("\n\n## Criterios de Aceptación\n\n")
+	writeBullets(&b, item.AcceptanceCriteria)
+	b.WriteString("\n## Tasks\n\n| Task | Descripción |\n|------|-------------|\n")
+	for i, taskPlan := range plan.Tasks {
+		description := ""
+		if i < len(item.Tasks) {
+			description = item.Tasks[i].Description
+		}
+		fmt.Fprintf(&b, "| [%s](%s) | %s |\n", taskID(taskPlan.Path), filepath.Base(taskPlan.Path), description)
+	}
+	return b.String()
+}
+
+func renderTask(task Task, outcome Item, links []string, id string) string {
+	var b strings.Builder
+	b.WriteString("---\nestado: Pending\ntipo: task\n---\n")
+	fmt.Fprintf(&b, "# %s: %s\n\n", id, task.Title)
+	if outcome.Title != "" {
+		fmt.Fprintf(&b, "**Outcome**: [%s](README.md)\n\n", outcome.Title)
+	}
+	for _, link := range links {
+		fmt.Fprintf(&b, "[[blocked_by:%s]]\n", link)
+	}
+	if len(links) > 0 {
+		b.WriteByte('\n')
+	}
+	b.WriteString("## Preserva\n\n")
+	writeBullets(&b, task.Preserves)
+	b.WriteString("\n## Contexto\n\n")
+	b.WriteString(task.Context)
+	b.WriteString("\n\n## Alcance\n\n**In**:\n")
+	writeNumbered(&b, task.ScopeIn)
+	b.WriteString("\n**Out**:\n")
+	writeNumbered(&b, task.ScopeOut)
+	b.WriteString("\n## Estado inicial esperado\n\n")
+	b.WriteString(task.InitialState)
+	b.WriteString("\n\n")
+	if strings.TrimSpace(task.TechnicalSpec) != "" {
+		b.WriteString("## Especificación Técnica\n\n")
+		b.WriteString(strings.TrimSpace(task.TechnicalSpec))
+		b.WriteString("\n\n")
+	}
+	b.WriteString("## Criterios de Aceptación\n\n")
+	writeBullets(&b, task.AcceptanceCriteria)
+	b.WriteString("\n## Fuente de verdad\n\n")
+	writeBullets(&b, task.SourceOfTruth)
+	return b.String()
+}
+
+func writeBullets(b *strings.Builder, items []string) {
+	for _, item := range items {
+		fmt.Fprintf(b, "- %s\n", item)
+	}
+}
+
+func writeNumbered(b *strings.Builder, items []string) {
+	for i, item := range items {
+		fmt.Fprintf(b, "%d. %s\n", i+1, item)
+	}
+}
+
+func taskID(path string) string {
+	base := filepath.Base(path)
+	if len(base) >= 4 {
+		return base[:4]
+	}
+	return "T000"
+}
+
+func directItemAt(items []Item, index int) Item {
+	seen := 0
+	for _, item := range items {
+		if item.Type != "task" {
+			continue
+		}
+		if seen == index {
+			return item
+		}
+		seen++
+	}
+	return Item{}
+}
+
+func taskFromItem(item Item) Task {
+	return Task{Type: item.Type, Slug: item.Slug, Title: item.Title, Description: item.Description, Preserves: item.Preserves, Context: item.Context, ScopeIn: item.ScopeIn, ScopeOut: item.ScopeOut, InitialState: item.InitialState, AcceptanceCriteria: item.AcceptanceCriteria, SourceOfTruth: item.SourceOfTruth, BlockedBy: item.BlockedBy, TechnicalSpec: item.TechnicalSpec}
+}
+
+func newCreateChange(path string, content string) Change {
+	return Change{Path: path, Operation: "create", Applied: false, Content: content, Diff: diff.NewFile(path, content), Preconditions: []string{"path must not exist at apply time"}}
+}
+
+func materializeDiagnostic(id string, path string, message string, pointer string) diagnostics.Diagnostic {
+	return diagnostics.Diagnostic{ID: id, Severity: diagnostics.SeverityError, Message: message, Path: path, Details: map[string]any{"pointer": pointer}}
+}
