@@ -54,6 +54,14 @@ Warnings do not block unless the command is run with `--strict`. The default int
 
 Use repo paths resolved by the skill bootstrap. In single-repo mode, `<repo>` is the repository root. In workspace mode, `<repo>` is the selected workspace member. `<roadmap-root>` is the configured roadmap root relative to `<repo>` unless an absolute override is required.
 
+The bootstrap should prefer deterministic context from roadmapctl:
+
+```bash
+roadmapctl context --repo <repo> --roadmap-root <roadmap-root> --output json
+```
+
+The returned `helpers`, `status_values`, `done_statuses`, `active_statuses`, `root`, and `roadmap_root` fields are the source of truth for prompt placeholders. `<roadmap-root>/.roadmapctl.toml` is the preferred config source; `.claude/roadmap.local.md` is a legacy fallback for migration and conceptual/no-write planning only.
+
 ### Preflight before writes, mutations, or execution
 
 Run `doctor` first:

@@ -80,23 +80,50 @@ test -d .git
 - Sí → single-repo mode.
 - No → workspace mode.
 
+### Fuente primaria de contexto
+
+Preferir `roadmapctl context` para resolver configuración efectiva, schema y helpers. `.roadmapctl.toml` dentro de `<roadmap-root>/` es la configuración preferida; `.claude/roadmap.local.md` queda como fallback legacy mientras se completa la migración.
+
+Gate inicial:
+
+```bash
+command -v roadmapctl
+```
+
+Si `roadmapctl` está disponible, ejecutar para cada repo objetivo:
+
+```bash
+roadmapctl context --repo <repo-path> --roadmap-root <roadmap-root-si-se-conoce> --output json
+```
+
+Usar el JSON devuelto como fuente de verdad para:
+
+- `<repo-path>` = `root`
+- `<abs-roadmap-root>` = `roadmap_root`
+- `<roadmap-root>` = path relativo desde `root` a `roadmap_root`
+- `<where-leaf>` = `helpers.where_leaf`
+- `<where-not-done>` = `helpers.where_not_done`
+- `<where-active>` = `helpers.where_active`
+- status/config operacional = campos `status_values`, `done_statuses`, `active_statuses`
+
+Si `roadmapctl context` falla o `roadmapctl` no existe:
+
+- Para writes, mutaciones, ejecución o declaraciones de validez: detenerse; no fallback.
+- Para planificación conceptual sin writes/mutaciones/ejecución/validez: se permite fallback legacy leyendo `.claude/roadmap.local.md` y defaults, dejando claro que los guards faltan para materializar/ejecutar.
+
 ### Workspace mode
 
-1. Si existe `.claude/roadmap.local.md` en cwd con `mode: workspace`, leer `repos:` como base.
-2. Escanear subdirectorios inmediatos con `.git` + `.claude/roadmap.local.md`.
-3. Para cada repo, leer `roadmap-root` y calcular:
-   - `<repo-path>`
-   - `<abs-roadmap-root>`
-   - helpers `<where-leaf>`, `<where-not-done>`, `<where-active>`
+1. Si existe `.claude/roadmap.local.md` en cwd con `mode: workspace`, leer `repos:` como base solo para descubrir candidatos.
+2. Escanear subdirectorios inmediatos con `.git` + config roadmap (`<roadmap-root>/.roadmapctl.toml` o `.claude/roadmap.local.md`).
+3. Para cada repo, ejecutar `roadmapctl context` si está disponible y calcular helpers desde su JSON.
 4. Imprimir checkpoint con repos detectados.
 
 ### Single-repo mode
 
-1. Leer `.claude/roadmap.local.md`.
-2. Si no existe, preguntar dónde vive el roadmap y crearlo.
-3. Extraer `roadmap-root`; si falta, preguntar y actualizar.
-4. Extraer config operacional; si falta, usar defaults.
-5. Pre-computar helpers.
+1. Resolver repo actual.
+2. Ejecutar `roadmapctl context` si está disponible.
+3. Si context no está disponible y el flujo es conceptual/no-write, leer fallback legacy `.claude/roadmap.local.md`; si falta, preguntar dónde vive el roadmap.
+4. Imprimir checkpoint desde JSON de `roadmapctl context` o desde fallback legacy explícitamente marcado.
 
 Template mínimo:
 
@@ -121,6 +148,12 @@ auto-push: true
 ```
 
 ## Configuración
+
+Preferencia de fuentes:
+
+1. `<roadmap-root>/.roadmapctl.toml`
+2. `.claude/roadmap.local.md` legacy
+3. defaults solo para modo conceptual/no-write
 
 | Config key | Default | Placeholder |
 |------------|---------|-------------|
