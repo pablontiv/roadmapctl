@@ -11,6 +11,7 @@ tipo: task
 [[blocked_by:./T003-update-config-templates-fixtures-and-contract-docs.md]]
 [[blocked_by:./T004-add-roadmap-context-compaction-extension.md]]
 [[blocked_by:./T005-cutover-roadmap-skill-loop-to-config.md]]
+[[blocked_by:./T007-implement-parallel-batch-materialization.md]]
 
 ## Preserva
 
@@ -19,7 +20,7 @@ tipo: task
 
 ## Contexto
 
-The design changes config loading side effects and skill behavior. A final verification pass must prove the new contract works as an integrated workflow.
+The design changes config loading side effects, materialization apply ownership, and skill behavior. A final verification pass must prove the new contract works as an integrated workflow.
 
 ## Alcance
 
@@ -43,7 +44,7 @@ Before running headless verification, use git status --short and preserve user c
 ## Criterios de Aceptación
 
 - go test ./internal/config passes.
-- go test ./internal/cli ./internal/materialize passes.
+- go test ./internal/cli ./internal/materialize passes, including batch materialization apply coverage.
 - go test ./... passes.
 - The two Pi headless verification commands from .claude/skills/roadmap/SKILL.md pass or produce documented evidence that roadmapctl doctor/check were required before loop/materialization without modifying files.
 - git status shows only intentional implementation, test, fixture, doc, roadmap, and extension changes.

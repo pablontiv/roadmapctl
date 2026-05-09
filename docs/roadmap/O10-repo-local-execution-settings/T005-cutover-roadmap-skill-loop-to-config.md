@@ -8,6 +8,7 @@ tipo: task
 
 [[blocked_by:./T002-expose-execution-settings-in-context.md]]
 [[blocked_by:./T004-add-roadmap-context-compaction-extension.md]]
+[[blocked_by:./T007-implement-parallel-batch-materialization.md]]
 
 ## Preserva
 
@@ -27,6 +28,7 @@ The user wants behavior settings fixed locally per repo. The skill must stop adv
 3. Update .claude/skills/roadmap/pr-workflow.md so PR mode comes from pr_mode config and merge behavior follows autonomy plus pr_merge_strategy.
 4. Document opportunistic parallel waves using blocked_by/roadmapctl next as the only dependency source.
 5. Document compact_roadmap_context with /compact fallback after durable commit/push/PR bookkeeping.
+6. Update materialization-related skill language so roadmapctl-owned batch apply is allowed while direct multi-file skill writes remain forbidden.
 
 **Out**:
 1. No Go config parser changes in this task.
@@ -47,6 +49,7 @@ In bootstrap, list the new context JSON operational fields the skill must read. 
 - Loop docs define autonomy values manual, supervised, and until_done exactly as in the design spec.
 - Loop docs define parallel waves based only on roadmapctl next/blocked_by and explain conflict repair behavior by autonomy mode.
 - Loop docs define compact_after_task_commit order and fallback to /compact when compact_roadmap_context is unavailable.
+- Plan/materialization docs allow a single roadmapctl-owned batch apply command when roadmapctl guarantees canonical writes, per-file diagnostics, and postcheck.
 
 ## Fuente de verdad
 

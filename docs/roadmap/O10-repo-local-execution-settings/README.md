@@ -23,3 +23,4 @@ Move roadmap loop behavior from per-invocation skill flags into the canonical pe
 | [T004](T004-add-roadmap-context-compaction-extension.md) | Add a project-local Pi extension/tool that triggers roadmap-specific context compaction after durable task completion. |
 | [T005](T005-cutover-roadmap-skill-loop-to-config.md) | Update the roadmap skill docs so /roadmap loop reads behavior from roadmapctl context, removes behavior flags, uses opportunistic waves, and applies autonomy-specific continuation/repair rules. |
 | [T006](T006-verify-repo-settings-flow-end-to-end.md) | Add/update tests and headless verification evidence covering config migration, context exposure, skill cutover, and roadmap-specific compaction fallback behavior. |
+| [T007](T007-implement-parallel-batch-materialization.md) | Let roadmapctl own safe batch materialization apply and internal parallelism instead of having the skill invoke one apply command per target. |
