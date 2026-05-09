@@ -23,3 +23,9 @@ To update goldens after an intentional report-schema or diagnostic change:
 Do not update goldens to hide behavior changes. The fixtures must exercise
 `roadmapctl` diagnostics only; they must not require changes to Rootline or
 materialize/fix roadmap files during tests.
+
+Future `roadmapctl lint` goldens live under `testdata/golden/` like `doctor` and
+`check` goldens. For the same warning diagnostics, strict and non-strict JSON
+reports should remain identical; `--strict` changes only the process exit code.
+Future lint fixtures/goldens belong to O05/T006 unless a task explicitly scopes
+them earlier.

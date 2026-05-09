@@ -33,6 +33,20 @@ const (
 	DiagnosticConfigMissing      = "RMC_CONFIG_MISSING"
 )
 
+const (
+	DiagnosticLintTaskTableMissing          = "RMC_LINT_TASK_TABLE_MISSING"
+	DiagnosticLintTaskTableMissingRow       = "RMC_LINT_TASK_TABLE_MISSING_ROW"
+	DiagnosticLintTaskTableStaleRow         = "RMC_LINT_TASK_TABLE_STALE_ROW"
+	DiagnosticLintTaskTableInvalidLink      = "RMC_LINT_TASK_TABLE_INVALID_LINK"
+	DiagnosticLintTaskSectionMissing        = "RMC_LINT_TASK_SECTION_MISSING"
+	DiagnosticLintAcceptanceCriteriaMissing = "RMC_LINT_ACCEPTANCE_CRITERIA_MISSING"
+	DiagnosticLintSourceOfTruthEmpty        = "RMC_LINT_SOURCE_OF_TRUTH_EMPTY"
+	DiagnosticLintFilenameCaseCollision     = "RMC_LINT_FILENAME_CASE_COLLISION"
+	DiagnosticLintFilenameReserved          = "RMC_LINT_FILENAME_RESERVED"
+	DiagnosticLintSchemaFieldMissing        = "RMC_LINT_SCHEMA_FIELD_MISSING"
+	DiagnosticLintSchemaLinkMissing         = "RMC_LINT_SCHEMA_LINK_MISSING"
+)
+
 type Severity string
 
 type Report struct {

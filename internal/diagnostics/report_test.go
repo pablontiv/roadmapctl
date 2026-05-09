@@ -55,6 +55,7 @@ func TestRenderTextIncludesSummaryAndDiagnostics(t *testing.T) {
 }
 
 func TestExitCodeDerivationCoversContract(t *testing.T) {
+	lintWarningReport := NewReport("roadmapctl/lint", "/repo", "/repo/docs/roadmap", []Diagnostic{{ID: DiagnosticLintTaskSectionMissing, Severity: SeverityWarning, Message: "missing section"}})
 	tests := []struct {
 		name   string
 		report Report
@@ -62,8 +63,8 @@ func TestExitCodeDerivationCoversContract(t *testing.T) {
 		want   int
 	}{
 		{name: "clean", report: NewReport("roadmapctl/check", "/repo", "/repo/docs/roadmap", nil), want: 0},
-		{name: "warning non strict", report: NewReport("roadmapctl/check", "/repo", "/repo/docs/roadmap", []Diagnostic{{ID: "RMC_STATUS_UNKNOWN", Severity: SeverityWarning, Message: "unknown"}}), want: 0},
-		{name: "warning strict", report: NewReport("roadmapctl/check", "/repo", "/repo/docs/roadmap", []Diagnostic{{ID: "RMC_STATUS_UNKNOWN", Severity: SeverityWarning, Message: "unknown"}}), strict: true, want: 1},
+		{name: "lint warning non strict", report: lintWarningReport, want: 0},
+		{name: "lint warning strict", report: lintWarningReport, strict: true, want: 1},
 		{name: "validation", report: NewReport("roadmapctl/check", "/repo", "/repo/docs/roadmap", []Diagnostic{{ID: DiagnosticSingleFileFallback, Severity: SeverityError, Message: "bad"}}), want: 1},
 		{name: "usage config", report: NewReport("roadmapctl/doctor", "/repo", "", []Diagnostic{{ID: DiagnosticConfigMissing, Severity: SeverityError, Message: "missing", ExitCode: ExitUsage}}), want: 2},
 		{name: "environment", report: NewReport("roadmapctl/doctor", "/repo", "", []Diagnostic{{ID: DiagnosticRootlineMissing, Severity: SeverityError, Message: "missing", ExitCode: ExitEnvironment}}), want: 3},
@@ -76,5 +77,8 @@ func TestExitCodeDerivationCoversContract(t *testing.T) {
 				t.Fatalf("ExitCode() = %d, want %d", got, tt.want)
 			}
 		})
+	}
+	if lintWarningReport.Summary.Status != SummaryStatusWarning || lintWarningReport.Summary.Warnings != 1 || lintWarningReport.Summary.Errors != 0 {
+		t.Fatalf("lint warning summary = %#v", lintWarningReport.Summary)
 	}
 }

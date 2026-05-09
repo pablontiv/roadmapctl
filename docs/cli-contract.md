@@ -7,6 +7,8 @@ The MVP exposes only:
 - `roadmapctl doctor`
 - `roadmapctl check`
 
+This document also defines the post-MVP `roadmapctl lint` contract so later implementation can preserve stable diagnostics and JSON semantics.
+
 `roadmapctl` does not materialize roadmap items, mutate roadmap files, fix invalid data, or add roadmap-specific subcommands to `rootline`.
 
 ## Mandatory use by `/roadmap`
@@ -27,9 +29,10 @@ roadmapctl [global flags] <command> [command flags]
 Commands:
   doctor    Diagnose repo/workspace, roadmap config, Rootline availability and schema prerequisites.
   check     Validate canonical roadmap structure, metadata, Rootline graph and blocking dependencies.
+  lint      Planned: validate deterministic semantic roadmap conventions.
 ```
 
-Both commands support `--output text` and `--output json`.
+Commands support `--output text` and `--output json`.
 
 ## Global flags
 
@@ -91,6 +94,29 @@ Example:
 
 ```bash
 roadmapctl check --repo . --output text --strict
+```
+
+## `lint` contract
+
+`lint` is the planned deterministic semantic check layer. It runs after `doctor`/`check` prerequisites are satisfied and remains read-only: it must not materialize, normalize, auto-fix, or judge subjective writing quality.
+
+Boundary:
+
+- `check`: canonical filesystem shape, Rootline/frontmatter/schema validation, dependency graph invariants.
+- `lint`: deterministic documentation and portability conventions that are useful for agents and releases.
+
+Initial lint rule groups:
+
+1. Outcome `## Tasks` table consistency with child `TXXX-*.md` files.
+2. Required task sections: `Preserva`, `Contexto`, `Alcance`, `Estado inicial esperado`, `Criterios de Aceptación`, `Fuente de verdad`.
+3. Presence-only checks for acceptance criteria and source-of-truth entries.
+4. Effective schema compatibility for roadmapctl-required `estado`, `tipo`, and `blocked_by`.
+5. Cross-platform filename and name portability.
+
+Example future invocation:
+
+```bash
+roadmapctl lint --repo . --output json --strict
 ```
 
 ## Streams
@@ -159,7 +185,7 @@ All successful command executions that reach report construction emit this shape
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `version` | integer | yes | Report schema version. MVP uses `1`. |
-| `kind` | string | yes | `roadmapctl/doctor` or `roadmapctl/check`. |
+| `kind` | string | yes | `roadmapctl/doctor`, `roadmapctl/check`, or planned `roadmapctl/lint`. |
 | `summary` | object | yes | Aggregated status and diagnostic counts. |
 | `root` | string | yes | Absolute repo/workspace member root. |
 | `roadmap_root` | string | yes | Absolute resolved roadmap root, when known. Empty if unavailable. |
@@ -173,6 +199,8 @@ All successful command executions that reach report construction emit this shape
 | `errors` | integer | count of error diagnostics |
 | `warnings` | integer | count of warning diagnostics |
 | `infos` | integer | count of info diagnostics |
+
+`summary.status` is derived only from emitted diagnostic severities. `--strict` affects process exit code for warning diagnostics; it does not rewrite warning severities or change a warning-only summary to `error`.
 
 ### `diagnostics[]`
 
@@ -200,6 +228,7 @@ Areas in the MVP:
 - `RMC_STRUCTURE_*`
 - `RMC_GRAPH_*`
 - `RMC_STATUS_*`
+- `RMC_LINT_*` (planned `lint` command)
 
 IDs are part of the machine-readable contract. Messages may change; IDs should not change without a report version bump or compatibility note.
 
@@ -220,6 +249,28 @@ Additional MVP diagnostics should reuse the same convention, for example:
 - `RMC_ROOTLINE_VALIDATE_FAILED`
 - `RMC_GRAPH_CYCLE`
 - `RMC_STATUS_UNKNOWN`
+
+## Planned lint diagnostics
+
+| ID | Severity | Command | Meaning |
+|----|----------|---------|---------|
+| `RMC_LINT_TASK_TABLE_MISSING` | warning | `lint` | Outcome README has no parseable `## Tasks` table. |
+| `RMC_LINT_TASK_TABLE_MISSING_ROW` | warning | `lint` | Child task file is absent from the outcome task table. |
+| `RMC_LINT_TASK_TABLE_STALE_ROW` | warning | `lint` | Task table row links to no current child task file. |
+| `RMC_LINT_TASK_TABLE_INVALID_LINK` | warning | `lint` | Task table link is not an explicit relative child-task link. |
+| `RMC_LINT_TASK_SECTION_MISSING` | warning | `lint` | Task is missing a required roadmap section heading. |
+| `RMC_LINT_ACCEPTANCE_CRITERIA_MISSING` | warning | `lint` | Task has no acceptance criteria entries detectable by structure. |
+| `RMC_LINT_SOURCE_OF_TRUTH_EMPTY` | warning | `lint` | Task `Fuente de verdad` section has no entries. |
+| `RMC_LINT_FILENAME_CASE_COLLISION` | error | `lint` | Roadmap entries collide under case-insensitive filesystem rules. |
+| `RMC_LINT_FILENAME_RESERVED` | error | `lint` | Roadmap entry name is reserved or problematic on supported platforms. |
+| `RMC_LINT_SCHEMA_FIELD_MISSING` | error | `lint` | Effective schema lacks a required field such as `estado` or `tipo`. |
+| `RMC_LINT_SCHEMA_LINK_MISSING` | error | `lint` | Effective schema lacks a required link relation such as `blocked_by`. |
+
+Severity policy:
+
+- `warning`: deterministic semantic or documentation consistency issue; exits `0` unless `--strict` is set.
+- `error`: deterministic portability or schema problem that can break roadmapctl operation or supported filesystems.
+- `lint` must not reclassify MVP `RMC_STRUCTURE_*`, `RMC_GRAPH_*`, `RMC_ROOTLINE_*`, or `RMC_STATUS_*` diagnostics without compatibility notes.
 
 ## Rootline integration boundary
 
