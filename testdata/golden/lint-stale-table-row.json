@@ -1,0 +1,32 @@
+{
+  "diagnostics": [
+    {
+      "details": {
+        "target": "T002-second.md"
+      },
+      "id": "RMC_LINT_TASK_TABLE_MISSING_ROW",
+      "message": "child task is missing from ## Tasks table",
+      "path": "O01-work/README.md",
+      "severity": "warning"
+    },
+    {
+      "details": {
+        "target": "T999-stale.md"
+      },
+      "id": "RMC_LINT_TASK_TABLE_STALE_ROW",
+      "message": "task table row links to a missing child task",
+      "path": "O01-work/README.md",
+      "severity": "warning"
+    }
+  ],
+  "kind": "roadmapctl/lint",
+  "roadmap_root": "<fixture:lint-stale-table-row>/docs/roadmap",
+  "root": "<fixture:lint-stale-table-row>",
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "warning",
+    "warnings": 2
+  },
+  "version": 1
+}

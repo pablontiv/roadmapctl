@@ -67,6 +67,7 @@ func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Co
 	cmd.AddCommand(newLeafCommand("check", "Validate canonical roadmap structure, metadata and dependency graph.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newLeafCommand("context", "Show effective roadmapctl context for skill bootstrap.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newLeafCommand("pending", "List active roadmap tasks that are not done.", &options, stdout, stderr, exitCode))
+	cmd.AddCommand(newLeafCommand("lint", "Run deterministic semantic roadmap lints.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newNextCommand(&options, stdout, stderr, exitCode))
 	cmd.AddCommand(newDecisionCommand(&options, stdout, stderr, exitCode))
 	cmd.AddCommand(newBootstrapCommand(&options, stdout, stderr, exitCode))
@@ -91,6 +92,22 @@ func executeLeafCommand(ctx context.Context, name string, options Options, stdou
 	if options.Output != "text" && options.Output != "json" {
 		fmt.Fprintf(stderr, "%s: unsupported output format %q\n", name, options.Output)
 		return ExitUsage
+	}
+
+	if name == "lint" {
+		report := runLint(ctx, options)
+		if options.Output == "json" {
+			if err := diagnostics.RenderJSON(stdout, report); err != nil {
+				fmt.Fprintf(stderr, "%s: render JSON report: %v\n", name, err)
+				return ExitInternal
+			}
+			return diagnostics.ExitCode(report, options.Strict)
+		}
+		if err := diagnostics.RenderText(stdout, report); err != nil {
+			fmt.Fprintf(stderr, "%s: render text report: %v\n", name, err)
+			return ExitInternal
+		}
+		return diagnostics.ExitCode(report, options.Strict)
 	}
 
 	if name == "pending" {

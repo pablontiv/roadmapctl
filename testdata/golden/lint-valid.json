@@ -1,0 +1,13 @@
+{
+  "diagnostics": [],
+  "kind": "roadmapctl/lint",
+  "roadmap_root": "<fixture:lint-valid>/docs/roadmap",
+  "root": "<fixture:lint-valid>",
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "ok",
+    "warnings": 0
+  },
+  "version": 1
+}

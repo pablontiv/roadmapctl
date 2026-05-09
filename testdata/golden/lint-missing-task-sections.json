@@ -1,0 +1,56 @@
+{
+  "diagnostics": [
+    {
+      "id": "RMC_LINT_ACCEPTANCE_CRITERIA_MISSING",
+      "message": "task has no observable acceptance criteria entries",
+      "path": "O01-work/T002-second.md",
+      "severity": "warning"
+    },
+    {
+      "id": "RMC_LINT_SOURCE_OF_TRUTH_EMPTY",
+      "message": "task source-of-truth section has no entries",
+      "path": "O01-work/T002-second.md",
+      "severity": "warning"
+    },
+    {
+      "details": {
+        "section": "Alcance",
+        "target": "Alcance"
+      },
+      "id": "RMC_LINT_TASK_SECTION_MISSING",
+      "message": "task is missing a required section heading",
+      "path": "O01-work/T002-second.md",
+      "severity": "warning"
+    },
+    {
+      "details": {
+        "section": "Estado inicial esperado",
+        "target": "Estado inicial esperado"
+      },
+      "id": "RMC_LINT_TASK_SECTION_MISSING",
+      "message": "task is missing a required section heading",
+      "path": "O01-work/T002-second.md",
+      "severity": "warning"
+    },
+    {
+      "details": {
+        "section": "Preserva",
+        "target": "Preserva"
+      },
+      "id": "RMC_LINT_TASK_SECTION_MISSING",
+      "message": "task is missing a required section heading",
+      "path": "O01-work/T002-second.md",
+      "severity": "warning"
+    }
+  ],
+  "kind": "roadmapctl/lint",
+  "roadmap_root": "<fixture:lint-missing-task-sections>/docs/roadmap",
+  "root": "<fixture:lint-missing-task-sections>",
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "warning",
+    "warnings": 5
+  },
+  "version": 1
+}

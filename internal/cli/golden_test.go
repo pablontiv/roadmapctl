@@ -42,6 +42,11 @@ func TestCheckGoldenJSONFixtures(t *testing.T) {
 		{name: "pending none", command: "pending", fixture: "valid-no-pending", wantExit: 0, goldenName: "pending-valid-no-pending.json"},
 		{name: "next ready blocked", command: "next", fixture: "valid-next-with-blocked", wantExit: 0, goldenName: "next-valid-next-with-blocked.json"},
 		{name: "decision reverse dependencies", command: "decision", fixture: "valid-next-with-blocked", wantExit: 0, goldenName: "decision-valid-next-with-blocked.json"},
+		{name: "lint valid", command: "lint", fixture: "lint-valid", wantExit: 0, goldenName: "lint-valid.json"},
+		{name: "lint missing table row", command: "lint", fixture: "lint-missing-table-row", wantExit: 0, goldenName: "lint-missing-table-row.json"},
+		{name: "lint stale table row", command: "lint", fixture: "lint-stale-table-row", wantExit: 0, goldenName: "lint-stale-table-row.json"},
+		{name: "lint missing task sections", command: "lint", fixture: "lint-missing-task-sections", wantExit: 0, goldenName: "lint-missing-task-sections.json"},
+		{name: "lint case collision", command: "lint", fixture: "lint-case-collision", wantExit: 1, goldenName: "lint-case-collision.json"},
 	}
 
 	for _, tt := range tests {
@@ -64,6 +69,12 @@ func TestCheckGoldenJSONFixtures(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestLintStrictPromotesWarnings(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"lint", "--repo", testutil.FixturePath(t, "lint-missing-table-row"), "--output", "json", "--strict"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 1, &stdout, &stderr)
 }
 
 func TestReadOnlyTextGoldens(t *testing.T) {

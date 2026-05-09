@@ -1,0 +1,23 @@
+{
+  "diagnostics": [
+    {
+      "details": {
+        "target": "T001-first.md"
+      },
+      "id": "RMC_LINT_FILENAME_CASE_COLLISION",
+      "message": "roadmap entries collide on case-insensitive filesystems",
+      "path": "O01-work/t001-first.md",
+      "severity": "error"
+    }
+  ],
+  "kind": "roadmapctl/lint",
+  "roadmap_root": "<fixture:lint-case-collision>/docs/roadmap",
+  "root": "<fixture:lint-case-collision>",
+  "summary": {
+    "errors": 1,
+    "infos": 0,
+    "status": "error",
+    "warnings": 0
+  },
+  "version": 1
+}
