@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: task
 ---
 # T004: Implementar materialize apply con postcheck

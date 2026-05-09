@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
 	"github.com/pablontiv/roadmapctl/internal/materialize"
+	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +41,7 @@ func newMaterializeCommand(options *Options, stdout io.Writer, stderr io.Writer,
 	return cmd
 }
 
-func runMaterialize(_ context.Context, options Options, planPath string, dryRun bool, apply bool) materializeReport {
+func runMaterialize(ctx context.Context, options Options, planPath string, dryRun bool, apply bool) materializeReport {
 	repoRoot := absoluteClean(options.Repo)
 	if options.Output != "text" && options.Output != "json" {
 		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{{ID: "RMC_MATERIALIZE_OUTPUT_INVALID", Severity: diagnostics.SeverityError, Message: "unsupported output format", ExitCode: diagnostics.ExitUsage}})
@@ -50,9 +52,6 @@ func runMaterialize(_ context.Context, options Options, planPath string, dryRun 
 	if dryRun == apply {
 		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{{ID: "RMC_MATERIALIZE_MODE_INVALID", Severity: diagnostics.SeverityError, Message: "materialize requires exactly one of --dry-run or --apply", ExitCode: diagnostics.ExitUsage}})
 	}
-	if apply {
-		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{{ID: "RMC_MATERIALIZE_APPLY_UNIMPLEMENTED", Severity: diagnostics.SeverityError, Message: "materialize apply is not implemented", ExitCode: diagnostics.ExitUsage}})
-	}
 	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
 	if err != nil {
 		return newMaterializeReport(repoRoot, "", false, nil, []diagnostics.Diagnostic{configDiagnostic(repoRoot, err)})
@@ -61,11 +60,38 @@ func runMaterialize(_ context.Context, options Options, planPath string, dryRun 
 	if len(found) > 0 {
 		return newMaterializeReport(cfg.RepoRoot, cfg.RoadmapRoot, false, nil, found)
 	}
-	result, found, err := materialize.DryRun(cfg.RoadmapRoot, plan)
+	var result materialize.Result
+	if apply {
+		result, found, err = materialize.Apply(cfg.RoadmapRoot, plan)
+	} else {
+		result, found, err = materialize.DryRun(cfg.RoadmapRoot, plan)
+	}
 	if err != nil {
 		found = append(found, diagnostics.Diagnostic{ID: "RMC_MATERIALIZE_DRY_RUN_FAILED", Severity: diagnostics.SeverityError, Message: err.Error(), ExitCode: diagnostics.ExitValidation})
 	}
-	return newMaterializeReport(cfg.RepoRoot, cfg.RoadmapRoot, false, result.Changes, found)
+	if apply && len(found) == 0 {
+		found = append(found, validateMaterializedFiles(ctx, cfg, options, result.Changes)...)
+		postOptions := options
+		postOptions.Repo = cfg.RepoRoot
+		postOptions.RoadmapRoot = cfg.RoadmapRootRel
+		postcheck := runCheck(ctx, postOptions)
+		found = append(found, postcheck.Diagnostics...)
+	}
+	return newMaterializeReport(cfg.RepoRoot, cfg.RoadmapRoot, apply && len(found) == 0, result.Changes, found)
+}
+
+func validateMaterializedFiles(ctx context.Context, cfg *config.Config, options Options, changes []materialize.Change) []diagnostics.Diagnostic {
+	client := rootlinecli.New(rootlinecli.Options{Binary: options.Rootline, Dir: cfg.RepoRoot, Timeout: options.Timeout})
+	var found []diagnostics.Diagnostic
+	for _, change := range changes {
+		if !change.Applied {
+			continue
+		}
+		if _, err := client.ValidateOne(ctx, filepath.Join(cfg.RoadmapRoot, filepath.FromSlash(change.Path))); err != nil {
+			found = append(found, rootlineDiagnostic(err))
+		}
+	}
+	return found
 }
 
 func readMaterializePlan(path string) (materialize.Plan, []diagnostics.Diagnostic) {

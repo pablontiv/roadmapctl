@@ -7,6 +7,32 @@ import (
 	"testing"
 )
 
+func TestApplyCreatesCanonicalFiles(t *testing.T) {
+	root := t.TempDir()
+
+	result, diagnostics, err := Apply(root, samplePlan())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+	if len(result.Changes) != 3 {
+		t.Fatalf("changes = %#v", result.Changes)
+	}
+	for _, change := range result.Changes {
+		if !change.Applied {
+			t.Fatalf("change was not applied: %#v", change)
+		}
+		if strings.HasSuffix(change.Path, "-tasks.md") {
+			t.Fatalf("apply generated forbidden summary file: %s", change.Path)
+		}
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(change.Path))); err != nil {
+			t.Fatalf("applied file %s missing: %v", change.Path, err)
+		}
+	}
+}
+
 func TestDryRunPlansOutcomeAndDirectTaskWithoutWriting(t *testing.T) {
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, "O01-existing"), 0o755); err != nil {
@@ -16,7 +42,38 @@ func TestDryRunPlansOutcomeAndDirectTaskWithoutWriting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, diagnostics, err := DryRun(root, Plan{
+	result, diagnostics, err := DryRun(root, samplePlan())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+	wantPaths := []string{"O02-new-outcome/README.md", "O02-new-outcome/T001-first-task.md", "T002-direct-task.md"}
+	if len(result.Changes) != len(wantPaths) {
+		t.Fatalf("changes = %#v", result.Changes)
+	}
+	for i, want := range wantPaths {
+		if result.Changes[i].Path != want || result.Changes[i].Operation != "create" || result.Changes[i].Applied {
+			t.Fatalf("change[%d] = %#v, want create %s applied=false", i, result.Changes[i], want)
+		}
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(want))); !os.IsNotExist(err) {
+			t.Fatalf("dry-run wrote %s", want)
+		}
+	}
+	if result.Changes[0].Content == "" || result.Changes[1].Content == "" || result.Changes[2].Content == "" {
+		t.Fatalf("changes must include proposed content: %#v", result.Changes)
+	}
+	if !strings.Contains(result.Changes[1].Content, "# T001: First task") {
+		t.Fatalf("task content did not use planned task ID:\n%s", result.Changes[1].Content)
+	}
+	if !strings.Contains(result.Changes[2].Content, "# T002: Direct task") {
+		t.Fatalf("direct task content did not use planned task ID:\n%s", result.Changes[2].Content)
+	}
+}
+
+func samplePlan() Plan {
+	return Plan{
 		Version: 1,
 		Kind:    "roadmapctl/materialize-plan",
 		Items: []Item{
@@ -55,32 +112,5 @@ func TestDryRunPlansOutcomeAndDirectTaskWithoutWriting(t *testing.T) {
 				SourceOfTruth:      []string{"docs/materialize-plan-schema.md"},
 			},
 		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(diagnostics) != 0 {
-		t.Fatalf("diagnostics = %#v", diagnostics)
-	}
-	wantPaths := []string{"O02-new-outcome/README.md", "O02-new-outcome/T001-first-task.md", "T002-direct-task.md"}
-	if len(result.Changes) != len(wantPaths) {
-		t.Fatalf("changes = %#v", result.Changes)
-	}
-	for i, want := range wantPaths {
-		if result.Changes[i].Path != want || result.Changes[i].Operation != "create" || result.Changes[i].Applied {
-			t.Fatalf("change[%d] = %#v, want create %s applied=false", i, result.Changes[i], want)
-		}
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(want))); !os.IsNotExist(err) {
-			t.Fatalf("dry-run wrote %s", want)
-		}
-	}
-	if result.Changes[0].Content == "" || result.Changes[1].Content == "" || result.Changes[2].Content == "" {
-		t.Fatalf("changes must include proposed content: %#v", result.Changes)
-	}
-	if !strings.Contains(result.Changes[1].Content, "# T001: First task") {
-		t.Fatalf("task content did not use planned task ID:\n%s", result.Changes[1].Content)
-	}
-	if !strings.Contains(result.Changes[2].Content, "# T002: Direct task") {
-		t.Fatalf("direct task content did not use planned task ID:\n%s", result.Changes[2].Content)
 	}
 }

@@ -2,6 +2,7 @@ package materialize
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -75,6 +76,42 @@ type plannedTask struct {
 	Ref  string
 	Path string
 	Task Task
+}
+
+func Apply(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, error) {
+	result, found, err := DryRun(roadmapRoot, plan)
+	if err != nil || len(found) > 0 {
+		return result, found, err
+	}
+	for i := range result.Changes {
+		change := &result.Changes[i]
+		abs := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(change.Path))
+		if _, err := os.Stat(abs); err == nil {
+			return result, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, change.Path, "planned path now exists; dry-run is stale", change.Path)}, nil
+		} else if !os.IsNotExist(err) {
+			return result, nil, fmt.Errorf("stat planned path: %w", err)
+		}
+	}
+	for i := range result.Changes {
+		change := &result.Changes[i]
+		abs := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(change.Path))
+		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+			return result, nil, fmt.Errorf("create parent directory: %w", err)
+		}
+		file, err := os.OpenFile(abs, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if err != nil {
+			return result, nil, fmt.Errorf("create materialized file: %w", err)
+		}
+		if _, err := file.WriteString(change.Content); err != nil {
+			_ = file.Close()
+			return result, nil, fmt.Errorf("write materialized file: %w", err)
+		}
+		if err := file.Close(); err != nil {
+			return result, nil, fmt.Errorf("close materialized file: %w", err)
+		}
+		change.Applied = true
+	}
+	return result, nil, nil
 }
 
 func DryRun(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, error) {
