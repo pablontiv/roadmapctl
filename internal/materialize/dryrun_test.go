@@ -26,6 +26,17 @@ func TestDryRunMissingRootIncludesExplicitBootstrapWithoutWriting(t *testing.T) 
 	if _, err := os.Stat(root); !os.IsNotExist(err) {
 		t.Fatalf("dry-run created missing root: %v", err)
 	}
+	for _, change := range result.Changes {
+		if change.Path == ".roadmapctl.toml" {
+			for _, want := range []string{"loop_max_tasks = 0", "parallel = true", "autonomy = \"until_done\"", "compact_after_task_commit = true", "pr_mode = false"} {
+				if !strings.Contains(change.Content, want) {
+					t.Fatalf("materialize bootstrap TOML missing %q:\n%s", want, change.Content)
+				}
+			}
+			return
+		}
+	}
+	t.Fatal("missing .roadmapctl.toml bootstrap change")
 }
 
 func TestApplyCreatesCanonicalFiles(t *testing.T) {

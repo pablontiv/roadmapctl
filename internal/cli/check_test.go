@@ -37,12 +37,14 @@ func TestCheckAllowsStatusDeclaredOnlyInStem(t *testing.T) {
 	}
 }
 
-func TestCheckConfigSourceConflictEmitsWarning(t *testing.T) {
+func TestCheckExistingTOMLWithLegacyDeletesLegacyWithoutWarning(t *testing.T) {
 	code, report, stderr := runCheckJSON(t, "warning-config-conflict")
 	if code != 0 {
 		t.Fatalf("check exit = %d, want 0; stderr=%q report=%#v", code, stderr, report)
 	}
-	assertDiagnostic(t, report, "RMC_CONFIG_SOURCE_CONFLICT")
+	if len(report.Diagnostics) != 0 {
+		t.Fatalf("Diagnostics = %#v, want none", report.Diagnostics)
+	}
 }
 
 func TestCheckConfigRoleOutsideSchemaExitsValidation(t *testing.T) {

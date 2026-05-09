@@ -54,7 +54,7 @@ Commands support `--output text` and `--output json`.
 | Flag | Values | Default | Description |
 |------|--------|---------|-------------|
 | `--repo` | path | cwd | Repository root or workspace member to inspect. |
-| `--roadmap-root` | path | inferred from `<roadmap-root>/.roadmapctl.toml` or legacy `.claude/roadmap.local.md` | Override configured roadmap root. The resolved path must stay inside the repo. |
+| `--roadmap-root` | path | inferred from `<roadmap-root>/.roadmapctl.toml` or one-time legacy migration input | Override configured roadmap root. The resolved path must stay inside the repo. |
 | `--workspace` | bool | auto | Treat `--repo`/cwd as a workspace containing multiple repos. |
 | `--output` | `text`, `json` | `text` | Select human or machine-readable output. |
 | `--strict` | bool | `false` | Treat warnings as failures when calculating exit code. |
@@ -77,6 +77,11 @@ outcome_close_verify = []
 pr_merge_strategy = "squash"
 commit_style = "conventional"
 auto_push = true
+loop_max_tasks = 0
+parallel = true
+autonomy = "until_done"
+compact_after_task_commit = true
+pr_mode = false
 
 [status_values]
 pending = "Pending"
@@ -100,6 +105,11 @@ Config keys:
 | `pr_merge_strategy` | enum string | `squash` | Preferred PR merge strategy (`squash`, `merge`, `rebase`). |
 | `commit_style` | enum string | `conventional` | Commit message style. |
 | `auto_push` | bool | `true` | Whether loop workflows push after commits. |
+| `loop_max_tasks` | integer | `0` | Repo-default loop cap; `0` means unlimited. `/roadmap loop --max` may apply a one-run lower cap in the skill layer. |
+| `parallel` | bool | `true` | Whether `/roadmap loop` may execute safe independent waves through conflict-controlled isolation. |
+| `autonomy` | enum string | `until_done` | Loop continuation policy: `manual`, `supervised`, or `until_done`. |
+| `compact_after_task_commit` | bool | `true` | Whether the skill should compact roadmap context after a completed task is durable. |
+| `pr_mode` | bool | `false` | Whether loop workflows use branch/PR mode by default. |
 | `[status_values].pending` | string | `Pending` | Operational pending role value. |
 | `[status_values].specified` | string | `Specified` | Operational specified role value. |
 | `[status_values].in_progress` | string | `In Progress` | Operational in-progress role value. |
@@ -111,16 +121,17 @@ Operational config does not define or constrain the full document schema. The ef
 
 Precedence:
 
-1. Command-line flags (`--repo`, `--roadmap-root`, `--rootline`, `--timeout`, `--output`, `--strict`).
+1. Command-line flags for process scope (`--repo`, `--roadmap-root`, `--rootline`, `--timeout`, `--output`, `--strict`). These flags do not override behavior settings such as `parallel`, `autonomy`, `compact_after_task_commit`, or `pr_mode`. `/roadmap loop --filter` and `/roadmap loop --max` remain skill-layer one-run selection/cap controls.
 2. Preferred `<roadmap-root>/.roadmapctl.toml` discovered under the selected repo/roadmap root.
-3. Legacy `.claude/roadmap.local.md` fallback while migration is in progress.
+3. Legacy `.claude/roadmap.local.md` as one-time migration input only.
 4. Built-in defaults above for omitted optional keys.
 
-Conflict policy:
+Migration policy:
 
-- If both `.roadmapctl.toml` and legacy `.claude/roadmap.local.md` exist and resolve to different roadmap roots or operational values, prefer `.roadmapctl.toml` and emit a compatibility warning diagnostic.
-- If only the legacy file exists, load it as fallback and emit an informational diagnostic identifying the legacy source.
-- If neither config exists and no explicit `--roadmap-root` is provided, `doctor` emits a config diagnostic and write/mutation flows must block.
+- If `<roadmap-root>/.roadmapctl.toml` exists, it is the only lasting config source. If legacy `.claude/roadmap.local.md` also exists, `roadmapctl` deletes the legacy file after TOML loads successfully and emits no conflict warning.
+- If TOML exists but is invalid, config loading fails with `RMC_CONFIG_PARSE` and never falls back to legacy.
+- If only the legacy file exists, `roadmapctl` reads it as migration input, writes `<roadmap-root>/.roadmapctl.toml` with preserved values plus defaults, validates the generated TOML, deletes legacy only after successful validation, and continues with TOML as the effective config.
+- If neither config exists and no explicit roadmap root can be resolved, `doctor` emits a config diagnostic and write/mutation flows must block.
 
 Open decision: workspace-level discovery may later add a root `.roadmapctl.toml` or workspace index. Until that is approved, this contract treats config as per-repository.
 
@@ -131,7 +142,7 @@ Open decision: workspace-level discovery may later add a root `.roadmapctl.toml`
 It checks:
 
 1. repo/workspace discovery from `--repo` or cwd;
-2. `.claude/roadmap.local.md` existence and parseability;
+2. `<roadmap-root>/.roadmapctl.toml` loading or legacy `.claude/roadmap.local.md` one-time migration;
 3. `roadmap-root` resolution and containment inside the repo;
 4. Rootline executable discovery and basic invocation;
 5. roadmap root and `.stem` presence;
@@ -179,7 +190,7 @@ roadmapctl check --repo . --output text --strict
 
 | Command | `kind` | Purpose | Key fields |
 |---------|--------|---------|------------|
-| `context` | `roadmapctl/context` | Resolve effective repo, roadmap root, config source, schema, status roles and prompt helpers. | `config_path`, `config_source`, `rootline_version`, `schema`, `status_values`, `done_statuses`, `active_statuses`, `helpers` |
+| `context` | `roadmapctl/context` | Resolve effective repo, roadmap root, config source, schema, status roles, operational loop config, and prompt helpers. | `config_path`, `config_source`, `rootline_version`, `schema`, `status_values`, `done_statuses`, `active_statuses`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode`, `auto_push`, `commit_style`, `pr_merge_strategy`, `outcome_close_verify`, `helpers` |
 | `pending` | `roadmapctl/pending` | List active non-done tasks without mutating state. | `count`, `tasks[]`, workspace `repos[]` when applicable |
 | `next` | `roadmapctl/next` | Separate ready and blocked active tasks. | `ready[]`, `blocked[]` |
 | `decision` | `roadmapctl/decision` | Provide deterministic prioritization data. | `recommendations[]`, `quick_wins[]`, `critical_blockers[]`, `blocked[]` |

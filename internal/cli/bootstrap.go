@@ -56,6 +56,11 @@ outcome_close_verify = []
 pr_merge_strategy = "squash"
 commit_style = "conventional"
 auto_push = true
+loop_max_tasks = 0
+parallel = true
+autonomy = "until_done"
+compact_after_task_commit = true
+pr_mode = false
 
 [status_values]
 pending = "Pending"

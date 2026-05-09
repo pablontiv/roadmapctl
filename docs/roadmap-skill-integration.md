@@ -60,7 +60,7 @@ The bootstrap should prefer deterministic context from roadmapctl:
 roadmapctl context --repo <repo> --roadmap-root <roadmap-root> --output json
 ```
 
-The returned `helpers`, `status_values`, `done_statuses`, `active_statuses`, `root`, and `roadmap_root` fields are the source of truth for prompt placeholders. `<roadmap-root>/.roadmapctl.toml` is the preferred config source; `.claude/roadmap.local.md` is a legacy fallback for migration and conceptual/no-write planning only.
+The returned `helpers`, `status_values`, `done_statuses`, `active_statuses`, operational settings, `root`, and `roadmap_root` fields are the source of truth for prompt placeholders. `<roadmap-root>/.roadmapctl.toml` is the lasting config source; `.claude/roadmap.local.md` is migration input only and is deleted by roadmapctl after a successful TOML load or migration.
 
 ### Bootstrap exception for missing roadmap roots
 
@@ -143,7 +143,11 @@ Before creating or modifying any roadmap file:
      roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
   4. If either normal preflight command exits non-zero, stop. Do not write files and do not fall back to a summary markdown file.
 
-After approval, the skill serializes non-bootstrap plans to `roadmapctl/materialize-plan` JSON and delegates deterministic writes:
+After approval, the skill serializes non-bootstrap plans to `roadmapctl/materialize-plan` JSON and delegates deterministic writes. Before serialization, it must classify dependencies strictly:
+  - `blocked_by` is only for hard blockers: the task cannot execute or validate until the target is completed.
+  - For every proposed `blocked_by`, the skill must be able to answer: “What would objectively fail if this task ran first?”
+  - Sequencing preference, shared context, provenance, thematic grouping, or “use its output if available” must stay in task context/source-of-truth prose and must not be serialized as `blocked_by`.
+
   1. Run:
      roadmapctl materialize --plan <plan-json> --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json
   2. Save that dry-run JSON as the frozen change-set and verify it proposes only canonical allowlisted paths and no `*-tasks.md` fallback.

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -43,6 +44,7 @@ func TestBootstrapInitDryRunDoesNotWriteAndShowsChanges(t *testing.T) {
 		Changes []struct {
 			Path    string `json:"path"`
 			Applied bool   `json:"applied"`
+			Content string `json:"content"`
 		} `json:"changes"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
@@ -54,6 +56,13 @@ func TestBootstrapInitDryRunDoesNotWriteAndShowsChanges(t *testing.T) {
 	for _, change := range report.Changes {
 		if change.Applied {
 			t.Fatalf("dry-run applied change: %#v", change)
+		}
+		if change.Path == "docs/roadmap/.roadmapctl.toml" {
+			for _, want := range []string{"loop_max_tasks = 0", "parallel = true", "autonomy = \"until_done\"", "compact_after_task_commit = true", "pr_mode = false"} {
+				if !strings.Contains(change.Content, want) {
+					t.Fatalf("bootstrap TOML missing %q:\n%s", want, change.Content)
+				}
+			}
 		}
 	}
 	if _, err := os.Stat(filepath.Join(repo, "docs", "roadmap", ".stem")); !os.IsNotExist(err) {

@@ -2,7 +2,7 @@
 
 `roadmapctl transition` is the planned policy layer for task status changes. It decides whether a roadmap task can move between operational status roles, then emits the exact Rootline change that would be applied by a later `--apply` flow.
 
-The controller is deterministic and read-model driven. Concrete status strings always come from `.roadmapctl.toml`/legacy config plus the effective Rootline schema; rules must not hardcode labels such as `Pending` or `Completed` except as built-in config defaults.
+The controller is deterministic and read-model driven. Concrete status strings always come from the effective `.roadmapctl.toml` config plus the effective Rootline schema; legacy config is migration input only. Rules must not hardcode labels such as `Pending` or `Completed` except as built-in config defaults.
 
 ## Actions
 
