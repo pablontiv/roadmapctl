@@ -47,12 +47,23 @@ func newTransitionCommand(options *Options, stdout io.Writer, stderr io.Writer, 
 
 func newTransitionActionCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCode *int, action string, status string) *cobra.Command {
 	var dryRun bool
+	var apply bool
 	command := &cobra.Command{Use: action + " <task-path>", Short: "Evaluate " + action + " for a roadmap task.", Args: cobra.ExactArgs(1), SilenceUsage: true, SilenceErrors: true, RunE: func(cmd *cobra.Command, args []string) error {
 		if action == "set-status" {
 			flagStatus, _ := cmd.Flags().GetString("status")
 			status = flagStatus
 		}
-		report := runTransition(context.Background(), *options, action, args[0], status, dryRun)
+		if !dryRun && !apply {
+			report := newTransitionReport(absoluteClean(options.Repo), "", action, normalizeTransitionPath("", args[0]), roadmap.TransitionResult{Diagnostics: []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticTransitionApplyFailed, Severity: diagnostics.SeverityError, Message: "transition apply is not implemented; use --apply", Path: normalizeTransitionPath("", args[0]), ExitCode: diagnostics.ExitUsage}}})
+			if options.Output == "json" {
+				_ = json.NewEncoder(stdout).Encode(report)
+			} else {
+				fmt.Fprintf(stdout, "%s\nstatus: %s\naction: %s\npath: %s\nallowed: %t\n", report.Kind, report.Summary.Status, report.Action, report.Path, report.Allowed)
+			}
+			*exitCode = diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
+			return nil
+		}
+		report := runTransition(context.Background(), *options, action, args[0], status, apply)
 		if options.Output == "json" {
 			if err := json.NewEncoder(stdout).Encode(report); err != nil {
 				fmt.Fprintf(stderr, "transition: render JSON report: %v\n", err)
@@ -66,10 +77,11 @@ func newTransitionActionCommand(options *Options, stdout io.Writer, stderr io.Wr
 		return nil
 	}}
 	command.Flags().BoolVar(&dryRun, "dry-run", true, "plan transition without applying changes")
+	command.Flags().BoolVar(&apply, "apply", false, "apply transition after planning and run postcheck")
 	return command
 }
 
-func runTransition(ctx context.Context, options Options, action string, taskPath string, explicitStatus string, dryRun bool) transitionReport {
+func runTransition(ctx context.Context, options Options, action string, taskPath string, explicitStatus string, apply bool) transitionReport {
 	repoRoot := absoluteClean(options.Repo)
 	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
 	if err != nil {
@@ -77,10 +89,6 @@ func runTransition(ctx context.Context, options Options, action string, taskPath
 		return newTransitionReport(repoRoot, "", action, normalizeTransitionPath("", taskPath), roadmap.TransitionResult{Diagnostics: found})
 	}
 	path := normalizeTransitionPath(cfg.RoadmapRoot, taskPath)
-	if !dryRun {
-		result := roadmap.TransitionResult{Diagnostics: []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticTransitionApplyFailed, Severity: diagnostics.SeverityError, Message: "transition apply is not implemented; use --dry-run", Path: path, ExitCode: diagnostics.ExitUsage}}}
-		return newTransitionReport(cfg.RepoRoot, cfg.RoadmapRoot, action, path, result)
-	}
 	model, found := readModelForConfig(ctx, cfg, options)
 	roles := roadmap.TransitionRoles{DoneStatuses: cfg.DoneStatuses, ActiveStatuses: cfg.ActiveStatuses, InProgressStatus: cfg.StatusValues.InProgress, CompletedStatus: cfg.StatusValues.Completed}
 	var result roadmap.TransitionResult
@@ -101,7 +109,37 @@ func runTransition(ctx context.Context, options Options, action string, taskPath
 	}
 	result.Diagnostics = append(found, result.Diagnostics...)
 	result = validateTransitionTargetStatus(ctx, cfg, options, result, path)
+	if apply && result.Allowed && len(result.Changes) > 0 {
+		result = applyTransitionChanges(ctx, cfg, options, result)
+	}
 	return newTransitionReport(cfg.RepoRoot, cfg.RoadmapRoot, action, path, result)
+}
+
+func applyTransitionChanges(ctx context.Context, cfg *config.Config, options Options, result roadmap.TransitionResult) roadmap.TransitionResult {
+	client := rootlinecli.New(rootlinecli.Options{Binary: options.Rootline, Dir: cfg.RepoRoot, Timeout: options.Timeout})
+	for i := range result.Changes {
+		change := &result.Changes[i]
+		_, err := client.Set(ctx, filepath.Join(cfg.RoadmapRoot, filepath.FromSlash(change.Path)), change.Field+"="+change.After)
+		if err != nil {
+			result.Allowed = false
+			result.Diagnostics = append(result.Diagnostics, rootlineDiagnostic(err))
+			continue
+		}
+		change.Applied = true
+		if _, err := client.ValidateOne(ctx, filepath.Join(cfg.RoadmapRoot, filepath.FromSlash(change.Path))); err != nil {
+			result.Allowed = false
+			result.Diagnostics = append(result.Diagnostics, rootlineDiagnostic(err))
+		}
+	}
+	postOptions := options
+	postOptions.Repo = cfg.RepoRoot
+	postOptions.RoadmapRoot = cfg.RoadmapRootRel
+	postcheck := runCheck(ctx, postOptions)
+	if postcheck.Summary.Errors > 0 {
+		result.Allowed = false
+	}
+	result.Diagnostics = append(result.Diagnostics, postcheck.Diagnostics...)
+	return result
 }
 
 func validateTransitionTargetStatus(ctx context.Context, cfg *config.Config, options Options, result roadmap.TransitionResult, path string) roadmap.TransitionResult {
