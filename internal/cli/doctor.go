@@ -33,6 +33,7 @@ func runDoctor(ctx context.Context, options Options) diagnostics.Report {
 	repoRoot = cfg.RepoRoot
 	roadmapRoot = cfg.RoadmapRoot
 
+	found = append(found, configWarnings(cfg)...)
 	found = append(found, inspectRoadmapPaths(cfg)...)
 
 	client := rootlinecli.New(rootlinecli.Options{
@@ -116,6 +117,19 @@ func inspectRoadmapPaths(cfg *config.Config) []diagnostics.Diagnostic {
 			Message:  "roadmap .stem is not a file",
 			Path:     relToRoot(cfg.RepoRoot, stemPath),
 			ExitCode: diagnostics.ExitUsage,
+		})
+	}
+	return found
+}
+
+func configWarnings(cfg *config.Config) []diagnostics.Diagnostic {
+	found := make([]diagnostics.Diagnostic, 0, len(cfg.Warnings))
+	for _, warning := range cfg.Warnings {
+		found = append(found, diagnostics.Diagnostic{
+			ID:       warning.Code,
+			Severity: diagnostics.SeverityWarning,
+			Message:  warning.Message,
+			Path:     relToRoot(cfg.RepoRoot, warning.Path),
 		})
 	}
 	return found

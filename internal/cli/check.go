@@ -17,7 +17,8 @@ func runCheck(ctx context.Context, options Options) diagnostics.Report {
 		return diagnostics.NewReport("roadmapctl/check", repoRoot, "", found)
 	}
 
-	found, err := roadmap.CheckStructure(cfg.RoadmapRoot)
+	found := configWarnings(cfg)
+	structureDiagnostics, err := roadmap.CheckStructure(cfg.RoadmapRoot)
 	if err != nil {
 		found = append(found, diagnostics.Diagnostic{
 			ID:       "RMC_STRUCTURE_ERROR",
@@ -26,6 +27,7 @@ func runCheck(ctx context.Context, options Options) diagnostics.Report {
 			ExitCode: diagnostics.ExitValidation,
 		})
 	}
+	found = append(found, structureDiagnostics...)
 
 	client := rootlinecli.New(rootlinecli.Options{
 		Binary:  options.Rootline,

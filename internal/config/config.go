@@ -45,6 +45,7 @@ type Config struct {
 	ConfigPath     string
 	RoadmapRoot    string
 	RoadmapRootRel string
+	Warnings       []Warning
 
 	DoneStatuses   []string
 	ActiveStatuses []string
@@ -55,6 +56,20 @@ type Config struct {
 	PRMergeStrategy    string
 	CommitStyle        string
 	AutoPush           bool
+}
+
+type Warning struct {
+	Code    string
+	Message string
+	Path    string
+}
+
+const WarnConfigConflict = "RMC_CONFIG_SOURCE_CONFLICT"
+
+type MigrationPlan struct {
+	SourcePath string
+	TargetPath string
+	Content    string
 }
 
 type StatusValues struct {
@@ -88,6 +103,17 @@ func Load(repo string, opts Options) (*Config, error) {
 			return nil, err
 		}
 		roadmapRoot = filepath.ToSlash(filepath.Dir(strings.TrimPrefix(tomlPath, absRepo+string(filepath.Separator))))
+		if fileExists(legacyPath) {
+			legacyFields, err := loadLegacyFields(legacyPath)
+			if err != nil {
+				return nil, err
+			}
+			legacyCfg := defaultConfig(absRepo)
+			applyFields(legacyCfg, legacyFields)
+			if configDiffers(cfg, legacyCfg) {
+				cfg.Warnings = append(cfg.Warnings, Warning{Code: WarnConfigConflict, Message: "roadmapctl TOML and legacy roadmap config differ; TOML is preferred", Path: tomlPath})
+			}
+		}
 	} else if fileExists(legacyPath) {
 		cfg.ConfigPath = legacyPath
 		fields, err := loadLegacyFields(legacyPath)
@@ -140,6 +166,34 @@ type tomlStatusValues struct {
 	Completed  string `toml:"completed"`
 	Blocked    string `toml:"blocked"`
 	Obsolete   string `toml:"obsolete"`
+}
+
+func LegacyMigrationPlan(repo string, opts Options) (MigrationPlan, error) {
+	absRepo, err := filepath.Abs(repo)
+	if err != nil {
+		return MigrationPlan{}, &Error{Code: ErrConfigParse, Message: "resolve repo root", ExitCode: 2, Cause: err}
+	}
+	absRepo = filepath.Clean(absRepo)
+	legacyPath := filepath.Join(absRepo, ".claude", "roadmap.local.md")
+	fields, err := loadLegacyFields(legacyPath)
+	if err != nil {
+		return MigrationPlan{}, err
+	}
+	cfg := defaultConfig(absRepo)
+	applyFields(cfg, fields)
+	roadmapRoot := stringValue(fields["roadmap-root"])
+	if opts.RoadmapRoot != "" {
+		roadmapRoot = opts.RoadmapRoot
+	}
+	absRoadmapRoot, _, err := fsx.ResolveInside(absRepo, roadmapRoot)
+	if err != nil {
+		return MigrationPlan{}, &Error{Code: ErrRoadmapRootEscape, Message: "roadmap-root must resolve inside repo", Path: legacyPath, ExitCode: 2, Cause: err}
+	}
+	return MigrationPlan{
+		SourcePath: legacyPath,
+		TargetPath: filepath.Join(absRoadmapRoot, ".roadmapctl.toml"),
+		Content:    renderTOMLConfig(cfg),
+	}, nil
 }
 
 func loadTOMLConfig(cfg *Config, path string) error {
@@ -210,6 +264,59 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig) {
 	if decoded.StatusValues.Obsolete != "" {
 		cfg.StatusValues.Obsolete = decoded.StatusValues.Obsolete
 	}
+}
+
+func renderTOMLConfig(cfg *Config) string {
+	var b strings.Builder
+	writeStringList(&b, "done_statuses", cfg.DoneStatuses)
+	writeStringList(&b, "active_statuses", cfg.ActiveStatuses)
+	fmt.Fprintf(&b, "leaf_filter = '%s'\n", cfg.LeafFilter)
+	writeStringList(&b, "outcome_close_verify", cfg.OutcomeCloseVerify)
+	fmt.Fprintf(&b, "pr_merge_strategy = '%s'\n", cfg.PRMergeStrategy)
+	fmt.Fprintf(&b, "commit_style = '%s'\n", cfg.CommitStyle)
+	fmt.Fprintf(&b, "auto_push = %t\n\n", cfg.AutoPush)
+	b.WriteString("[status_values]\n")
+	fmt.Fprintf(&b, "pending = '%s'\n", cfg.StatusValues.Pending)
+	fmt.Fprintf(&b, "specified = '%s'\n", cfg.StatusValues.Specified)
+	fmt.Fprintf(&b, "in_progress = '%s'\n", cfg.StatusValues.InProgress)
+	fmt.Fprintf(&b, "completed = '%s'\n", cfg.StatusValues.Completed)
+	fmt.Fprintf(&b, "blocked = '%s'\n", cfg.StatusValues.Blocked)
+	fmt.Fprintf(&b, "obsolete = '%s'\n", cfg.StatusValues.Obsolete)
+	return b.String()
+}
+
+func writeStringList(b *strings.Builder, key string, values []string) {
+	fmt.Fprintf(b, "%s = [", key)
+	for i, value := range values {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(b, "'%s'", value)
+	}
+	b.WriteString("]\n")
+}
+
+func configDiffers(left *Config, right *Config) bool {
+	return !stringSlicesEqual(left.DoneStatuses, right.DoneStatuses) ||
+		!stringSlicesEqual(left.ActiveStatuses, right.ActiveStatuses) ||
+		left.LeafFilter != right.LeafFilter ||
+		!stringSlicesEqual(left.OutcomeCloseVerify, right.OutcomeCloseVerify) ||
+		left.PRMergeStrategy != right.PRMergeStrategy ||
+		left.CommitStyle != right.CommitStyle ||
+		left.AutoPush != right.AutoPush ||
+		left.StatusValues != right.StatusValues
+}
+
+func stringSlicesEqual(left []string, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func fileExists(path string) bool {

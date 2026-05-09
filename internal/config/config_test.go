@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -118,6 +119,58 @@ func TestLoadTOMLParseErrorIsUsageError(t *testing.T) {
 	}
 	if cfgErr.Code != ErrConfigParse || cfgErr.ExitCode != 2 {
 		t.Fatalf("error = %#v", cfgErr)
+	}
+}
+
+func TestLoadLegacyConfigFallbackFixture(t *testing.T) {
+	loaded, err := Load(filepath.Join("..", "..", "testdata", "fixtures", "valid-legacy-config-fallback"), Options{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if loaded.RoadmapRootRel != "docs/roadmap" || filepath.Base(loaded.ConfigPath) != "roadmap.local.md" {
+		t.Fatalf("loaded = %#v", loaded)
+	}
+}
+
+func TestLoadWarnsWhenTOMLAndLegacyConflict(t *testing.T) {
+	repo := t.TempDir()
+	writeConfig(t, repo, "roadmap-root: docs/roadmap\ndone-statuses: ['Done']\n")
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `done_statuses = ["Completed"]
+`)
+
+	loaded, err := Load(repo, Options{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if len(loaded.Warnings) != 1 || loaded.Warnings[0].Code != WarnConfigConflict {
+		t.Fatalf("Warnings = %#v", loaded.Warnings)
+	}
+}
+
+func TestLegacyMigrationPlanGeneratesTOMLWithoutWriting(t *testing.T) {
+	repo := t.TempDir()
+	writeConfig(t, repo, `roadmap-root: docs/roadmap
+done-statuses: ['Done', 'Archived']
+active-statuses: ['Ready']
+status-values:
+  completed: Done
+auto-push: false
+`)
+
+	plan, err := LegacyMigrationPlan(repo, Options{})
+	if err != nil {
+		t.Fatalf("LegacyMigrationPlan() error = %v", err)
+	}
+	if plan.TargetPath != filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml") {
+		t.Fatalf("TargetPath = %q", plan.TargetPath)
+	}
+	for _, want := range []string{`done_statuses = ['Done', 'Archived']`, `active_statuses = ['Ready']`, `completed = 'Done'`, `auto_push = false`} {
+		if !strings.Contains(plan.Content, want) {
+			t.Fatalf("migration content missing %q:\n%s", want, plan.Content)
+		}
+	}
+	if _, err := os.Stat(plan.TargetPath); !os.IsNotExist(err) {
+		t.Fatalf("migration wrote target unexpectedly: %v", err)
 	}
 }
 

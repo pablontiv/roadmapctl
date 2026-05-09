@@ -37,6 +37,14 @@ func TestCheckAllowsStatusDeclaredOnlyInStem(t *testing.T) {
 	}
 }
 
+func TestCheckConfigSourceConflictEmitsWarning(t *testing.T) {
+	code, report, stderr := runCheckJSON(t, "warning-config-conflict")
+	if code != 0 {
+		t.Fatalf("check exit = %d, want 0; stderr=%q report=%#v", code, stderr, report)
+	}
+	assertDiagnostic(t, report, "RMC_CONFIG_SOURCE_CONFLICT")
+}
+
 func TestCheckConfigRoleOutsideSchemaExitsValidation(t *testing.T) {
 	code, report, stderr := runCheckJSON(t, "invalid-config-role-not-in-schema")
 	if code != 1 {
