@@ -17,10 +17,12 @@ import (
 )
 
 const (
-	ErrorMissingBinary ErrorKind = "missing_binary"
-	ErrorTimeout       ErrorKind = "timeout"
-	ErrorExecution     ErrorKind = "execution"
-	ErrorInvalidJSON   ErrorKind = "invalid_json"
+	ErrorMissingBinary       ErrorKind = "missing_binary"
+	ErrorTimeout             ErrorKind = "timeout"
+	ErrorExecution           ErrorKind = "execution"
+	ErrorIncompatibleCommand ErrorKind = "incompatible_command"
+	ErrorInvalidJSON         ErrorKind = "invalid_json"
+	ErrorInvalidShape        ErrorKind = "invalid_shape"
 )
 
 type ErrorKind string
@@ -183,6 +185,30 @@ func (c *Client) Graph(ctx context.Context, root string, wheres ...string) (*JSO
 	return c.runJSON(ctx, args)
 }
 
+func (c *Client) Tree(ctx context.Context, root string, wheres ...string) (*JSONResult, error) {
+	args := []string{"tree", root}
+	for _, where := range wheres {
+		args = append(args, "--where", where)
+	}
+	args = append(args, "--output", "json")
+	return c.runJSON(ctx, args)
+}
+
+func (c *Client) Set(ctx context.Context, file string, assignments ...string) (*Result, error) {
+	args := append([]string{"set", file}, assignments...)
+	result, err := c.run(ctx, args)
+	return &result, err
+}
+
+func (c *Client) NewFile(ctx context.Context, path string) (*Result, error) {
+	result, err := c.run(ctx, []string{"new", path})
+	return &result, err
+}
+
+func (c *Client) New(ctx context.Context, path string) (*Result, error) {
+	return c.NewFile(ctx, path)
+}
+
 func (c *Client) runJSON(ctx context.Context, args []string) (*JSONResult, error) {
 	result, runErr := c.run(ctx, args)
 
@@ -224,9 +250,17 @@ func (c *Client) run(ctx context.Context, args []string) (Result, error) {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(commandCtx.Err(), context.DeadlineExceeded) {
 			return result, &Error{Kind: ErrorTimeout, Message: "rootline command timed out", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
 		}
-		return result, &Error{Kind: ErrorExecution, Message: "rootline command failed", Stderr: string(result.Stderr), ExitCode: executionExitCode(result), Err: err}
+		return result, &Error{Kind: classifyExecutionKind(result.Stderr), Message: "rootline command failed", Stderr: string(result.Stderr), ExitCode: executionExitCode(result), Err: err}
 	}
 	return result, nil
+}
+
+func classifyExecutionKind(stderr []byte) ErrorKind {
+	text := strings.ToLower(string(stderr))
+	if strings.Contains(text, "unknown command") || strings.Contains(text, "unknown flag") || strings.Contains(text, "unknown shorthand flag") {
+		return ErrorIncompatibleCommand
+	}
+	return ErrorExecution
 }
 
 func executionExitCode(result Result) int {

@@ -249,8 +249,14 @@ Additional MVP diagnostics should reuse the same convention, for example:
 - `RMC_STRUCTURE_MISSING_OUTCOME_README`
 - `RMC_STRUCTURE_DUPLICATE_ID`
 - `RMC_ROOTLINE_VALIDATE_FAILED`
+- `RMC_ROOTLINE_DESCRIBE_FAILED`
+- `RMC_ROOTLINE_QUERY_FAILED`
+- `RMC_ROOTLINE_GRAPH_FAILED`
+- future rootline operation IDs such as `RMC_ROOTLINE_TREE_FAILED`, `RMC_ROOTLINE_SET_FAILED`, `RMC_ROOTLINE_NEW_FAILED`
 - `RMC_GRAPH_CYCLE`
 - `RMC_STATUS_UNKNOWN`
+
+Rootline operation diagnostics use `details.kind` to distinguish `missing_binary`, `timeout`, `execution`, `incompatible_command`, `invalid_json`, and `invalid_shape` when known.
 
 ## Planned lint diagnostics
 

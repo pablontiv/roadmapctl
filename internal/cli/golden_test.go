@@ -102,6 +102,15 @@ func fakeRootline(args []string, stdout *os.File, stderr *os.File) int {
 		}
 		fmt.Fprintln(stdout, `{"version":1,"kind":"rootline/graph","nodes":[],"edges":[],"cycles":[],"broken_links":[]}`)
 		return 0
+	case "tree":
+		fmt.Fprintln(stdout, `{"version":1,"kind":"rootline/tree","root":{"children":[]}}`)
+		return 0
+	case "set":
+		fmt.Fprintln(stdout, `set estado = "Completed"`)
+		return 0
+	case "new":
+		fmt.Fprintln(stdout, `created docs/roadmap/T001-task.md`)
+		return 0
 	default:
 		fmt.Fprintf(stderr, "unknown fake rootline command %q\n", args[0])
 		return 2

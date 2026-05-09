@@ -172,6 +172,14 @@ func TestClientParsesJSONForValidateDescribeQueryAndGraph(t *testing.T) {
 			want: []string{"graph", "docs/roadmap", "--where", "isIndex == false", "--output", "json"},
 			json: `{"version":1,"kind":"rootline/graph","nodes":[],"edges":[]}`,
 		},
+		{
+			name: "tree",
+			call: func(c *Client) (*JSONResult, error) {
+				return c.Tree(context.Background(), "docs/roadmap", "isIndex == false")
+			},
+			want: []string{"tree", "docs/roadmap", "--where", "isIndex == false", "--output", "json"},
+			json: `{"version":1,"kind":"rootline/tree","root":{"children":[]}}`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -189,6 +197,45 @@ func TestClientParsesJSONForValidateDescribeQueryAndGraph(t *testing.T) {
 				t.Fatalf("Args = %#v, want %#v", executor.commands[0].Args, tt.want)
 			}
 		})
+	}
+}
+
+func TestClientUsesRawArgsForSetAndNew(t *testing.T) {
+	executor := &recordingExecutor{stdout: []byte("set estado = \"Completed\"")}
+	client := New(Options{Binary: writeExecutable(t, t.TempDir(), "rootline"), Executor: executor})
+
+	if _, err := client.Set(context.Background(), "docs/roadmap/T001-task.md", "estado=Completed"); err != nil {
+		t.Fatalf("Set error = %v", err)
+	}
+	if _, err := client.New(context.Background(), "docs/roadmap/T002-new.md"); err != nil {
+		t.Fatalf("New error = %v", err)
+	}
+
+	want := [][]string{
+		{"set", "docs/roadmap/T001-task.md", "estado=Completed"},
+		{"new", "docs/roadmap/T002-new.md"},
+	}
+	for i := range want {
+		if !reflect.DeepEqual(executor.commands[i].Args, want[i]) {
+			t.Fatalf("command %d args = %#v, want %#v", i, executor.commands[i].Args, want[i])
+		}
+	}
+}
+
+func TestExecutionClassifiesIncompatibleCommand(t *testing.T) {
+	executor := &recordingExecutor{stderr: []byte("unknown command \"tree\" for \"rootline\""), exitCode: 1, err: errors.New("exit status 1")}
+	client := New(Options{Binary: writeExecutable(t, t.TempDir(), "rootline"), Executor: executor})
+
+	_, err := client.Tree(context.Background(), "docs/roadmap")
+	if err == nil {
+		t.Fatal("Tree error = nil, want incompatible command error")
+	}
+	var rootlineErr *Error
+	if !errors.As(err, &rootlineErr) {
+		t.Fatalf("error type = %T, want *Error", err)
+	}
+	if rootlineErr.Kind != ErrorIncompatibleCommand {
+		t.Fatalf("Kind = %q, want %q", rootlineErr.Kind, ErrorIncompatibleCommand)
 	}
 }
 
