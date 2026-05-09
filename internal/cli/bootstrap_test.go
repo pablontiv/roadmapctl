@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -62,6 +63,7 @@ func TestBootstrapInitDryRunDoesNotWriteAndShowsChanges(t *testing.T) {
 
 func TestBootstrapInitApplyWritesAllowedFiles(t *testing.T) {
 	repo := t.TempDir()
+	initGitRepo(t, repo)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr)
 	if code != 0 {
@@ -75,6 +77,39 @@ func TestBootstrapInitApplyWritesAllowedFiles(t *testing.T) {
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected path %s: %v", path, err)
 		}
+	}
+}
+
+func TestBootstrapInitApplyRunsPostcheck(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	var stdout, stderr bytes.Buffer
+	missingRootline := filepath.Join(t.TempDir(), "missing-rootline")
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--rootline", missingRootline, "--apply", "--output", "json"}, &stdout, &stderr)
+	if code == 0 {
+		t.Fatalf("init apply with failing postcheck exit = 0, want non-zero; stderr=%q stdout=%q", stderr.String(), stdout.String())
+	}
+	var report struct {
+		Diagnostics []struct {
+			ID string `json:"id"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	for _, diagnostic := range report.Diagnostics {
+		if diagnostic.ID == "RMC_ROOTLINE_ERROR" || diagnostic.ID == "RMC_ENV_ROOTLINE_MISSING" {
+			return
+		}
+	}
+	t.Fatalf("missing postcheck diagnostic in %#v", report.Diagnostics)
+}
+
+func initGitRepo(t *testing.T, repo string) {
+	t.Helper()
+	cmd := exec.Command("git", "init", repo)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init failed: %v\n%s", err, output)
 	}
 }
 

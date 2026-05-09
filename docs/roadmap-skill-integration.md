@@ -62,6 +62,19 @@ roadmapctl context --repo <repo> --roadmap-root <roadmap-root> --output json
 
 The returned `helpers`, `status_values`, `done_statuses`, `active_statuses`, `root`, and `roadmap_root` fields are the source of truth for prompt placeholders. `<roadmap-root>/.roadmapctl.toml` is the preferred config source; `.claude/roadmap.local.md` is a legacy fallback for migration and conceptual/no-write planning only.
 
+### Bootstrap exception for missing roadmap roots
+
+Normal writes require `doctor` and `check` first. The only exception is an explicitly requested missing-root bootstrap, because `check` cannot pass before `<roadmap-root>` and its schema/config files exist.
+
+Allowed bootstrap flows are:
+
+1. Preferred setup flow: `roadmapctl bootstrap inspect`, then `roadmapctl bootstrap init --dry-run`, then `roadmapctl bootstrap init --apply` after explicit approval.
+2. Plan-materialization bootstrap: `roadmapctl materialize --dry-run` may propose only bootstrap allowlist paths (`.`, `.stem`, `.roadmapctl.toml`) plus canonical roadmap files; `--apply` is allowed only after explicit approval of that dry-run.
+
+Both apply flows must run a postcheck before success is reported. `bootstrap init --apply` runs `roadmapctl check` internally after writing, and the skill must also run an explicit `roadmapctl check --strict` before claiming success or committing. `materialize --apply` runs its own postcheck and must still be followed by the explicit skill postcheck.
+
+This exception is not an auto-fix path: if `<roadmap-root>` already exists and `doctor` or `check` fails, stop and report diagnostics. Do not use bootstrap to repair invalid roadmaps, rewrite `.stem`, or bypass normal preflight.
+
 ### Preflight before writes, mutations, or execution
 
 Run `doctor` first:
@@ -118,13 +131,19 @@ Apply this behavior to the materialization phase of `/roadmap plan`.
 ```text
 Before creating or modifying any roadmap file:
   1. Require `roadmapctl` on PATH.
-  2. Run:
-     roadmapctl doctor --repo <repo> --roadmap-root <roadmap-root> --output json --strict
-  3. Run:
+  2. If this is an explicit missing-root bootstrap, run:
+     roadmapctl bootstrap inspect --repo <repo> --roadmap-root <roadmap-root> --output json
+     roadmapctl bootstrap init --repo <repo> --roadmap-root <roadmap-root> --dry-run --output json
+     After approval, run:
+     roadmapctl bootstrap init --repo <repo> --roadmap-root <roadmap-root> --apply --output json
      roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
-  4. If either command exits non-zero, stop. Do not write files and do not fall back to a summary markdown file.
+     If any command exits non-zero, stop.
+  3. Otherwise run:
+     roadmapctl doctor --repo <repo> --roadmap-root <roadmap-root> --output json --strict
+     roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
+  4. If either normal preflight command exits non-zero, stop. Do not write files and do not fall back to a summary markdown file.
 
-After approval, the skill serializes the plan to `roadmapctl/materialize-plan` JSON and delegates deterministic writes:
+After approval, the skill serializes non-bootstrap plans to `roadmapctl/materialize-plan` JSON and delegates deterministic writes:
   1. Run:
      roadmapctl materialize --plan <plan-json> --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json
   2. Verify the dry-run proposes only canonical allowlisted paths and no `*-tasks.md` fallback.

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -107,7 +108,7 @@ func newBootstrapInitCommand(options *Options, stdout io.Writer, stderr io.Write
 		if dryRun == apply {
 			return fmt.Errorf("bootstrap init requires exactly one of --dry-run or --apply")
 		}
-		report := buildBootstrapInit(*options, apply)
+		report := buildBootstrapInit(context.Background(), *options, apply)
 		*exitCode = renderBootstrap(report, options.Output, stdout, stderr)
 		return nil
 	}}
@@ -126,13 +127,20 @@ func buildBootstrapInspect(options Options) bootstrapReport {
 	return report
 }
 
-func buildBootstrapInit(options Options, apply bool) bootstrapReport {
+func buildBootstrapInit(ctx context.Context, options Options, apply bool) bootstrapReport {
 	root, roadmapRoot, diagnosticsFound := bootstrapRoots(options)
 	report := bootstrapReport{Version: 1, Kind: "roadmapctl/bootstrap/init", Root: root, RoadmapRoot: roadmapRoot, Diagnostics: diagnosticsFound}
 	if len(diagnosticsFound) == 0 {
 		report.Changes = proposedBootstrapChanges(root, roadmapRoot, apply)
 		if apply {
 			report.Diagnostics = append(report.Diagnostics, applyBootstrapChanges(root, report.Changes)...)
+			if len(report.Diagnostics) == 0 {
+				postOptions := options
+				postOptions.Repo = root
+				postOptions.RoadmapRoot = relToRoot(root, roadmapRoot)
+				postcheck := runCheck(ctx, postOptions)
+				report.Diagnostics = append(report.Diagnostics, postcheck.Diagnostics...)
+			}
 		}
 	}
 	report.Summary = diagnostics.NewReport(report.Kind, root, roadmapRoot, report.Diagnostics).Summary

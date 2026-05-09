@@ -56,6 +56,20 @@ roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json 
 
 Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de escribir. Reportar comando, exit code y diagnostic IDs si hubo JSON. No crear archivos, no usar fallback `*-tasks.md`, no auto-fix.
 
+#### Excepción explícita de bootstrap
+
+La única excepción al `doctor`/`check` previo es un bootstrap pedido explícitamente para un `<roadmap-root>` inexistente. Flujo permitido:
+
+```bash
+roadmapctl bootstrap inspect --repo <repo-path> --roadmap-root <roadmap-root> --output json
+roadmapctl bootstrap init --repo <repo-path> --roadmap-root <roadmap-root> --dry-run --output json
+# tras aprobación explícita del dry-run:
+roadmapctl bootstrap init --repo <repo-path> --roadmap-root <roadmap-root> --apply --output json
+roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+```
+
+`bootstrap init --apply` también ejecuta postcheck internamente; el `check --strict` posterior sigue siendo obligatorio como evidencia externa antes de declarar éxito. Si el root ya existe y `doctor`/`check` falla, no usar bootstrap como reparación: detenerse y reportar diagnostics.
+
 Guardrail obligatorio antes de escribir:
 
 1. Confirmar que se va a crear una de estas formas:
@@ -96,7 +110,7 @@ Revisar el JSON:
 
 - `summary.status == "ok"`.
 - `changes[]` contiene únicamente operaciones canónicas permitidas:
-  - `.` / `.stem` / `.roadmapctl.toml` solo en bootstrap explícito,
+  - `.` / `.stem` / `.roadmapctl.toml` solo en bootstrap explícito aprobado (preferir `roadmapctl bootstrap init` para crear solo bootstrap),
   - `OXX-slug/README.md`,
   - `OXX-slug/TXXX-task.md`,
   - `TXXX-task.md`.
