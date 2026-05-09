@@ -11,8 +11,6 @@ import (
 
 	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
-	"github.com/pablontiv/roadmapctl/internal/roadmap"
-	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )
 
 type pendingReport struct {
@@ -80,25 +78,10 @@ func runPendingWorkspace(ctx context.Context, options Options) pendingReport {
 }
 
 func pendingForConfig(ctx context.Context, cfg *config.Config, options Options) ([]pendingTask, []diagnostics.Diagnostic) {
-	client := rootlinecli.New(rootlinecli.Options{Binary: options.Rootline, Dir: cfg.RepoRoot, Timeout: options.Timeout})
-	var found []diagnostics.Diagnostic
-	tree, err := client.Tree(ctx, cfg.RoadmapRoot, cfg.LeafFilter)
-	if err != nil {
-		found = append(found, rootlineDiagnostic(err))
-	}
-	query, err := client.Query(ctx, cfg.RoadmapRoot, cfg.LeafFilter, `tipo == "task"`)
-	if err != nil {
-		found = append(found, rootlineDiagnostic(err))
-	}
-	graph, err := client.Graph(ctx, cfg.RoadmapRoot, cfg.LeafFilter)
-	if err != nil {
-		found = append(found, rootlineDiagnostic(err))
-	}
+	model, found := readModelForConfig(ctx, cfg, options)
 	if len(found) > 0 {
 		return nil, found
 	}
-	model, modelDiagnostics := roadmap.ReadModelFromRootline(tree.Decoded, query.Decoded, graph.Decoded, roadmap.StatusRoleConfig{Done: cfg.DoneStatuses, Active: cfg.ActiveStatuses})
-	found = append(found, modelDiagnostics...)
 	var tasks []pendingTask
 	for _, task := range model.Tasks {
 		if task.Done {
