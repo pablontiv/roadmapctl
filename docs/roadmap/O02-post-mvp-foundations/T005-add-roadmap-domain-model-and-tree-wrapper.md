@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: task
 ---
 # T005: Agregar modelo read-domain y wrapper `rootline tree`
