@@ -16,21 +16,30 @@ import (
 )
 
 type contextReport struct {
-	Version         int                      `json:"version"`
-	Kind            string                   `json:"kind"`
-	Summary         diagnostics.Summary      `json:"summary"`
-	Root            string                   `json:"root"`
-	RoadmapRoot     string                   `json:"roadmap_root"`
-	ConfigPath      string                   `json:"config_path"`
-	ConfigSource    string                   `json:"config_source"`
-	RootlineVersion string                   `json:"rootline_version"`
-	Schema          contextSchema            `json:"schema"`
-	StatusValues    config.StatusValues      `json:"status_values"`
-	DoneStatuses    []string                 `json:"done_statuses"`
-	ActiveStatuses  []string                 `json:"active_statuses"`
-	Helpers         contextHelpers           `json:"helpers"`
-	Repos           []workspaceRepoContext   `json:"repos,omitempty"`
-	Diagnostics     []diagnostics.Diagnostic `json:"diagnostics"`
+	Version                int                      `json:"version"`
+	Kind                   string                   `json:"kind"`
+	Summary                diagnostics.Summary      `json:"summary"`
+	Root                   string                   `json:"root"`
+	RoadmapRoot            string                   `json:"roadmap_root"`
+	ConfigPath             string                   `json:"config_path"`
+	ConfigSource           string                   `json:"config_source"`
+	RootlineVersion        string                   `json:"rootline_version"`
+	Schema                 contextSchema            `json:"schema"`
+	StatusValues           config.StatusValues      `json:"status_values"`
+	DoneStatuses           []string                 `json:"done_statuses"`
+	ActiveStatuses         []string                 `json:"active_statuses"`
+	OutcomeCloseVerify     []string                 `json:"outcome_close_verify"`
+	PRMergeStrategy        string                   `json:"pr_merge_strategy"`
+	CommitStyle            string                   `json:"commit_style"`
+	AutoPush               bool                     `json:"auto_push"`
+	LoopMaxTasks           int                      `json:"loop_max_tasks"`
+	Parallel               bool                     `json:"parallel"`
+	Autonomy               string                   `json:"autonomy"`
+	CompactAfterTaskCommit bool                     `json:"compact_after_task_commit"`
+	PRMode                 bool                     `json:"pr_mode"`
+	Helpers                contextHelpers           `json:"helpers"`
+	Repos                  []workspaceRepoContext   `json:"repos,omitempty"`
+	Diagnostics            []diagnostics.Diagnostic `json:"diagnostics"`
 }
 
 type contextSchema struct {
@@ -39,11 +48,20 @@ type contextSchema struct {
 }
 
 type workspaceRepoContext struct {
-	Name        string         `json:"name"`
-	Root        string         `json:"root"`
-	RoadmapRoot string         `json:"roadmap_root"`
-	ConfigPath  string         `json:"config_path"`
-	Helpers     contextHelpers `json:"helpers"`
+	Name                   string         `json:"name"`
+	Root                   string         `json:"root"`
+	RoadmapRoot            string         `json:"roadmap_root"`
+	ConfigPath             string         `json:"config_path"`
+	OutcomeCloseVerify     []string       `json:"outcome_close_verify"`
+	PRMergeStrategy        string         `json:"pr_merge_strategy"`
+	CommitStyle            string         `json:"commit_style"`
+	AutoPush               bool           `json:"auto_push"`
+	LoopMaxTasks           int            `json:"loop_max_tasks"`
+	Parallel               bool           `json:"parallel"`
+	Autonomy               string         `json:"autonomy"`
+	CompactAfterTaskCommit bool           `json:"compact_after_task_commit"`
+	PRMode                 bool           `json:"pr_mode"`
+	Helpers                contextHelpers `json:"helpers"`
 }
 
 type contextHelpers struct {
@@ -115,7 +133,22 @@ func discoverWorkspaceRepos(workspaceRoot string) ([]workspaceRepoContext, []dia
 			found = append(found, configDiagnostic(workspaceRoot, err))
 			return filepath.SkipDir
 		}
-		repos = append(repos, workspaceRepoContext{Name: name, Root: cfg.RepoRoot, RoadmapRoot: cfg.RoadmapRoot, ConfigPath: relToRoot(cfg.RepoRoot, cfg.ConfigPath), Helpers: contextHelpers{WhereLeaf: cfg.LeafFilter, WhereNotDone: statusWhere("not", cfg.DoneStatuses), WhereActive: statusWhere("", cfg.ActiveStatuses)}})
+		repos = append(repos, workspaceRepoContext{
+			Name:                   name,
+			Root:                   cfg.RepoRoot,
+			RoadmapRoot:            cfg.RoadmapRoot,
+			ConfigPath:             relToRoot(cfg.RepoRoot, cfg.ConfigPath),
+			OutcomeCloseVerify:     append([]string{}, cfg.OutcomeCloseVerify...),
+			PRMergeStrategy:        cfg.PRMergeStrategy,
+			CommitStyle:            cfg.CommitStyle,
+			AutoPush:               cfg.AutoPush,
+			LoopMaxTasks:           cfg.LoopMaxTasks,
+			Parallel:               cfg.Parallel,
+			Autonomy:               cfg.Autonomy,
+			CompactAfterTaskCommit: cfg.CompactAfterTaskCommit,
+			PRMode:                 cfg.PRMode,
+			Helpers:                contextHelpers{WhereLeaf: cfg.LeafFilter, WhereNotDone: statusWhere("not", cfg.DoneStatuses), WhereActive: statusWhere("", cfg.ActiveStatuses)},
+		})
 		return filepath.SkipDir
 	})
 	sort.Slice(repos, func(i int, j int) bool { return repos[i].Name < repos[j].Name })
@@ -140,6 +173,15 @@ func newContextReport(root string, roadmapRoot string, configPath string, config
 		result.StatusValues = cfg.StatusValues
 		result.DoneStatuses = append([]string(nil), cfg.DoneStatuses...)
 		result.ActiveStatuses = append([]string(nil), cfg.ActiveStatuses...)
+		result.OutcomeCloseVerify = append([]string{}, cfg.OutcomeCloseVerify...)
+		result.PRMergeStrategy = cfg.PRMergeStrategy
+		result.CommitStyle = cfg.CommitStyle
+		result.AutoPush = cfg.AutoPush
+		result.LoopMaxTasks = cfg.LoopMaxTasks
+		result.Parallel = cfg.Parallel
+		result.Autonomy = cfg.Autonomy
+		result.CompactAfterTaskCommit = cfg.CompactAfterTaskCommit
+		result.PRMode = cfg.PRMode
 		result.Helpers = contextHelpers{
 			WhereLeaf:    cfg.LeafFilter,
 			WhereNotDone: statusWhere("not", cfg.DoneStatuses),

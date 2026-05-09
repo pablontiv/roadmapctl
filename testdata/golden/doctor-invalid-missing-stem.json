@@ -8,7 +8,7 @@
     },
     {
       "details": {
-        "config": ".claude/roadmap.local.md",
+        "config": "docs/roadmap/.roadmapctl.toml",
         "roadmap_root": "docs/roadmap",
         "rootline_version": "<rootline-version>"
       },

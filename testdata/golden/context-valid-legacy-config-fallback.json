@@ -4,8 +4,12 @@
     "Specified",
     "In Progress"
   ],
-  "config_path": ".claude/roadmap.local.md",
-  "config_source": "legacy",
+  "auto_push": true,
+  "autonomy": "until_done",
+  "commit_style": "conventional",
+  "compact_after_task_commit": true,
+  "config_path": "docs/roadmap/.roadmapctl.toml",
+  "config_source": "toml",
   "diagnostics": [],
   "done_statuses": [
     "Completed",
@@ -17,6 +21,11 @@
     "where_not_done": "not (estado in [\"Completed\", \"Obsolete\"])"
   },
   "kind": "roadmapctl/context",
+  "loop_max_tasks": 0,
+  "outcome_close_verify": [],
+  "parallel": true,
+  "pr_merge_strategy": "squash",
+  "pr_mode": false,
   "roadmap_root": "<fixture:valid-legacy-config-fallback>/docs/roadmap",
   "root": "<fixture:valid-legacy-config-fallback>",
   "rootline_version": "<rootline-version>",

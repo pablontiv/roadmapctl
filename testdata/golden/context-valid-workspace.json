@@ -1,5 +1,9 @@
 {
   "active_statuses": null,
+  "auto_push": false,
+  "autonomy": "",
+  "commit_style": "",
+  "compact_after_task_commit": false,
   "config_path": "",
   "config_source": "workspace",
   "diagnostics": [],
@@ -10,26 +14,49 @@
     "where_not_done": ""
   },
   "kind": "roadmapctl/context",
+  "loop_max_tasks": 0,
+  "outcome_close_verify": null,
+  "parallel": false,
+  "pr_merge_strategy": "",
+  "pr_mode": false,
   "repos": [
     {
+      "auto_push": true,
+      "autonomy": "until_done",
+      "commit_style": "conventional",
+      "compact_after_task_commit": true,
       "config_path": "docs/roadmap/.roadmapctl.toml",
       "helpers": {
         "where_active": "estado in [\"Pending\", \"Specified\", \"In Progress\"]",
         "where_leaf": "isIndex == false",
         "where_not_done": "not (estado in [\"Completed\", \"Obsolete\"])"
       },
+      "loop_max_tasks": 0,
       "name": "alpha",
+      "outcome_close_verify": [],
+      "parallel": true,
+      "pr_merge_strategy": "squash",
+      "pr_mode": false,
       "roadmap_root": "<fixture:valid-workspace>/alpha/docs/roadmap",
       "root": "<fixture:valid-workspace>/alpha"
     },
     {
+      "auto_push": true,
+      "autonomy": "until_done",
+      "commit_style": "conventional",
+      "compact_after_task_commit": true,
       "config_path": "docs/roadmap/.roadmapctl.toml",
       "helpers": {
         "where_active": "estado in [\"Pending\", \"Specified\", \"In Progress\"]",
         "where_leaf": "isIndex == false",
         "where_not_done": "not (estado in [\"Completed\", \"Obsolete\"])"
       },
+      "loop_max_tasks": 0,
       "name": "beta",
+      "outcome_close_verify": [],
+      "parallel": true,
+      "pr_merge_strategy": "squash",
+      "pr_mode": false,
       "roadmap_root": "<fixture:valid-workspace>/beta/docs/roadmap",
       "root": "<fixture:valid-workspace>/beta"
     }
