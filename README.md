@@ -26,12 +26,13 @@ scripts/sync-roadmap-skill.sh --install
 scripts/sync-roadmap-skill.sh --check
 ```
 
-## MVP
+## Commands
 
-First release scope:
+Implemented command families:
 
-- `roadmapctl doctor`
-- `roadmapctl check`
+- Guards: `doctor`, `check`, `lint`
+- Read-only state: `context`, `pending`, `next`, `decision`
+- Controlled mutation: `transition`, `materialize`, `bootstrap`
 
 The public CLI contract is documented in [docs/cli-contract.md](docs/cli-contract.md). Implemented `/roadmap` commands that write, mutate, execute tasks, or claim roadmap validity must use `roadmapctl` as a blocking guard. Skill integration details live in [docs/roadmap-skill-integration.md](docs/roadmap-skill-integration.md).
 
@@ -52,9 +53,8 @@ go test ./...
 go build ./cmd/roadmapctl
 ```
 
-Non-goals for MVP:
+Non-goals:
 
 - no roadmap decomposition intelligence;
-- no automatic materialization;
 - no automatic fixing;
 - no roadmap subcommands inside `rootline`.

@@ -2,7 +2,7 @@
 
 `roadmapctl` releases are separate from Rootline releases. Rootline remains the generic DBMS/constraint engine; `roadmapctl` is the roadmap-specific guard CLI.
 
-## MVP installation
+## Installation
 
 Before packaged releases are available, install from source with Go:
 
@@ -16,7 +16,7 @@ Verify the binary is on `PATH`:
 roadmapctl --help
 ```
 
-`roadmapctl doctor` and `roadmapctl check` require a compatible `rootline` executable available via `--rootline`, `ROOTLINE_BIN`, or `PATH`.
+Commands that inspect or validate roadmap files require a compatible `rootline` executable available via `--rootline`, `ROOTLINE_BIN`, or `PATH`.
 
 ## Rootline compatibility policy
 
@@ -30,12 +30,12 @@ Required capabilities by command family:
 |------------------|-------------|---------------------------|
 | `--version` | `doctor` | Emits version text for environment reports. |
 | `validate --all <root> --output json` | `check` | Emits parseable JSON, including when validation exits non-zero. |
-| `describe <root>/ --output json` | `check`, future context/lint | Exposes schema enum values via `schema.<field>.values` or supported legacy top-level `values`. |
-| `query <root> --where ... --output json` | `check`, future read commands | Emits `rows[]` with `path`, `frontmatter`, and optional `derived`. |
-| `graph <root> --where ... --output json` | `check`, future read commands | Emits `cycles[]` and `broken_links[]`. |
-| `tree <root> --where ... --output json` | future read commands | Emits recursive tree data with child nodes and completion counts. |
-| `set <file> field=value` | future transition commands | May emit text; `roadmapctl` must treat output as raw unless JSON stability is approved. |
-| `new <filepath>` | future materialization commands | May emit text; `roadmapctl` must treat output as raw unless JSON stability is approved. |
+| `describe <root>/ --output json` | `check`, `context`, `lint`, `transition` | Exposes schema enum values via `schema.<field>.values` or supported legacy top-level `values`. |
+| `query <root> --where ... --output json` | `check`, read commands, transition checks | Emits `rows[]` with `path`, `frontmatter`, and optional `derived`. |
+| `graph <root> --where ... --output json` | `check`, read commands, transition checks | Emits `cycles[]` and `broken_links[]`. |
+| `tree <root> --where ... --output json` | `context`, `pending`, `next`, `decision` | Emits recursive tree data with child nodes and completion counts. |
+| `set <file> field=value` | `transition --apply` | May emit text; `roadmapctl` treats output as raw and validates after mutation. |
+| `new <filepath>` | legacy/manual troubleshooting only | Materialization is implemented directly by roadmapctl and does not require Rootline `new`. |
 
 Rootline compatibility diagnostics should differentiate:
 

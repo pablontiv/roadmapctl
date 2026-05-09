@@ -2,14 +2,22 @@
 
 `roadmapctl` is the roadmap-specific guard CLI for Rootline-governed roadmaps. It validates environment, configuration, structure and dependency invariants while Rootline remains the generic filesystem database and constraint engine.
 
-The MVP exposes only:
+The historical MVP exposed only `doctor` and `check`. The current CLI also implements deterministic read, lint, transition, bootstrap, and materialization helpers while preserving the same report/version/exit-code contract.
+
+Implemented commands:
 
 - `roadmapctl doctor`
 - `roadmapctl check`
+- `roadmapctl context`
+- `roadmapctl pending`
+- `roadmapctl next`
+- `roadmapctl decision`
+- `roadmapctl lint`
+- `roadmapctl transition`
+- `roadmapctl materialize`
+- `roadmapctl bootstrap`
 
-This document also defines the post-MVP `roadmapctl lint` contract so later implementation can preserve stable diagnostics and JSON semantics.
-
-`roadmapctl` does not materialize roadmap items, mutate roadmap files, fix invalid data, or add roadmap-specific subcommands to `rootline`.
+`roadmapctl` does not decompose roadmap plans with AI, auto-fix invalid roadmap data, or add roadmap-specific subcommands to `rootline`.
 
 ## Mandatory use by `/roadmap`
 
@@ -31,7 +39,8 @@ Commands:
   check     Validate canonical roadmap structure, metadata, Rootline graph and blocking dependencies.
   lint        Validate deterministic semantic roadmap conventions.
   transition  Evaluate and apply policy-checked status transitions.
-  materialize  Planned: validate and write approved structured roadmap plans.
+  materialize  Validate and write approved structured roadmap plans.
+  bootstrap    Inspect or initialize missing bootstrap files.
 ```
 
 Commands support `--output text` and `--output json`.
@@ -160,9 +169,22 @@ Example:
 roadmapctl check --repo . --output text --strict
 ```
 
+## Implemented read/context commands
+
+`context`, `pending`, `next`, and `decision` are read-only. They share the top-level report fields and add command-specific arrays/objects:
+
+| Command | `kind` | Purpose | Key fields |
+|---------|--------|---------|------------|
+| `context` | `roadmapctl/context` | Resolve effective repo, roadmap root, config source, schema, status roles and prompt helpers. | `config_path`, `config_source`, `rootline_version`, `schema`, `status_values`, `done_statuses`, `active_statuses`, `helpers` |
+| `pending` | `roadmapctl/pending` | List active non-done tasks without mutating state. | `count`, `tasks[]`, workspace `repos[]` when applicable |
+| `next` | `roadmapctl/next` | Separate ready and blocked active tasks. | `ready[]`, `blocked[]` |
+| `decision` | `roadmapctl/decision` | Provide deterministic prioritization data. | `recommendations[]`, `quick_wins[]`, `critical_blockers[]`, `blocked[]` |
+
+These commands must not write files or update statuses. They rely on Rootline `tree`/`query`/`graph` data and roadmapctl's status-role config.
+
 ## `lint` contract
 
-`lint` is the planned deterministic semantic check layer. It runs after `doctor`/`check` prerequisites are satisfied and remains read-only: it must not materialize, normalize, auto-fix, or judge subjective writing quality.
+`lint` is the deterministic semantic check layer. It runs after `doctor`/`check` prerequisites are satisfied and remains read-only: it must not materialize, normalize, auto-fix, or judge subjective writing quality.
 
 Boundary:
 
@@ -345,11 +367,20 @@ Severity policy:
 
 ## Materialize plan input contract
 
-The planned `roadmapctl materialize` command accepts only structured, approved JSON input. It does not parse free-form chat or call an LLM. The versioned input schema, examples, validation rules, dependency representation, and `RMC_MATERIALIZE_*` diagnostics are specified in [materialize-plan-schema.md](materialize-plan-schema.md).
+`roadmapctl materialize` accepts only structured, approved JSON input. It does not parse free-form chat or call an LLM. The versioned input schema, examples, validation rules, dependency representation, and `RMC_MATERIALIZE_*` diagnostics are specified in [materialize-plan-schema.md](materialize-plan-schema.md).
+
+Implemented modes:
+
+```bash
+roadmapctl materialize --plan plan.json --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl materialize --plan plan.json --apply --repo <repo> --roadmap-root <roadmap-root> --output json
+```
+
+JSON adds `applied` and `changes[]`. Each change has `path`, `operation`, `applied`, optional `content`, optional `diff`, and `preconditions[]`. Dry-run must not write. Apply writes only allowlisted bootstrap/config/schema files and canonical roadmap markdown, validates created markdown through Rootline, and runs a postcheck before reporting success.
 
 ## Transition controller contract
 
-The planned `roadmapctl transition` command is specified in [transition-controller.md](transition-controller.md). It defines actions `can-start`, `can-complete`, `start`, `complete`, and `set-status`; required status roles; dependency satisfaction via `done_statuses`; behavior for schema-valid non-role statuses such as `On Hold`; and `RMC_TRANSITION_*` diagnostics.
+`roadmapctl transition` is specified in [transition-controller.md](transition-controller.md). It defines actions `can-start`, `can-complete`, `start`, `complete`, and `set-status`; required status roles; dependency satisfaction via `done_statuses`; behavior for schema-valid non-role statuses such as `On Hold`; and `RMC_TRANSITION_*` diagnostics.
 
 ## Rootline integration boundary
 
