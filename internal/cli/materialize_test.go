@@ -4,11 +4,24 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/pablontiv/roadmapctl/internal/testutil"
 )
+
+func TestMaterializeDryRunGolden(t *testing.T) {
+	fixture := testutil.FixturePath(t, "valid-outcome-with-tasks")
+	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	testutil.AssertGoldenJSON(t, testutil.GoldenPath("materialize-dry-run-outcome-and-direct.json"), stdout.Bytes(), map[string]string{
+		absoluteFixturePath(t, "valid-outcome-with-tasks"): "<fixture:valid-outcome-with-tasks>",
+	})
+}
 
 func TestMaterializeDryRunMissingRootShowsBootstrap(t *testing.T) {
 	repo := t.TempDir()
@@ -36,6 +49,37 @@ func TestMaterializeDryRunMissingRootShowsBootstrap(t *testing.T) {
 	}
 }
 
+func TestMaterializeDependenciesUseExplicitRelativeLinks(t *testing.T) {
+	fixture := testutil.FixturePath(t, "valid-outcome-with-tasks")
+	plan := filepath.Join("..", "..", "testdata", "plans", "dependencies-same-cross-outcome.json")
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	if !strings.Contains(stdout.String(), "[[blocked_by:./T001-first.md]]") {
+		t.Fatalf("missing same-outcome explicit dependency link:\n%s", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "[[blocked_by:../O02-alpha/T001-first.md]]") {
+		t.Fatalf("missing cross-outcome explicit dependency link:\n%s", stdout.String())
+	}
+}
+
+func TestMaterializeInvalidInputDoesNotWriteFiles(t *testing.T) {
+	fixture := copyFixture(t, "valid-outcome-with-tasks")
+	before := listRoadmapFiles(t, fixture)
+	plan := filepath.Join("..", "..", "testdata", "plans", "invalid-path-escape.json")
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", plan, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 1, &stdout, &stderr)
+	report := testutil.DecodeJSON(t, stdout.Bytes())
+	testutil.RequireDiagnosticID(t, report, "RMC_MATERIALIZE_INPUT_SLUG_INVALID")
+	after := listRoadmapFiles(t, fixture)
+	if !bytes.Equal([]byte(before), []byte(after)) {
+		t.Fatalf("invalid input wrote files\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
 func TestMaterializeApplyWritesFilesAndRunsPostcheck(t *testing.T) {
 	fixture := copyFixture(t, "valid-outcome-with-tasks")
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
@@ -55,6 +99,30 @@ func TestMaterializeApplyWritesFilesAndRunsPostcheck(t *testing.T) {
 			t.Fatalf("expected applied file %s: %v", rel, err)
 		}
 	}
+}
+
+func listRoadmapFiles(t *testing.T, fixture string) string {
+	t.Helper()
+	var files []string
+	root := filepath.Join(fixture, "docs", "roadmap")
+	if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		files = append(files, filepath.ToSlash(rel))
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	sort.Strings(files)
+	return strings.Join(files, "\n")
 }
 
 func TestMaterializeDryRunJSONDoesNotWrite(t *testing.T) {

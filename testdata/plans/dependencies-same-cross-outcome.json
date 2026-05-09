@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "kind": "roadmapctl/materialize-plan",
+  "items": [
+    {
+      "type": "outcome",
+      "slug": "alpha",
+      "title": "Alpha",
+      "description": "Alpha outcome.",
+      "acceptance_criteria": ["Alpha done."],
+      "tasks": [
+        {
+          "slug": "first",
+          "title": "First",
+          "description": "First task.",
+          "preserves": ["Links are explicit."],
+          "context": "Dependency root.",
+          "scope_in": ["Create first."],
+          "scope_out": ["No apply."],
+          "initial_state": "None.",
+          "acceptance_criteria": ["First exists."],
+          "source_of_truth": ["docs/materialize-plan-schema.md"]
+        },
+        {
+          "slug": "second",
+          "title": "Second",
+          "description": "Second task.",
+          "preserves": ["Same-outcome link is explicit."],
+          "context": "Depends on first.",
+          "scope_in": ["Create second."],
+          "scope_out": ["No apply."],
+          "initial_state": "First planned.",
+          "acceptance_criteria": ["Same link exists."],
+          "source_of_truth": ["docs/materialize-plan-schema.md"],
+          "blocked_by": [{"ref":"alpha/first"}]
+        }
+      ]
+    },
+    {
+      "type": "outcome",
+      "slug": "beta",
+      "title": "Beta",
+      "description": "Beta outcome.",
+      "acceptance_criteria": ["Beta done."],
+      "tasks": [
+        {
+          "slug": "third",
+          "title": "Third",
+          "description": "Third task.",
+          "preserves": ["Cross-outcome link is explicit."],
+          "context": "Depends on alpha first.",
+          "scope_in": ["Create third."],
+          "scope_out": ["No apply."],
+          "initial_state": "Alpha planned.",
+          "acceptance_criteria": ["Cross link exists."],
+          "source_of_truth": ["docs/materialize-plan-schema.md"],
+          "blocked_by": [{"ref":"alpha/first"}]
+        }
+      ]
+    }
+  ]
+}

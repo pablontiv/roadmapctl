@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "roadmapctl/materialize-plan",
+  "items": [
+    {
+      "type": "task",
+      "slug": "bad/tasks",
+      "title": "Bad task",
+      "description": "Should be rejected.",
+      "preserves": ["No writes."],
+      "context": "Invalid path escape fixture.",
+      "scope_in": ["Reject invalid slug."],
+      "scope_out": ["Write files."],
+      "initial_state": "Roadmap root exists.",
+      "acceptance_criteria": ["Command fails."],
+      "source_of_truth": ["docs/materialize-plan-schema.md"]
+    }
+  ]
+}

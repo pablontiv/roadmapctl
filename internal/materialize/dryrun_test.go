@@ -52,6 +52,29 @@ func TestApplyCreatesCanonicalFiles(t *testing.T) {
 	}
 }
 
+func TestApplyDetectsStaleDryRunCollisionWithoutWritingPlannedFile(t *testing.T) {
+	root := t.TempDir()
+	writeBootstrapFiles(t, root)
+	if err := os.WriteFile(filepath.Join(root, "T001-direct-task.md"), []byte("existing"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, diagnostics, err := Apply(root, samplePlan())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diagnostics) == 0 || diagnostics[0].ID != "RMC_MATERIALIZE_PLAN_CONFLICT" {
+		t.Fatalf("diagnostics = %#v, want plan conflict", diagnostics)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "T001-direct-task.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "existing" {
+		t.Fatalf("stale apply overwrote existing file: %q", data)
+	}
+}
+
 func TestApplyDoesNotOverwriteExistingStem(t *testing.T) {
 	root := t.TempDir()
 	stemPath := filepath.Join(root, ".stem")

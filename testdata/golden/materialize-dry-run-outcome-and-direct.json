@@ -1,0 +1,46 @@
+{
+  "applied": false,
+  "changes": [
+    {
+      "applied": false,
+      "content": "---\nestado: Pending\ntipo: outcome\n---\n# New Outcome\n\nOutcome description.\n\n## Criterios de Aceptación\n\n- Outcome works.\n\n## Tasks\n\n| Task | Descripción |\n|------|-------------|\n| [T001](T001-first-task.md) | Implement first task. |\n",
+      "diff": "--- /dev/null\n+++ b/O02-new-outcome/README.md\n+---\n+estado: Pending\n+tipo: outcome\n+---\n+# New Outcome\n+\n+Outcome description.\n+\n+## Criterios de Aceptación\n+\n+- Outcome works.\n+\n+## Tasks\n+\n+| Task | Descripción |\n+|------|-------------|\n+| [T001](T001-first-task.md) | Implement first task. |\n",
+      "operation": "create",
+      "path": "O02-new-outcome/README.md",
+      "preconditions": [
+        "path must not exist at apply time"
+      ]
+    },
+    {
+      "applied": false,
+      "content": "---\nestado: Pending\ntipo: task\n---\n# T001: First task\n\n**Outcome**: [New Outcome](README.md)\n\n## Preserva\n\n- Dry-run stays read-only.\n\n## Contexto\n\nNeeded for materialization.\n\n## Alcance\n\n**In**:\n1. Create proposed markdown.\n\n**Out**:\n1. Do not write files.\n\n## Estado inicial esperado\n\nRoadmap root exists.\n\n## Criterios de Aceptación\n\n- Change is listed.\n\n## Fuente de verdad\n\n- docs/materialize-plan-schema.md\n",
+      "diff": "--- /dev/null\n+++ b/O02-new-outcome/T001-first-task.md\n+---\n+estado: Pending\n+tipo: task\n+---\n+# T001: First task\n+\n+**Outcome**: [New Outcome](README.md)\n+\n+## Preserva\n+\n+- Dry-run stays read-only.\n+\n+## Contexto\n+\n+Needed for materialization.\n+\n+## Alcance\n+\n+**In**:\n+1. Create proposed markdown.\n+\n+**Out**:\n+1. Do not write files.\n+\n+## Estado inicial esperado\n+\n+Roadmap root exists.\n+\n+## Criterios de Aceptación\n+\n+- Change is listed.\n+\n+## Fuente de verdad\n+\n+- docs/materialize-plan-schema.md\n",
+      "operation": "create",
+      "path": "O02-new-outcome/T001-first-task.md",
+      "preconditions": [
+        "path must not exist at apply time"
+      ]
+    },
+    {
+      "applied": false,
+      "content": "---\nestado: Pending\ntipo: task\n---\n# T001: Direct task\n\n## Preserva\n\n- Direct dry-run stays read-only.\n\n## Contexto\n\nNeeded for direct materialization.\n\n## Alcance\n\n**In**:\n1. Create proposed direct task markdown.\n\n**Out**:\n1. Do not write files.\n\n## Estado inicial esperado\n\nRoadmap root exists.\n\n## Criterios de Aceptación\n\n- Direct path is listed.\n\n## Fuente de verdad\n\n- docs/materialize-plan-schema.md\n",
+      "diff": "--- /dev/null\n+++ b/T001-direct-task.md\n+---\n+estado: Pending\n+tipo: task\n+---\n+# T001: Direct task\n+\n+## Preserva\n+\n+- Direct dry-run stays read-only.\n+\n+## Contexto\n+\n+Needed for direct materialization.\n+\n+## Alcance\n+\n+**In**:\n+1. Create proposed direct task markdown.\n+\n+**Out**:\n+1. Do not write files.\n+\n+## Estado inicial esperado\n+\n+Roadmap root exists.\n+\n+## Criterios de Aceptación\n+\n+- Direct path is listed.\n+\n+## Fuente de verdad\n+\n+- docs/materialize-plan-schema.md\n",
+      "operation": "create",
+      "path": "T001-direct-task.md",
+      "preconditions": [
+        "path must not exist at apply time"
+      ]
+    }
+  ],
+  "diagnostics": [],
+  "kind": "roadmapctl/materialize",
+  "roadmap_root": "<fixture:valid-outcome-with-tasks>/docs/roadmap",
+  "root": "<fixture:valid-outcome-with-tasks>",
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "ok",
+    "warnings": 0
+  },
+  "version": 1
+}
