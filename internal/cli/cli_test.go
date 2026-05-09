@@ -66,6 +66,27 @@ func TestUnknownCommandIsUsageError(t *testing.T) {
 	}
 }
 
+func TestGlobalFlagsBeforeCommand(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json", "doctor"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("Execute global flags before command exit = %d, want 0; stderr=%q", code, stderr.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+	var report struct {
+		Kind string `json:"kind"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout is not parseable JSON report: %v\n%s", err, stdout.String())
+	}
+	if report.Kind != "roadmapctl/doctor" {
+		t.Fatalf("Kind = %q, want roadmapctl/doctor", report.Kind)
+	}
+}
+
 func TestJSONOutputEmitsOnlyParseableReport(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"doctor", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr)
