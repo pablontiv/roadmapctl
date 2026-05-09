@@ -60,6 +60,46 @@ func TestCheckRootlineDetectsStatusOutsideSchemaOrConfig(t *testing.T) {
 	assertHasDiagnostic(t, diagnostics, DiagnosticStatusUnknown, "O01-work/T001-task.md")
 }
 
+func TestCheckRootlineAllowsSchemaStatusWithoutOperationalRole(t *testing.T) {
+	client := &fakeRootlineClient{
+		validate: map[string]any{"version": float64(1), "kind": "rootline/validate-batch", "summary": map[string]any{"invalid": float64(0)}},
+		describe: map[string]any{"schema": map[string]any{
+			"estado": map[string]any{"values": []any{"Pending", "Completed", "On Hold"}},
+			"tipo":   map[string]any{"values": []any{"task", "outcome"}},
+		}},
+		query: map[string]any{"rows": []any{
+			map[string]any{"path": "O01-work/T001-task.md", "frontmatter": map[string]any{"estado": "On Hold", "tipo": "task"}},
+		}},
+		graph: map[string]any{},
+	}
+
+	diagnostics, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Completed"}})
+	if err != nil {
+		t.Fatalf("CheckRootline error = %v", err)
+	}
+	assertNoDiagnostic(t, diagnostics, DiagnosticStatusUnknown)
+}
+
+func TestCheckRootlineDetectsTypeOutsideSchema(t *testing.T) {
+	client := &fakeRootlineClient{
+		validate: map[string]any{"version": float64(1), "kind": "rootline/validate-batch", "summary": map[string]any{"invalid": float64(0)}},
+		describe: map[string]any{"schema": map[string]any{
+			"estado": map[string]any{"values": []any{"Pending", "Completed"}},
+			"tipo":   map[string]any{"values": []any{"task", "outcome"}},
+		}},
+		query: map[string]any{"rows": []any{
+			map[string]any{"path": "O01-work/T001-task.md", "frontmatter": map[string]any{"estado": "Pending", "tipo": "story"}},
+		}},
+		graph: map[string]any{},
+	}
+
+	diagnostics, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Completed"}})
+	if err != nil {
+		t.Fatalf("CheckRootline error = %v", err)
+	}
+	assertHasDiagnostic(t, diagnostics, DiagnosticTypeUnknown, "O01-work/T001-task.md")
+}
+
 func TestCheckRootlineMissingRootlineDiagnosticExit3(t *testing.T) {
 	client := &fakeRootlineClient{err: &rootlinecli.Error{Kind: rootlinecli.ErrorMissingBinary, Message: "missing rootline", ExitCode: diagnostics.ExitEnvironment}}
 

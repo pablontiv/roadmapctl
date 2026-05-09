@@ -2,12 +2,15 @@ package roadmap
 
 import "github.com/pablontiv/roadmapctl/internal/diagnostics"
 
-func statusDiagnostics(decoded map[string]any, configured []string, schema []string) []Diagnostic {
+func statusDiagnostics(decoded map[string]any, configured []string, schemaStatuses []string, schemaTypes []string) []Diagnostic {
 	allowedStatuses := stringSet(configured)
-	if len(schema) > 0 {
-		allowedStatuses = intersectStringSets(allowedStatuses, stringSet(schema))
+	if len(schemaStatuses) > 0 {
+		allowedStatuses = stringSet(schemaStatuses)
 	}
 	allowedTypes := map[string]bool{"task": true, "outcome": true}
+	if len(schemaTypes) > 0 {
+		allowedTypes = stringSet(schemaTypes)
+	}
 
 	var found []Diagnostic
 	for _, rowValue := range arrayValue(decoded["rows"]) {
@@ -22,7 +25,7 @@ func statusDiagnostics(decoded map[string]any, configured []string, schema []str
 			found = append(found, Diagnostic{
 				ID:       DiagnosticStatusUnknown,
 				Severity: diagnostics.SeverityError,
-				Message:  "task estado is not allowed by roadmap config or Rootline schema",
+				Message:  "task estado is not allowed by Rootline schema",
 				Path:     path,
 				Details:  map[string]any{"estado": status},
 			})
@@ -45,9 +48,17 @@ func extractStatusValues(decoded map[string]any) []string {
 	if values := stringsFromArray(decoded["values"]); len(values) > 0 {
 		return values
 	}
+	return extractSchemaEnumValues(decoded, "estado")
+}
+
+func extractTypeValues(decoded map[string]any) []string {
+	return extractSchemaEnumValues(decoded, "tipo")
+}
+
+func extractSchemaEnumValues(decoded map[string]any, field string) []string {
 	schema, _ := decoded["schema"].(map[string]any)
-	estado, _ := schema["estado"].(map[string]any)
-	return stringsFromArray(estado["values"])
+	fieldSchema, _ := schema[field].(map[string]any)
+	return stringsFromArray(fieldSchema["values"])
 }
 
 func arrayValue(value any) []any {

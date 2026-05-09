@@ -47,17 +47,19 @@ func CheckRootline(ctx context.Context, client RootlineClient, options RootlineC
 
 	describeResult, err := client.Describe(ctx, ensureDirPath(options.RoadmapRoot))
 	schemaStatuses := []string(nil)
+	schemaTypes := []string(nil)
 	if err != nil {
 		found = append(found, rootlineOperationDiagnostic("describe", err))
 	} else {
 		schemaStatuses = extractStatusValues(describeResult.Decoded)
+		schemaTypes = extractTypeValues(describeResult.Decoded)
 	}
 
 	queryResult, err := client.Query(ctx, options.RoadmapRoot, options.LeafFilter, `tipo == "task"`)
 	if err != nil {
 		found = append(found, rootlineOperationDiagnostic("query", err))
 	} else {
-		found = append(found, statusDiagnostics(queryResult.Decoded, options.AllowedStatuses, schemaStatuses)...)
+		found = append(found, statusDiagnostics(queryResult.Decoded, options.AllowedStatuses, schemaStatuses, schemaTypes)...)
 	}
 
 	graphResult, err := client.Graph(ctx, options.RoadmapRoot, options.LeafFilter)

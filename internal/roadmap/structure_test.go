@@ -94,6 +94,15 @@ func assertHasDiagnostic(t *testing.T, diagnostics []Diagnostic, id string, path
 	t.Fatalf("missing diagnostic id=%q path=%q in %#v", id, path, diagnostics)
 }
 
+func assertNoDiagnostic(t *testing.T, diagnostics []Diagnostic, id string) {
+	t.Helper()
+	for _, diagnostic := range diagnostics {
+		if diagnostic.ID == id {
+			t.Fatalf("unexpected diagnostic id=%q in %#v", id, diagnostics)
+		}
+	}
+}
+
 func containsBackslash(path string) bool {
 	for _, r := range path {
 		if r == '\\' {

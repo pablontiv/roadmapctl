@@ -30,6 +30,13 @@ func TestCheckStatusMismatchExitsValidation(t *testing.T) {
 	assertDiagnostic(t, report, "RMC_STATUS_UNKNOWN")
 }
 
+func TestCheckAllowsStatusDeclaredOnlyInStem(t *testing.T) {
+	code, report, stderr := runCheckJSON(t, "valid-status-on-hold")
+	if code != 0 {
+		t.Fatalf("check exit = %d, want 0; stderr=%q report=%#v", code, stderr, report)
+	}
+}
+
 func TestCheckMissingRootlineExitsEnvironment(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	missingRootline := filepath.Join(t.TempDir(), "missing-rootline")
