@@ -1,0 +1,15 @@
+done_statuses = ["Completed", "Obsolete"]
+active_statuses = ["Pending", "Specified", "In Progress"]
+leaf_filter = "isIndex == false"
+outcome_close_verify = []
+pr_merge_strategy = "squash"
+commit_style = "conventional"
+auto_push = true
+
+[status_values]
+pending = "Pending"
+specified = "Specified"
+in_progress = "In Progress"
+completed = "Completed"
+blocked = "Blocked"
+obsolete = "Obsolete"

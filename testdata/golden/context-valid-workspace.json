@@ -1,0 +1,59 @@
+{
+  "active_statuses": null,
+  "config_path": "",
+  "config_source": "workspace",
+  "diagnostics": [],
+  "done_statuses": null,
+  "helpers": {
+    "where_active": "",
+    "where_leaf": "",
+    "where_not_done": ""
+  },
+  "kind": "roadmapctl/context",
+  "repos": [
+    {
+      "config_path": "docs/roadmap/.roadmapctl.toml",
+      "helpers": {
+        "where_active": "estado in [\"Pending\", \"Specified\", \"In Progress\"]",
+        "where_leaf": "isIndex == false",
+        "where_not_done": "not (estado in [\"Completed\", \"Obsolete\"])"
+      },
+      "name": "alpha",
+      "roadmap_root": "<fixture:valid-workspace>/alpha/docs/roadmap",
+      "root": "<fixture:valid-workspace>/alpha"
+    },
+    {
+      "config_path": "docs/roadmap/.roadmapctl.toml",
+      "helpers": {
+        "where_active": "estado in [\"Pending\", \"Specified\", \"In Progress\"]",
+        "where_leaf": "isIndex == false",
+        "where_not_done": "not (estado in [\"Completed\", \"Obsolete\"])"
+      },
+      "name": "beta",
+      "roadmap_root": "<fixture:valid-workspace>/beta/docs/roadmap",
+      "root": "<fixture:valid-workspace>/beta"
+    }
+  ],
+  "roadmap_root": "",
+  "root": "<fixture:valid-workspace>",
+  "rootline_version": "<rootline-version>",
+  "schema": {
+    "estado": null,
+    "tipo": null
+  },
+  "status_values": {
+    "blocked": "",
+    "completed": "",
+    "in_progress": "",
+    "obsolete": "",
+    "pending": "",
+    "specified": ""
+  },
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "ok",
+    "warnings": 0
+  },
+  "version": 1
+}

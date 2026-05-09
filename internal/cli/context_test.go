@@ -3,15 +3,11 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
 func TestContextWorkspaceJSONIncludesRepos(t *testing.T) {
-	workspace := t.TempDir()
-	writeWorkspaceRepo(t, workspace, "alpha")
-	writeWorkspaceRepo(t, workspace, "beta")
+	workspace := doctorFixturePath("valid-workspace")
 
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"context", "--workspace", "--repo", workspace, "--output", "json"}, &stdout, &stderr)
@@ -34,9 +30,7 @@ func TestContextWorkspaceJSONIncludesRepos(t *testing.T) {
 }
 
 func TestContextWorkspaceAmbiguousRepoFails(t *testing.T) {
-	workspace := t.TempDir()
-	writeWorkspaceRepo(t, workspace, "dup")
-	writeWorkspaceRepo(t, filepath.Join(workspace, "nested"), "dup")
+	workspace := doctorFixturePath("invalid-workspace-ambiguous-repo")
 
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"context", "--workspace", "--repo", workspace, "--output", "json"}, &stdout, &stderr)
@@ -92,21 +86,5 @@ func TestContextJSONIncludesEffectiveHelpersAndLegacySource(t *testing.T) {
 	}
 	if len(report.Schema.Estado) == 0 || len(report.Schema.Tipo) == 0 {
 		t.Fatalf("schema = %#v", report.Schema)
-	}
-}
-
-func writeWorkspaceRepo(t *testing.T, workspace string, name string) {
-	t.Helper()
-	repo := filepath.Join(workspace, name)
-	for _, dir := range []string{filepath.Join(repo, ".git"), filepath.Join(repo, "docs", "roadmap")} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := os.WriteFile(filepath.Join(repo, "docs", "roadmap", ".stem"), []byte(baseStemContent), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml"), []byte(defaultRoadmapctlTOML), 0o644); err != nil {
-		t.Fatal(err)
 	}
 }

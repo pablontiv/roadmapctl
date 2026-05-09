@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: task
 ---
 # T007: Agregar fixtures/goldens de config, context y workspace
