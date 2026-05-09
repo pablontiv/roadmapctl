@@ -91,15 +91,15 @@ This same behavior applies to any project-specific valid status that is not mapp
   "target_status": "In Progress",
   "role": "in_progress",
   "reasons": ["all dependencies are done"],
-  "blockers": [],
+  "blocking_dependencies": [],
   "changes": [
-    { "path": "O01-work/T001-task.md", "field": "estado", "from": "Pending", "to": "In Progress" }
+    { "path": "O01-work/T001-task.md", "field": "estado", "before": "Pending", "after": "In Progress" }
   ],
   "diagnostics": []
 }
 ```
 
-When blocked, `allowed` is `false`, `changes` is empty, and `reasons`/`blockers` explain the deterministic cause.
+When blocked, `allowed` is `false`, `changes` is empty, and `reasons`/`blocking_dependencies` explain the deterministic cause.
 
 ## Diagnostics
 
