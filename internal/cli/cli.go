@@ -66,6 +66,7 @@ func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Co
 	cmd.AddCommand(newLeafCommand("doctor", "Diagnose repo, roadmap configuration and Rootline availability.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newLeafCommand("check", "Validate canonical roadmap structure, metadata and dependency graph.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newLeafCommand("context", "Show effective roadmapctl context for skill bootstrap.", &options, stdout, stderr, exitCode))
+	cmd.AddCommand(newBootstrapCommand(&options, stdout, stderr, exitCode))
 	return cmd
 }
 
