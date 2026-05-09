@@ -137,7 +137,7 @@ Exactly one of `ref` or `path` is required.
 Rules:
 
 - `ref` must resolve to another task in the same materialize plan.
-- `path` must point to an existing or concurrently planned `TXXX-*.md` task.
+- `path` is validated during dry-run and must point to an existing or concurrently planned `TXXX-*.md` task.
 - Emitted markdown must use explicit relative `[[blocked_by:...]]` links.
 - Bare basename dependencies are invalid.
 
@@ -153,7 +153,7 @@ Planned input validation diagnostics:
 | `RMC_MATERIALIZE_INPUT_FIELD_MISSING` | error | Required field is absent or empty. |
 | `RMC_MATERIALIZE_INPUT_SLUG_INVALID` | error | Slug is not portable or includes path/numeric prefix. |
 | `RMC_MATERIALIZE_INPUT_DEPENDENCY_INVALID` | error | Dependency object has neither/both `ref` and `path`, or uses a bare target. |
-| `RMC_MATERIALIZE_INPUT_DEPENDENCY_UNRESOLVED` | error | Dependency cannot be resolved to a task. |
+| `RMC_MATERIALIZE_INPUT_DEPENDENCY_UNRESOLVED` | error | Dependency cannot be resolved to a plan-local, concurrently planned, or existing task. |
 | `RMC_MATERIALIZE_PLAN_CONFLICT` | error | Planned path collides with an existing unrelated roadmap item. |
 
 Additional target-apply diagnostics:

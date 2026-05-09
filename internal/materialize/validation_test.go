@@ -91,6 +91,62 @@ func TestDryRunRejectsUnresolvedAndBareDependencies(t *testing.T) {
 	if !hasDiagnostic(found, diagnostics.DiagnosticMaterializeInputDependencyInvalid) {
 		t.Fatalf("bare diagnostics = %#v", found)
 	}
+
+	plan = samplePlan()
+	plan.Items[1].BlockedBy = []Dependency{{Path: "./T999-missing.md"}}
+	_, found, err = DryRun(root, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasDiagnostic(found, diagnostics.DiagnosticMaterializeInputDependencyUnresolved) {
+		t.Fatalf("unresolved explicit path diagnostics = %#v", found)
+	}
+
+	plan = samplePlan()
+	plan.Items[1].BlockedBy = []Dependency{{Path: "/T001-existing.md"}}
+	_, found, err = DryRun(root, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasDiagnostic(found, diagnostics.DiagnosticMaterializeInputDependencyInvalid) {
+		t.Fatalf("absolute path diagnostics = %#v", found)
+	}
+}
+
+func TestDryRunRejectsDirectoryDependencyPath(t *testing.T) {
+	root := t.TempDir()
+	writeBootstrapFiles(t, root)
+	if err := os.Mkdir(filepath.Join(root, "T001-directory.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	plan := samplePlan()
+	plan.Items[1].BlockedBy = []Dependency{{Path: "./T001-directory.md"}}
+	_, found, err := DryRun(root, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasDiagnostic(found, diagnostics.DiagnosticMaterializeInputDependencyInvalid) {
+		t.Fatalf("directory dependency diagnostics = %#v", found)
+	}
+}
+
+func TestDryRunAllowsExistingExplicitDependencyPath(t *testing.T) {
+	root := t.TempDir()
+	writeBootstrapFiles(t, root)
+	if err := writeFile(filepath.Join(root, "T001-existing.md"), "---\nestado: Completed\ntipo: task\n---\n# T001: Existing\n"); err != nil {
+		t.Fatal(err)
+	}
+
+	plan := samplePlan()
+	plan.Items[1].BlockedBy = []Dependency{{Path: "./T001-existing.md"}}
+	result, found, err := DryRun(root, plan)
+	if err != nil || len(found) != 0 {
+		t.Fatalf("err=%v diagnostics=%#v", err, found)
+	}
+	if !strings.Contains(result.Changes[len(result.Changes)-1].Content, "[[blocked_by:./T001-existing.md]]") {
+		t.Fatalf("missing existing dependency link:\n%s", result.Changes[len(result.Changes)-1].Content)
+	}
 }
 
 func TestApplyCreatesMissingRootBootstrap(t *testing.T) {

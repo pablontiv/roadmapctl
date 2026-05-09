@@ -292,7 +292,7 @@ func DryRun(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, er
 				continue
 			}
 			task := item.Tasks[i]
-			links, depDiagnostics := dependencyLinks(taskPath.Path, task.BlockedBy, refs)
+			links, depDiagnostics := dependencyLinks(roadmapRoot, taskPath.Path, task.BlockedBy, refs)
 			if len(depDiagnostics) > 0 {
 				return Result{}, depDiagnostics, nil
 			}
@@ -303,7 +303,7 @@ func DryRun(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, er
 	for i, taskPath := range paths.DirectTasks {
 		item := directItemAt(plan.Items, i)
 		task := taskFromItem(item)
-		links, depDiagnostics := dependencyLinks(taskPath.Path, task.BlockedBy, refs)
+		links, depDiagnostics := dependencyLinks(roadmapRoot, taskPath.Path, task.BlockedBy, refs)
 		if len(depDiagnostics) > 0 {
 			return Result{}, depDiagnostics, nil
 		}
@@ -392,8 +392,12 @@ func requireStrings(values []string, pointer string) []diagnostics.Diagnostic {
 	return nil
 }
 
-func dependencyLinks(currentPath string, dependencies []Dependency, refs map[string]string) ([]string, []diagnostics.Diagnostic) {
+func dependencyLinks(roadmapRoot string, currentPath string, dependencies []Dependency, refs map[string]string) ([]string, []diagnostics.Diagnostic) {
 	var links []string
+	planned := map[string]bool{}
+	for _, path := range refs {
+		planned[filepath.ToSlash(filepath.Clean(path))] = true
+	}
 	for _, dep := range dependencies {
 		if dep.Ref != "" {
 			target, ok := refs[dep.Ref]
@@ -406,13 +410,40 @@ func dependencyLinks(currentPath string, dependencies []Dependency, refs map[str
 		if filepath.Base(dep.Path) == dep.Path {
 			return nil, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputDependencyInvalid, currentPath, "dependency path must be explicit relative path or roadmap-root relative path", dep.Path)}
 		}
-		if strings.HasPrefix(dep.Path, "./") || strings.HasPrefix(dep.Path, "../") {
-			links = append(links, filepath.ToSlash(filepath.Clean(dep.Path)))
-			continue
+		target, ok := dependencyTargetPath(currentPath, dep.Path)
+		if !ok || !isTaskMarkdown(filepath.Base(target)) {
+			return nil, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputDependencyInvalid, currentPath, "dependency path must resolve inside the roadmap to a task markdown file", dep.Path)}
 		}
-		links = append(links, explicitRelative(currentPath, dep.Path))
+		if !planned[target] {
+			abs := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(target))
+			info, err := os.Stat(abs)
+			if os.IsNotExist(err) {
+				return nil, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputDependencyUnresolved, currentPath, "dependency path cannot be resolved to an existing or planned task", dep.Path)}
+			} else if err != nil {
+				return nil, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputDependencyInvalid, currentPath, "dependency path cannot be checked", dep.Path)}
+			} else if !info.Mode().IsRegular() {
+				return nil, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializeInputDependencyInvalid, currentPath, "dependency path must resolve to a regular task markdown file", dep.Path)}
+			}
+		}
+		links = append(links, explicitRelative(currentPath, target))
 	}
 	return links, nil
+}
+
+func dependencyTargetPath(currentPath string, dependencyPath string) (string, bool) {
+	if strings.HasPrefix(dependencyPath, "/") {
+		return "", false
+	}
+	if strings.HasPrefix(dependencyPath, "./") || strings.HasPrefix(dependencyPath, "../") {
+		fromDir := filepath.Dir(filepath.FromSlash(currentPath))
+		if fromDir == "." {
+			fromDir = ""
+		}
+		target := filepath.ToSlash(filepath.Clean(filepath.Join(fromDir, filepath.FromSlash(dependencyPath))))
+		return target, !strings.HasPrefix(target, "../") && target != "."
+	}
+	target := filepath.ToSlash(filepath.Clean(filepath.FromSlash(dependencyPath)))
+	return target, !strings.HasPrefix(target, "../") && target != "."
 }
 
 func explicitRelative(currentPath string, targetPath string) string {
