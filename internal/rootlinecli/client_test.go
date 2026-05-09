@@ -200,8 +200,8 @@ func TestClientParsesJSONForValidateDescribeQueryAndGraph(t *testing.T) {
 	}
 }
 
-func TestClientUsesRawArgsForSetAndNew(t *testing.T) {
-	executor := &recordingExecutor{stdout: []byte("set estado = \"Completed\"")}
+func TestClientUsesRawArgsForSetNewAndValidateOne(t *testing.T) {
+	executor := &recordingExecutor{stdout: []byte(`{"version":1,"kind":"rootline/validate","valid":true}`)}
 	client := New(Options{Binary: writeExecutable(t, t.TempDir(), "rootline"), Executor: executor})
 
 	if _, err := client.Set(context.Background(), "docs/roadmap/T001-task.md", "estado=Completed"); err != nil {
@@ -210,15 +210,39 @@ func TestClientUsesRawArgsForSetAndNew(t *testing.T) {
 	if _, err := client.New(context.Background(), "docs/roadmap/T002-new.md"); err != nil {
 		t.Fatalf("New error = %v", err)
 	}
+	if _, err := client.ValidateOne(context.Background(), "docs/roadmap/T001-task.md"); err != nil {
+		t.Fatalf("ValidateOne error = %v", err)
+	}
 
 	want := [][]string{
 		{"set", "docs/roadmap/T001-task.md", "estado=Completed"},
 		{"new", "docs/roadmap/T002-new.md"},
+		{"validate", "docs/roadmap/T001-task.md", "--output", "json"},
 	}
 	for i := range want {
 		if !reflect.DeepEqual(executor.commands[i].Args, want[i]) {
 			t.Fatalf("command %d args = %#v, want %#v", i, executor.commands[i].Args, want[i])
 		}
+	}
+}
+
+func TestSetReturnsRawOutputAndStructuredExecutionError(t *testing.T) {
+	executor := &recordingExecutor{stdout: []byte("partial set output"), stderr: []byte("set failed"), exitCode: 1, err: errors.New("exit status 1")}
+	client := New(Options{Binary: writeExecutable(t, t.TempDir(), "rootline"), Executor: executor})
+
+	result, err := client.Set(context.Background(), "docs/roadmap/T001-task.md", "estado=Completed")
+	if err == nil {
+		t.Fatal("Set error = nil, want execution error")
+	}
+	if result == nil || string(result.Stdout) != "partial set output" || string(result.Stderr) != "set failed" || result.ExitCode != 1 {
+		t.Fatalf("result = %#v", result)
+	}
+	var rootlineErr *Error
+	if !errors.As(err, &rootlineErr) {
+		t.Fatalf("error type = %T, want *Error", err)
+	}
+	if rootlineErr.Kind != ErrorExecution || rootlineErr.Stderr != "set failed" || rootlineErr.ExitCode != 1 {
+		t.Fatalf("error = %#v", rootlineErr)
 	}
 }
 

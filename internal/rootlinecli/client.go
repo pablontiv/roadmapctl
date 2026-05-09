@@ -158,6 +158,10 @@ func (c *Client) Validate(ctx context.Context, paths ...string) (*JSONResult, er
 	return c.runJSON(ctx, args)
 }
 
+func (c *Client) ValidateOne(ctx context.Context, path string) (*JSONResult, error) {
+	return c.Validate(ctx, path)
+}
+
 func (c *Client) Describe(ctx context.Context, target string, fields ...string) (*JSONResult, error) {
 	args := []string{"describe", target}
 	for _, field := range fields {
