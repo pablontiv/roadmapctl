@@ -479,7 +479,7 @@ func renderOutcome(item Item, plan roadmap.OutcomePathPlan) string {
 
 func renderTask(task Task, outcome Item, links []string, id string) string {
 	var b strings.Builder
-	b.WriteString("---\nestado: Pending\ntipo: task\n---\n")
+	b.WriteString("---\nestado: Specified\ntipo: task\n---\n")
 	fmt.Fprintf(&b, "# %s: %s\n\n", id, task.Title)
 	if outcome.Title != "" {
 		fmt.Fprintf(&b, "**Outcome**: [%s](README.md)\n\n", outcome.Title)
