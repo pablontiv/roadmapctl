@@ -29,6 +29,9 @@ func TestCheckGoldenJSONFixtures(t *testing.T) {
 	}{
 		{name: "invalid single summary file", command: "check", fixture: "invalid-single-summary-file", wantExit: 1, wantID: "RMC_STRUCTURE_SINGLE_FILE_FALLBACK", goldenName: "check-invalid-single-summary-file.json"},
 		{name: "valid outcome with tasks", command: "check", fixture: "valid-outcome-with-tasks", wantExit: 0, goldenName: "check-valid-outcome-with-tasks.json"},
+		{name: "valid status on hold", command: "check", fixture: "valid-status-on-hold", wantExit: 0, goldenName: "check-valid-status-on-hold.json"},
+		{name: "invalid status bogus", command: "check", fixture: "invalid-status-bogus", wantExit: 1, wantID: "RMC_STATUS_UNKNOWN", goldenName: "check-invalid-status-bogus.json"},
+		{name: "invalid config role not in schema", command: "check", fixture: "invalid-config-role-not-in-schema", wantExit: 1, wantID: "RMC_CONFIG_STATUS_SCHEMA_MISMATCH", goldenName: "check-invalid-config-role-not-in-schema.json"},
 		{name: "missing stem", command: "doctor", fixture: "invalid-missing-stem", wantExit: 2, wantID: "RMC_CONFIG_STEM_MISSING", goldenName: "doctor-invalid-missing-stem.json"},
 		{name: "bare blocked_by", command: "check", fixture: "invalid-bare-blocked-by", wantExit: 1, wantID: "RMC_ROOTLINE_VALIDATE_FAILED", goldenName: "check-invalid-bare-blocked-by.json"},
 		{name: "root escape", command: "check", fixture: "invalid-root-escape", wantExit: 2, wantID: "RMC_CONFIG_ROADMAP_ROOT_ESCAPE", goldenName: "check-invalid-root-escape.json"},

@@ -1,0 +1,44 @@
+{
+  "diagnostics": [
+    {
+      "details": {
+        "source": "status-values.completed",
+        "status": "Done"
+      },
+      "id": "RMC_CONFIG_STATUS_SCHEMA_MISMATCH",
+      "message": "configured operational status is not allowed by Rootline schema",
+      "path": ".claude/roadmap.local.md",
+      "severity": "error"
+    },
+    {
+      "details": {
+        "source": "done-statuses",
+        "status": "Done"
+      },
+      "id": "RMC_CONFIG_STATUS_SCHEMA_MISMATCH",
+      "message": "configured operational status is not allowed by Rootline schema",
+      "path": ".claude/roadmap.local.md",
+      "severity": "error"
+    },
+    {
+      "details": {
+        "source": "active-statuses",
+        "status": "Doing"
+      },
+      "id": "RMC_CONFIG_STATUS_SCHEMA_MISMATCH",
+      "message": "configured operational status is not allowed by Rootline schema",
+      "path": ".claude/roadmap.local.md",
+      "severity": "error"
+    }
+  ],
+  "kind": "roadmapctl/check",
+  "roadmap_root": "<fixture:invalid-config-role-not-in-schema>/docs/roadmap",
+  "root": "<fixture:invalid-config-role-not-in-schema>",
+  "summary": {
+    "errors": 3,
+    "infos": 0,
+    "status": "error",
+    "warnings": 0
+  },
+  "version": 1
+}

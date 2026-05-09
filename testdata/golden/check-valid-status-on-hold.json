@@ -1,0 +1,13 @@
+{
+  "diagnostics": [],
+  "kind": "roadmapctl/check",
+  "roadmap_root": "<fixture:valid-status-on-hold>/docs/roadmap",
+  "root": "<fixture:valid-status-on-hold>",
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "ok",
+    "warnings": 0
+  },
+  "version": 1
+}
