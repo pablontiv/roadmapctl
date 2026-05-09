@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: task
 ---
 # T001: Diseñar contrato `.roadmapctl.toml`

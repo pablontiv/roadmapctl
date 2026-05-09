@@ -39,7 +39,7 @@ Commands support `--output text` and `--output json`.
 | Flag | Values | Default | Description |
 |------|--------|---------|-------------|
 | `--repo` | path | cwd | Repository root or workspace member to inspect. |
-| `--roadmap-root` | path | from `.claude/roadmap.local.md` | Override configured roadmap root. The resolved path must stay inside the repo. |
+| `--roadmap-root` | path | inferred from `<roadmap-root>/.roadmapctl.toml` or legacy `.claude/roadmap.local.md` | Override configured roadmap root. The resolved path must stay inside the repo. |
 | `--workspace` | bool | auto | Treat `--repo`/cwd as a workspace containing multiple repos. |
 | `--output` | `text`, `json` | `text` | Select human or machine-readable output. |
 | `--strict` | bool | `false` | Treat warnings as failures when calculating exit code. |
@@ -47,6 +47,67 @@ Commands support `--output text` and `--output json`.
 | `--timeout` | duration | `10s` | Timeout for each Rootline subprocess call. |
 
 Durations use Go duration syntax, for example `500ms`, `10s`, `2m`.
+
+## Configuration contract
+
+Preferred post-MVP config lives at `<roadmap-root>/.roadmapctl.toml` (for example `docs/roadmap/.roadmapctl.toml`). The roadmap root is inferred from the directory containing the TOML file; `roadmap_root` is intentionally not a TOML key. `--roadmap-root` remains a command-line override for explicit inspection and migration workflows.
+
+Example single-repo config:
+
+```toml
+done_statuses = ["Completed", "Obsolete"]
+active_statuses = ["Pending", "Specified", "In Progress"]
+leaf_filter = "isIndex == false"
+outcome_close_verify = []
+pr_merge_strategy = "squash"
+commit_style = "conventional"
+auto_push = true
+
+[status_values]
+pending = "Pending"
+specified = "Specified"
+in_progress = "In Progress"
+completed = "Completed"
+blocked = "Blocked"
+obsolete = "Obsolete"
+```
+
+Workspace mode uses the same per-repo `<roadmap-root>/.roadmapctl.toml` file. A future workspace index may point at member repositories, but each repo remains authoritative for its own roadmap root and operational roles.
+
+Config keys:
+
+| TOML key | Type | Default | Meaning |
+|----------|------|---------|---------|
+| `done_statuses` | list(string) | `["Completed", "Obsolete"]` | Status values treated as dependency-satisfying/done. |
+| `active_statuses` | list(string) | `["Pending", "Specified", "In Progress"]` | Status values listed by active/pending workflows. |
+| `leaf_filter` | string | `isIndex == false` | Rootline expression selecting leaf records. |
+| `outcome_close_verify` | list(string) | `[]` | Optional commands for outcome close checks. |
+| `pr_merge_strategy` | enum string | `squash` | Preferred PR merge strategy (`squash`, `merge`, `rebase`). |
+| `commit_style` | enum string | `conventional` | Commit message style. |
+| `auto_push` | bool | `true` | Whether loop workflows push after commits. |
+| `[status_values].pending` | string | `Pending` | Operational pending role value. |
+| `[status_values].specified` | string | `Specified` | Operational specified role value. |
+| `[status_values].in_progress` | string | `In Progress` | Operational in-progress role value. |
+| `[status_values].completed` | string | `Completed` | Operational completed role value. |
+| `[status_values].blocked` | string | `Blocked` | Operational blocked role value. |
+| `[status_values].obsolete` | string | `Obsolete` | Operational obsolete role value. |
+
+Operational config does not define or constrain the full document schema. The effective Rootline `.stem` remains the source of truth for valid `estado`, `tipo`, and link values. `roadmapctl check` validates operational status values against the schema separately and emits `RMC_CONFIG_STATUS_SCHEMA_MISMATCH` when a role points at a status absent from `.stem`.
+
+Precedence:
+
+1. Command-line flags (`--repo`, `--roadmap-root`, `--rootline`, `--timeout`, `--output`, `--strict`).
+2. Preferred `<roadmap-root>/.roadmapctl.toml` discovered under the selected repo/roadmap root.
+3. Legacy `.claude/roadmap.local.md` fallback while migration is in progress.
+4. Built-in defaults above for omitted optional keys.
+
+Conflict policy:
+
+- If both `.roadmapctl.toml` and legacy `.claude/roadmap.local.md` exist and resolve to different roadmap roots or operational values, prefer `.roadmapctl.toml` and emit a compatibility warning diagnostic.
+- If only the legacy file exists, load it as fallback and emit an informational diagnostic identifying the legacy source.
+- If neither config exists and no explicit `--roadmap-root` is provided, `doctor` emits a config diagnostic and write/mutation flows must block.
+
+Open decision: workspace-level discovery may later add a root `.roadmapctl.toml` or workspace index. Until that is approved, this contract treats config as per-repository.
 
 ## `doctor`
 
