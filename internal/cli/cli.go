@@ -68,6 +68,7 @@ func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Co
 	cmd.AddCommand(newLeafCommand("context", "Show effective roadmapctl context for skill bootstrap.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newLeafCommand("pending", "List active roadmap tasks that are not done.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newNextCommand(&options, stdout, stderr, exitCode))
+	cmd.AddCommand(newDecisionCommand(&options, stdout, stderr, exitCode))
 	cmd.AddCommand(newBootstrapCommand(&options, stdout, stderr, exitCode))
 	return cmd
 }
