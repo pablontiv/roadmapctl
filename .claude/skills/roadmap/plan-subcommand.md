@@ -65,115 +65,75 @@ Guardrail obligatorio antes de escribir:
 3. Si no hay información suficiente para nombrar/separar tasks, preguntar.
 4. Si falta `rootline` y no se puede crear estructura canónica, detenerse.
 
-### Paso 1: Bootstrap `.stem` base
+### Paso 1: Serializar plan estructurado
 
-Si `<roadmap-root>/` no existe, crear el directorio.
+Convertir el árbol aprobado a JSON `roadmapctl/materialize-plan` versión 1 según `docs/materialize-plan-schema.md`:
 
-Si `<roadmap-root>/.stem` no existe, copiar el template canónico [base.stem](base.stem) como `<roadmap-root>/.stem`.
-
-Contenido de referencia:
-
-```yaml
-version: 2
-scope:
-  match: "*.md"
-
-schema:
-  estado:
-    type: enum
-    required:
-      match: ["O*", "T*"]
-    match: ["O*", "T*"]
-    values: [Pending, Specified, In Progress, Completed, Blocked, On Hold, Obsolete]
-
-  tipo:
-    type: enum
-    required:
-      match: ["O*", "T*"]
-    match: ["O*", "T*"]
-    values: [outcome, task]
-
-  id:
-    type: sequence
-    match:
-      "O*": { prefix: O, digits: 2 }
-      "T*": { prefix: T, digits: 3 }
-
-links:
-  blocked_by:
-    target: '^(\./|\.\./|.*/)T[0-9]{3}-[^/]+\.md$'
-  reference:
-    target: ".*"
-
-validate:
-  - field: estado
-    rule: non_empty
-  - field: tipo
-    rule: non_empty
+```json
+{
+  "version": 1,
+  "kind": "roadmapctl/materialize-plan",
+  "items": []
+}
 ```
 
-No crear `.stem` por subnivel salvo necesidad excepcional del proyecto.
+Reglas:
 
-### Paso 2: Crear Outcomes
+- No pasar prose libre a `roadmapctl materialize`.
+- Cada Outcome/task aprobado debe tener `slug`, `title`, `description`, ACs, `source_of_truth` y límites suficientes.
+- Las dependencias deben representarse como `blocked_by` con `ref` plan-local o `path` explícito; nunca targets bare.
+- Si falta información para poblar campos requeridos, preguntar antes de materializar.
 
-Para cada Outcome:
+### Paso 2: Dry-run determinístico
+
+Ejecutar:
 
 ```bash
-find <roadmap-root>/ -maxdepth 1 -type d -name 'O[0-9][0-9]-*' -printf '%f\n' | sort
-# tomar el mayor OXX y sumar 1; si no hay ninguno, usar O01
-mkdir -p <roadmap-root>/OXX-slug
-rootline new <roadmap-root>/OXX-slug/README.md
+roadmapctl materialize --plan <plan-json> --dry-run --repo <repo-path> --roadmap-root <roadmap-root> --output json
 ```
 
-Editar el README usando [outcome-guide.md](outcome-guide.md).
+Revisar el JSON:
 
-### Paso 3: Crear Tasks
+- `summary.status == "ok"`.
+- `changes[]` contiene únicamente operaciones canónicas permitidas:
+  - `.` / `.stem` / `.roadmapctl.toml` solo en bootstrap explícito,
+  - `OXX-slug/README.md`,
+  - `OXX-slug/TXXX-task.md`,
+  - `TXXX-task.md`.
+- `applied == false` para todo dry-run.
+- No aparece ningún `*-tasks.md`.
 
-Tasks dentro de Outcome:
+Si el dry-run falla o propone rutas fuera del allowlist, detenerse y reportar diagnostics. No escribir archivos manualmente.
+
+### Paso 3: Apply aprobado
+
+Solo después del dry-run válido y aprobación humana explícita, ejecutar:
 
 ```bash
-rootline describe <roadmap-root>/OXX-slug/ --field schema.id.next
-rootline new <roadmap-root>/OXX-slug/TXXX-task.md
+roadmapctl materialize --plan <plan-json> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
 ```
 
-Tasks directas:
+`roadmapctl materialize --apply` es responsable de:
+
+- crear `OXX/README.md` y `TXXX-*.md`,
+- actualizar la tabla `## Tasks` del README de Outcome,
+- escribir `blocked_by` con paths relativos explícitos,
+- materializar bootstrap aprobado sin sobrescribir `.stem` existente,
+- validar archivos creados y ejecutar postcheck.
+
+Si `summary.status != "ok"`, detenerse antes de declarar éxito o commitear. Reportar diagnostics; no auto-fix y no fallback a markdown libre.
+
+### Paso 4: Postcheck explícito
+
+Aunque `materialize --apply` ejecuta postcheck, correr el guard común antes de declarar éxito:
 
 ```bash
-find <roadmap-root>/ -maxdepth 1 -type f -name 'T[0-9][0-9][0-9]-*.md' -printf '%f\n' | sort
-# tomar el mayor TXXX y sumar 1; si no hay ninguno, usar T001
-rootline new <roadmap-root>/TXXX-task.md
-```
-
-Editar cada task usando [task-guide.md](task-guide.md). Si una task depende de otra, escribir el link con path relativo explícito: `[[blocked_by:./T001-name.md]]` dentro del mismo Outcome o `[[blocked_by:../O01-name/T001-name.md]]` entre Outcomes.
-
-Validación anti-regresión:
-
-Antes de continuar, comprobar que cada task del plan corresponde a un archivo
-`TXXX-*.md`. Si no, corregir antes de responder.
-
-### Paso 4: Cascading links
-
-Si la task pertenece a un Outcome, agregarla en la tabla `## Tasks` del README del Outcome.
-
-### Paso 5: Validar
-
-Después de cada write:
-
-```bash
-rootline validate <path>
-```
-
-Al final:
-
-```bash
-rootline validate --all <roadmap-root>/
-rootline graph <roadmap-root>/ --check
 roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
 ```
 
-Si `roadmapctl check` falla, detenerse antes de declarar éxito o commitear. Reportar diagnostics; no auto-fix salvo aprobación explícita de una task de reparación. Si hay errores Rootline corregibles, usar `rootline fix` con criterio conservador. Un warning `scope.match "*.md" matches no files in directory` es aceptable cuando la raíz solo contiene directorios `OXX-*` y ninguna task directa.
+Si falla, detenerse y reportar diagnostics.
 
-### Paso 6: Commit + push
+### Paso 5: Commit + push
 
 - `git add` solo archivos `.md` y `.stem` creados/modificados del roadmap.
 - `git commit -m "chore(roadmap): create planning docs"`

@@ -116,11 +116,15 @@ Before creating or modifying any roadmap file:
      roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
   4. If either command exits non-zero, stop. Do not write files and do not fall back to a summary markdown file.
 
-After materializing canonical files:
+After approval, the skill serializes the plan to `roadmapctl/materialize-plan` JSON and delegates deterministic writes:
   1. Run:
+     roadmapctl materialize --plan <plan-json> --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json
+  2. Verify the dry-run proposes only canonical allowlisted paths and no `*-tasks.md` fallback.
+  3. After explicit human approval of the dry-run, run:
+     roadmapctl materialize --plan <plan-json> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
+  4. Run:
      roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
-  2. If it exits non-zero, report diagnostics and stop before claiming success or committing.
-  3. Continue to existing rootline validation only as additional evidence, not as a replacement for roadmapctl.
+  5. If any command exits non-zero, report diagnostics and stop before claiming success or committing.
 ```
 
 The materialized shape must remain canonical:
@@ -136,7 +140,7 @@ or:
 <roadmap-root>/TXXX-task.md
 ```
 
-Never create a single fallback file such as `<roadmap-root>/feature-tasks.md` for multiple tasks.
+Never create a single fallback file such as `<roadmap-root>/feature-tasks.md` for multiple tasks. The skill must not duplicate numbering, `rootline new`, README task-table edits, or dependency-link writing once `roadmapctl materialize` is available; those deterministic writes belong to the CLI.
 
 ## `/roadmap loop` integration snippet
 

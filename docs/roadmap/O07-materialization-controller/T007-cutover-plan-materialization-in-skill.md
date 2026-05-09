@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: task
 ---
 # T007: Cortar plan-subcommand hacia `roadmapctl materialize`
