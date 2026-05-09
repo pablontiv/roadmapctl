@@ -28,6 +28,11 @@ outcome_close_verify = ["go test ./..."]
 pr_merge_strategy = "merge"
 commit_style = "conventional"
 auto_push = false
+loop_max_tasks = 7
+parallel = false
+autonomy = "manual"
+compact_after_task_commit = false
+pr_mode = true
 
 [status_values]
 in_progress = "Doing"
@@ -53,6 +58,9 @@ completed = "Done"
 	}
 	if loaded.AutoPush {
 		t.Fatal("AutoPush = true, want false")
+	}
+	if loaded.LoopMaxTasks != 7 || loaded.Parallel || loaded.Autonomy != "manual" || loaded.CompactAfterTaskCommit || !loaded.PRMode {
+		t.Fatalf("execution settings = max:%d parallel:%t autonomy:%q compact:%t pr:%t", loaded.LoopMaxTasks, loaded.Parallel, loaded.Autonomy, loaded.CompactAfterTaskCommit, loaded.PRMode)
 	}
 }
 
@@ -122,17 +130,34 @@ func TestLoadTOMLParseErrorIsUsageError(t *testing.T) {
 	}
 }
 
-func TestLoadLegacyConfigFallbackFixture(t *testing.T) {
-	loaded, err := Load(filepath.Join("..", "..", "testdata", "fixtures", "valid-legacy-config-fallback"), Options{})
+func TestLoadLegacyOnlyMigratesToTOMLAndDeletesLegacy(t *testing.T) {
+	repo := t.TempDir()
+	writeConfig(t, repo, `roadmap-root: docs/roadmap
+done-statuses: ['Done']
+auto-push: false
+`)
+
+	loaded, err := Load(repo, Options{})
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if loaded.RoadmapRootRel != "docs/roadmap" || filepath.Base(loaded.ConfigPath) != "roadmap.local.md" {
+
+	tomlPath := filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml")
+	if loaded.ConfigPath != tomlPath || loaded.RoadmapRootRel != "docs/roadmap" {
 		t.Fatalf("loaded = %#v", loaded)
+	}
+	if _, err := os.Stat(tomlPath); err != nil {
+		t.Fatalf("migrated TOML missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".claude", "roadmap.local.md")); !os.IsNotExist(err) {
+		t.Fatalf("legacy config still exists after migration: %v", err)
+	}
+	if loaded.DoneStatuses[0] != "Done" || loaded.AutoPush || loaded.LoopMaxTasks != 0 || !loaded.Parallel || loaded.Autonomy != "until_done" || !loaded.CompactAfterTaskCommit || loaded.PRMode {
+		t.Fatalf("loaded config = %#v", loaded)
 	}
 }
 
-func TestLoadWarnsWhenTOMLAndLegacyConflict(t *testing.T) {
+func TestLoadExistingTOMLDeletesLegacyWithoutConflictWarning(t *testing.T) {
 	repo := t.TempDir()
 	writeConfig(t, repo, "roadmap-root: docs/roadmap\ndone-statuses: ['Done']\n")
 	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `done_statuses = ["Completed"]
@@ -142,9 +167,63 @@ func TestLoadWarnsWhenTOMLAndLegacyConflict(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if len(loaded.Warnings) != 1 || loaded.Warnings[0].Code != WarnConfigConflict {
+	if len(loaded.Warnings) != 0 {
 		t.Fatalf("Warnings = %#v", loaded.Warnings)
 	}
+	if _, err := os.Stat(filepath.Join(repo, ".claude", "roadmap.local.md")); !os.IsNotExist(err) {
+		t.Fatalf("legacy config still exists after TOML load: %v", err)
+	}
+}
+
+func TestLoadInvalidTOMLDoesNotFallbackToLegacy(t *testing.T) {
+	repo := t.TempDir()
+	writeConfig(t, repo, "roadmap-root: docs/roadmap\n")
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `done_statuses = ["Completed"
+`)
+
+	_, err := Load(repo, Options{})
+	if err == nil {
+		t.Fatal("Load() error = nil, want TOML parse error")
+	}
+	var cfgErr *Error
+	if !errors.As(err, &cfgErr) || cfgErr.Code != ErrConfigParse {
+		t.Fatalf("Load() error = %#v, want RMC_CONFIG_PARSE", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(repo, ".claude", "roadmap.local.md")); statErr != nil {
+		t.Fatalf("legacy config should remain after invalid TOML: %v", statErr)
+	}
+}
+
+func TestLoadRejectsInvalidExecutionSettings(t *testing.T) {
+	t.Run("invalid autonomy", func(t *testing.T) {
+		repo := t.TempDir()
+		writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `autonomy = "robot"
+`)
+
+		_, err := Load(repo, Options{})
+		if err == nil {
+			t.Fatal("Load() error = nil, want validation error")
+		}
+		var cfgErr *Error
+		if !errors.As(err, &cfgErr) || cfgErr.Code != ErrConfigParse {
+			t.Fatalf("Load() error = %#v, want RMC_CONFIG_PARSE", err)
+		}
+	})
+
+	t.Run("negative loop max tasks", func(t *testing.T) {
+		repo := t.TempDir()
+		writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `loop_max_tasks = -1
+`)
+
+		_, err := Load(repo, Options{})
+		if err == nil {
+			t.Fatal("Load() error = nil, want validation error")
+		}
+		var cfgErr *Error
+		if !errors.As(err, &cfgErr) || cfgErr.Code != ErrConfigParse {
+			t.Fatalf("Load() error = %#v, want RMC_CONFIG_PARSE", err)
+		}
+	})
 }
 
 func TestLegacyMigrationPlanGeneratesTOMLWithoutWriting(t *testing.T) {
@@ -190,8 +269,11 @@ func TestLoadResolvesValidRoadmapRootInsideRepo(t *testing.T) {
 	if loaded.RoadmapRootRel != filepath.ToSlash(filepath.Join("docs", "roadmap")) {
 		t.Fatalf("RoadmapRootRel = %q", loaded.RoadmapRootRel)
 	}
-	if loaded.ConfigPath != filepath.Join(repo, ".claude", "roadmap.local.md") {
+	if loaded.ConfigPath != filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml") {
 		t.Fatalf("ConfigPath = %q", loaded.ConfigPath)
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".claude", "roadmap.local.md")); !os.IsNotExist(err) {
+		t.Fatalf("legacy config still exists after migration: %v", err)
 	}
 }
 

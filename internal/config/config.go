@@ -56,6 +56,12 @@ type Config struct {
 	PRMergeStrategy    string
 	CommitStyle        string
 	AutoPush           bool
+
+	LoopMaxTasks           int
+	Parallel               bool
+	Autonomy               string
+	CompactAfterTaskCommit bool
+	PRMode                 bool
 }
 
 type Warning struct {
@@ -104,26 +110,46 @@ func Load(repo string, opts Options) (*Config, error) {
 		}
 		roadmapRoot = filepath.ToSlash(filepath.Dir(strings.TrimPrefix(tomlPath, absRepo+string(filepath.Separator))))
 		if fileExists(legacyPath) {
-			legacyFields, err := loadLegacyFields(legacyPath)
-			if err != nil {
-				return nil, err
-			}
-			legacyCfg := defaultConfig(absRepo)
-			applyFields(legacyCfg, legacyFields)
-			if configDiffers(cfg, legacyCfg) {
-				cfg.Warnings = append(cfg.Warnings, Warning{Code: WarnConfigConflict, Message: "roadmapctl TOML and legacy roadmap config differ; TOML is preferred", Path: tomlPath})
+			if err := os.Remove(legacyPath); err != nil {
+				return nil, &Error{Code: ErrConfigParse, Message: "remove legacy roadmap config after TOML load", Path: legacyPath, ExitCode: 2, Cause: err}
 			}
 		}
 	} else if fileExists(legacyPath) {
-		cfg.ConfigPath = legacyPath
 		fields, err := loadLegacyFields(legacyPath)
 		if err != nil {
 			return nil, err
 		}
 		applyFields(cfg, fields)
+		if err := validateConfig(cfg, legacyPath); err != nil {
+			return nil, err
+		}
 		if strings.TrimSpace(opts.RoadmapRoot) == "" {
 			roadmapRoot = stringValue(fields["roadmap-root"])
 		}
+		if strings.TrimSpace(roadmapRoot) == "" {
+			return nil, &Error{Code: ErrRoadmapRootMissing, Message: "roadmap-root is required", Path: legacyPath, ExitCode: 2}
+		}
+		absRoadmapRoot, _, err := fsx.ResolveInside(absRepo, roadmapRoot)
+		if err != nil {
+			return nil, &Error{Code: ErrRoadmapRootEscape, Message: "roadmap-root must resolve inside repo", Path: legacyPath, ExitCode: 2, Cause: err}
+		}
+		if err := os.MkdirAll(absRoadmapRoot, 0o755); err != nil {
+			return nil, &Error{Code: ErrConfigParse, Message: "create roadmap root for TOML migration", Path: absRoadmapRoot, ExitCode: 2, Cause: err}
+		}
+		migratedPath := filepath.Join(absRoadmapRoot, ".roadmapctl.toml")
+		if err := os.WriteFile(migratedPath, []byte(renderTOMLConfig(cfg)), 0o644); err != nil {
+			return nil, &Error{Code: ErrConfigParse, Message: "write migrated roadmapctl TOML", Path: migratedPath, ExitCode: 2, Cause: err}
+		}
+		migratedCfg := defaultConfig(absRepo)
+		migratedCfg.ConfigPath = migratedPath
+		if err := loadTOMLConfig(migratedCfg, migratedPath); err != nil {
+			return nil, err
+		}
+		if err := os.Remove(legacyPath); err != nil {
+			return nil, &Error{Code: ErrConfigParse, Message: "remove legacy roadmap config after TOML migration", Path: legacyPath, ExitCode: 2, Cause: err}
+		}
+		cfg = migratedCfg
+		roadmapRoot = filepath.ToSlash(filepath.Dir(strings.TrimPrefix(migratedPath, absRepo+string(filepath.Separator))))
 	} else if !roadmapRootExists(absRepo, roadmapRoot) {
 		missingPath := tomlPath
 		if strings.TrimSpace(opts.RoadmapRoot) == "" {
@@ -149,14 +175,19 @@ func Load(repo string, opts Options) (*Config, error) {
 }
 
 type tomlConfig struct {
-	DoneStatuses       []string         `toml:"done_statuses"`
-	ActiveStatuses     []string         `toml:"active_statuses"`
-	LeafFilter         string           `toml:"leaf_filter"`
-	OutcomeCloseVerify []string         `toml:"outcome_close_verify"`
-	PRMergeStrategy    string           `toml:"pr_merge_strategy"`
-	CommitStyle        string           `toml:"commit_style"`
-	AutoPush           *bool            `toml:"auto_push"`
-	StatusValues       tomlStatusValues `toml:"status_values"`
+	DoneStatuses           []string         `toml:"done_statuses"`
+	ActiveStatuses         []string         `toml:"active_statuses"`
+	LeafFilter             string           `toml:"leaf_filter"`
+	OutcomeCloseVerify     []string         `toml:"outcome_close_verify"`
+	PRMergeStrategy        string           `toml:"pr_merge_strategy"`
+	CommitStyle            string           `toml:"commit_style"`
+	AutoPush               *bool            `toml:"auto_push"`
+	LoopMaxTasks           *int             `toml:"loop_max_tasks"`
+	Parallel               *bool            `toml:"parallel"`
+	Autonomy               string           `toml:"autonomy"`
+	CompactAfterTaskCommit *bool            `toml:"compact_after_task_commit"`
+	PRMode                 *bool            `toml:"pr_mode"`
+	StatusValues           tomlStatusValues `toml:"status_values"`
 }
 
 type tomlStatusValues struct {
@@ -206,6 +237,9 @@ func loadTOMLConfig(cfg *Config, path string) error {
 		return &Error{Code: ErrConfigParse, Message: "parse roadmapctl TOML: " + err.Error(), Path: path, ExitCode: 2, Cause: err}
 	}
 	applyTOMLConfig(cfg, decoded)
+	if err := validateConfig(cfg, path); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -246,6 +280,21 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig) {
 	if decoded.AutoPush != nil {
 		cfg.AutoPush = *decoded.AutoPush
 	}
+	if decoded.LoopMaxTasks != nil {
+		cfg.LoopMaxTasks = *decoded.LoopMaxTasks
+	}
+	if decoded.Parallel != nil {
+		cfg.Parallel = *decoded.Parallel
+	}
+	if decoded.Autonomy != "" {
+		cfg.Autonomy = decoded.Autonomy
+	}
+	if decoded.CompactAfterTaskCommit != nil {
+		cfg.CompactAfterTaskCommit = *decoded.CompactAfterTaskCommit
+	}
+	if decoded.PRMode != nil {
+		cfg.PRMode = *decoded.PRMode
+	}
 	if decoded.StatusValues.Pending != "" {
 		cfg.StatusValues.Pending = decoded.StatusValues.Pending
 	}
@@ -274,7 +323,12 @@ func renderTOMLConfig(cfg *Config) string {
 	writeStringList(&b, "outcome_close_verify", cfg.OutcomeCloseVerify)
 	fmt.Fprintf(&b, "pr_merge_strategy = '%s'\n", cfg.PRMergeStrategy)
 	fmt.Fprintf(&b, "commit_style = '%s'\n", cfg.CommitStyle)
-	fmt.Fprintf(&b, "auto_push = %t\n\n", cfg.AutoPush)
+	fmt.Fprintf(&b, "auto_push = %t\n", cfg.AutoPush)
+	fmt.Fprintf(&b, "loop_max_tasks = %d\n", cfg.LoopMaxTasks)
+	fmt.Fprintf(&b, "parallel = %t\n", cfg.Parallel)
+	fmt.Fprintf(&b, "autonomy = '%s'\n", cfg.Autonomy)
+	fmt.Fprintf(&b, "compact_after_task_commit = %t\n", cfg.CompactAfterTaskCommit)
+	fmt.Fprintf(&b, "pr_mode = %t\n\n", cfg.PRMode)
 	b.WriteString("[status_values]\n")
 	fmt.Fprintf(&b, "pending = '%s'\n", cfg.StatusValues.Pending)
 	fmt.Fprintf(&b, "specified = '%s'\n", cfg.StatusValues.Specified)
@@ -304,6 +358,11 @@ func configDiffers(left *Config, right *Config) bool {
 		left.PRMergeStrategy != right.PRMergeStrategy ||
 		left.CommitStyle != right.CommitStyle ||
 		left.AutoPush != right.AutoPush ||
+		left.LoopMaxTasks != right.LoopMaxTasks ||
+		left.Parallel != right.Parallel ||
+		left.Autonomy != right.Autonomy ||
+		left.CompactAfterTaskCommit != right.CompactAfterTaskCommit ||
+		left.PRMode != right.PRMode ||
 		left.StatusValues != right.StatusValues
 }
 
@@ -350,11 +409,16 @@ func defaultConfig(repo string) *Config {
 			Blocked:    "Blocked",
 			Obsolete:   "Obsolete",
 		},
-		LeafFilter:         "isIndex == false",
-		OutcomeCloseVerify: []string{},
-		PRMergeStrategy:    "squash",
-		CommitStyle:        "conventional",
-		AutoPush:           true,
+		LeafFilter:             "isIndex == false",
+		OutcomeCloseVerify:     []string{},
+		PRMergeStrategy:        "squash",
+		CommitStyle:            "conventional",
+		AutoPush:               true,
+		LoopMaxTasks:           0,
+		Parallel:               true,
+		Autonomy:               "until_done",
+		CompactAfterTaskCommit: true,
+		PRMode:                 false,
 	}
 }
 
@@ -379,6 +443,21 @@ func applyFields(cfg *Config, fields map[string]any) {
 	}
 	if v, ok := boolValue(fields["auto-push"]); ok {
 		cfg.AutoPush = v
+	}
+	if v, ok := intValue(fields["loop-max-tasks"]); ok {
+		cfg.LoopMaxTasks = v
+	}
+	if v, ok := boolValue(fields["parallel"]); ok {
+		cfg.Parallel = v
+	}
+	if v, ok := stringValueOK(fields["autonomy"]); ok {
+		cfg.Autonomy = v
+	}
+	if v, ok := boolValue(fields["compact-after-task-commit"]); ok {
+		cfg.CompactAfterTaskCommit = v
+	}
+	if v, ok := boolValue(fields["pr-mode"]); ok {
+		cfg.PRMode = v
 	}
 	if values, ok := fields["status-values"].(map[string]any); ok {
 		if v, ok := stringValueOK(values["pending"]); ok {
@@ -524,4 +603,29 @@ func stringSliceValue(value any) ([]string, bool) {
 func boolValue(value any) (bool, bool) {
 	v, ok := value.(bool)
 	return v, ok
+}
+
+func intValue(value any) (int, bool) {
+	switch v := value.(type) {
+	case int:
+		return v, true
+	case int64:
+		return int(v), true
+	case float64:
+		return int(v), true
+	default:
+		return 0, false
+	}
+}
+
+func validateConfig(cfg *Config, path string) error {
+	if cfg.LoopMaxTasks < 0 {
+		return &Error{Code: ErrConfigParse, Message: "loop_max_tasks must be greater than or equal to 0", Path: path, ExitCode: 2}
+	}
+	switch cfg.Autonomy {
+	case "manual", "supervised", "until_done":
+		return nil
+	default:
+		return &Error{Code: ErrConfigParse, Message: "autonomy must be one of manual, supervised, until_done", Path: path, ExitCode: 2}
+	}
 }
