@@ -18,6 +18,109 @@ func TestConfigErrorFormatsPathAndUnwrapsCause(t *testing.T) {
 	}
 }
 
+func TestLoadPrefersRoadmapctlTOMLAndInfersRoadmapRoot(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `done_statuses = ["Done"]
+active_statuses = ["Ready", "Doing"]
+leaf_filter = "isIndex == false"
+outcome_close_verify = ["go test ./..."]
+pr_merge_strategy = "merge"
+commit_style = "conventional"
+auto_push = false
+
+[status_values]
+in_progress = "Doing"
+completed = "Done"
+`)
+
+	loaded, err := Load(repo, Options{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if loaded.RoadmapRoot != filepath.Join(repo, "docs", "roadmap") {
+		t.Fatalf("RoadmapRoot = %q", loaded.RoadmapRoot)
+	}
+	if loaded.ConfigPath != filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml") {
+		t.Fatalf("ConfigPath = %q", loaded.ConfigPath)
+	}
+	if got := loaded.DoneStatuses; len(got) != 1 || got[0] != "Done" {
+		t.Fatalf("DoneStatuses = %#v", got)
+	}
+	if loaded.StatusValues.InProgress != "Doing" || loaded.StatusValues.Completed != "Done" || loaded.StatusValues.Pending != "Pending" {
+		t.Fatalf("StatusValues = %#v", loaded.StatusValues)
+	}
+	if loaded.AutoPush {
+		t.Fatal("AutoPush = true, want false")
+	}
+}
+
+func TestLoadFixtureValidRoadmapctlTOMLDefault(t *testing.T) {
+	loaded, err := Load(filepath.Join("..", "..", "testdata", "fixtures", "valid-roadmapctl-toml-default"), Options{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if loaded.RoadmapRootRel != "docs/roadmap" {
+		t.Fatalf("RoadmapRootRel = %q", loaded.RoadmapRootRel)
+	}
+	if filepath.Base(loaded.ConfigPath) != ".roadmapctl.toml" {
+		t.Fatalf("ConfigPath = %q", loaded.ConfigPath)
+	}
+}
+
+func TestLoadUsesRoadmapRootOverrideForTOMLDiscovery(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("custom", "roadmap"), `active_statuses = ["Queued"]
+`)
+
+	loaded, err := Load(repo, Options{RoadmapRoot: "custom/roadmap"})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if loaded.RoadmapRootRel != "custom/roadmap" {
+		t.Fatalf("RoadmapRootRel = %q", loaded.RoadmapRootRel)
+	}
+	if got := loaded.ActiveStatuses; len(got) != 1 || got[0] != "Queued" {
+		t.Fatalf("ActiveStatuses = %#v", got)
+	}
+}
+
+func TestLoadUsesDefaultsWhenTOMLMissingButRoadmapRootExists(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, "docs", "roadmap"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := Load(repo, Options{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if loaded.ConfigPath != filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml") {
+		t.Fatalf("ConfigPath = %q", loaded.ConfigPath)
+	}
+	if loaded.RoadmapRootRel != "docs/roadmap" || loaded.StatusValues.Completed != "Completed" {
+		t.Fatalf("loaded = %#v", loaded)
+	}
+}
+
+func TestLoadTOMLParseErrorIsUsageError(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `done_statuses = ["Completed"
+`)
+
+	_, err := Load(repo, Options{})
+	if err == nil {
+		t.Fatal("Load() error = nil, want TOML parse error")
+	}
+	var cfgErr *Error
+	if !errors.As(err, &cfgErr) {
+		t.Fatalf("Load() error type = %T, want *Error", err)
+	}
+	if cfgErr.Code != ErrConfigParse || cfgErr.ExitCode != 2 {
+		t.Fatalf("error = %#v", cfgErr)
+	}
+}
+
 func TestLoadResolvesValidRoadmapRootInsideRepo(t *testing.T) {
 	repo := t.TempDir()
 	writeConfig(t, repo, "roadmap-root: docs/roadmap\n")
@@ -170,6 +273,17 @@ func writeConfig(t *testing.T, repo string, body string) {
 	}
 	content := "---\n" + body + "---\n"
 	if err := os.WriteFile(filepath.Join(dir, "roadmap.local.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeRoadmapctlTOML(t *testing.T, repo string, roadmapRoot string, body string) {
+	t.Helper()
+	dir := filepath.Join(repo, roadmapRoot)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".roadmapctl.toml"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

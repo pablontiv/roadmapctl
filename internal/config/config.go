@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pablontiv/roadmapctl/internal/fsx"
+	"github.com/pelletier/go-toml/v2"
 )
 
 const (
@@ -72,26 +73,41 @@ func Load(repo string, opts Options) (*Config, error) {
 	}
 	absRepo = filepath.Clean(absRepo)
 	cfg := defaultConfig(absRepo)
-	cfg.ConfigPath = filepath.Join(absRepo, ".claude", "roadmap.local.md")
 
-	data, err := os.ReadFile(cfg.ConfigPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, &Error{Code: ErrConfigMissing, Message: "roadmap config not found", Path: cfg.ConfigPath, ExitCode: 2, Cause: err}
+	legacyPath := filepath.Join(absRepo, ".claude", "roadmap.local.md")
+	roadmapRoot := opts.RoadmapRoot
+	if strings.TrimSpace(roadmapRoot) == "" {
+		roadmapRoot = filepath.ToSlash(filepath.Join("docs", "roadmap"))
+	}
+
+	tomlRoadmapRoot := roadmapRoot
+	tomlPath := filepath.Join(absRepo, filepath.FromSlash(normalizeSeparators(tomlRoadmapRoot)), ".roadmapctl.toml")
+	if fileExists(tomlPath) {
+		cfg.ConfigPath = tomlPath
+		if err := loadTOMLConfig(cfg, tomlPath); err != nil {
+			return nil, err
 		}
-		return nil, &Error{Code: ErrConfigParse, Message: "read roadmap config", Path: cfg.ConfigPath, ExitCode: 2, Cause: err}
+		roadmapRoot = filepath.ToSlash(filepath.Dir(strings.TrimPrefix(tomlPath, absRepo+string(filepath.Separator))))
+	} else if fileExists(legacyPath) {
+		cfg.ConfigPath = legacyPath
+		fields, err := loadLegacyFields(legacyPath)
+		if err != nil {
+			return nil, err
+		}
+		applyFields(cfg, fields)
+		if strings.TrimSpace(opts.RoadmapRoot) == "" {
+			roadmapRoot = stringValue(fields["roadmap-root"])
+		}
+	} else if !roadmapRootExists(absRepo, roadmapRoot) {
+		missingPath := tomlPath
+		if strings.TrimSpace(opts.RoadmapRoot) == "" {
+			missingPath = legacyPath
+		}
+		return nil, &Error{Code: ErrConfigMissing, Message: "roadmap config not found", Path: missingPath, ExitCode: 2, Cause: os.ErrNotExist}
+	} else {
+		cfg.ConfigPath = tomlPath
 	}
 
-	fields, err := parseFrontmatter(data)
-	if err != nil {
-		return nil, &Error{Code: ErrConfigParse, Message: err.Error(), Path: cfg.ConfigPath, ExitCode: 2, Cause: err}
-	}
-	applyFields(cfg, fields)
-
-	roadmapRoot := stringValue(fields["roadmap-root"])
-	if opts.RoadmapRoot != "" {
-		roadmapRoot = opts.RoadmapRoot
-	}
 	if strings.TrimSpace(roadmapRoot) == "" {
 		return nil, &Error{Code: ErrRoadmapRootMissing, Message: "roadmap-root is required", Path: cfg.ConfigPath, ExitCode: 2}
 	}
@@ -104,6 +120,114 @@ func Load(repo string, opts Options) (*Config, error) {
 	cfg.RoadmapRootRel = relRoadmapRoot
 
 	return cfg, nil
+}
+
+type tomlConfig struct {
+	DoneStatuses       []string         `toml:"done_statuses"`
+	ActiveStatuses     []string         `toml:"active_statuses"`
+	LeafFilter         string           `toml:"leaf_filter"`
+	OutcomeCloseVerify []string         `toml:"outcome_close_verify"`
+	PRMergeStrategy    string           `toml:"pr_merge_strategy"`
+	CommitStyle        string           `toml:"commit_style"`
+	AutoPush           *bool            `toml:"auto_push"`
+	StatusValues       tomlStatusValues `toml:"status_values"`
+}
+
+type tomlStatusValues struct {
+	Pending    string `toml:"pending"`
+	Specified  string `toml:"specified"`
+	InProgress string `toml:"in_progress"`
+	Completed  string `toml:"completed"`
+	Blocked    string `toml:"blocked"`
+	Obsolete   string `toml:"obsolete"`
+}
+
+func loadTOMLConfig(cfg *Config, path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return &Error{Code: ErrConfigParse, Message: "read roadmapctl config", Path: path, ExitCode: 2, Cause: err}
+	}
+	var decoded tomlConfig
+	if err := toml.Unmarshal(data, &decoded); err != nil {
+		return &Error{Code: ErrConfigParse, Message: "parse roadmapctl TOML: " + err.Error(), Path: path, ExitCode: 2, Cause: err}
+	}
+	applyTOMLConfig(cfg, decoded)
+	return nil
+}
+
+func loadLegacyFields(path string) (map[string]any, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, &Error{Code: ErrConfigMissing, Message: "roadmap config not found", Path: path, ExitCode: 2, Cause: err}
+		}
+		return nil, &Error{Code: ErrConfigParse, Message: "read roadmap config", Path: path, ExitCode: 2, Cause: err}
+	}
+	fields, err := parseFrontmatter(data)
+	if err != nil {
+		return nil, &Error{Code: ErrConfigParse, Message: err.Error(), Path: path, ExitCode: 2, Cause: err}
+	}
+	return fields, nil
+}
+
+func applyTOMLConfig(cfg *Config, decoded tomlConfig) {
+	if decoded.DoneStatuses != nil {
+		cfg.DoneStatuses = append([]string(nil), decoded.DoneStatuses...)
+	}
+	if decoded.ActiveStatuses != nil {
+		cfg.ActiveStatuses = append([]string(nil), decoded.ActiveStatuses...)
+	}
+	if decoded.LeafFilter != "" {
+		cfg.LeafFilter = decoded.LeafFilter
+	}
+	if decoded.OutcomeCloseVerify != nil {
+		cfg.OutcomeCloseVerify = append([]string(nil), decoded.OutcomeCloseVerify...)
+	}
+	if decoded.PRMergeStrategy != "" {
+		cfg.PRMergeStrategy = decoded.PRMergeStrategy
+	}
+	if decoded.CommitStyle != "" {
+		cfg.CommitStyle = decoded.CommitStyle
+	}
+	if decoded.AutoPush != nil {
+		cfg.AutoPush = *decoded.AutoPush
+	}
+	if decoded.StatusValues.Pending != "" {
+		cfg.StatusValues.Pending = decoded.StatusValues.Pending
+	}
+	if decoded.StatusValues.Specified != "" {
+		cfg.StatusValues.Specified = decoded.StatusValues.Specified
+	}
+	if decoded.StatusValues.InProgress != "" {
+		cfg.StatusValues.InProgress = decoded.StatusValues.InProgress
+	}
+	if decoded.StatusValues.Completed != "" {
+		cfg.StatusValues.Completed = decoded.StatusValues.Completed
+	}
+	if decoded.StatusValues.Blocked != "" {
+		cfg.StatusValues.Blocked = decoded.StatusValues.Blocked
+	}
+	if decoded.StatusValues.Obsolete != "" {
+		cfg.StatusValues.Obsolete = decoded.StatusValues.Obsolete
+	}
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}
+
+func roadmapRootExists(repo string, roadmapRoot string) bool {
+	root, _, err := fsx.ResolveInside(repo, roadmapRoot)
+	if err != nil {
+		return false
+	}
+	info, err := os.Stat(root)
+	return err == nil && info.IsDir()
+}
+
+func normalizeSeparators(path string) string {
+	return strings.ReplaceAll(path, "\\", "/")
 }
 
 func defaultConfig(repo string) *Config {
