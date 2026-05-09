@@ -1,0 +1,14 @@
+{
+  "count": 0,
+  "diagnostics": [],
+  "kind": "roadmapctl/pending",
+  "roadmap_root": "<fixture:valid-no-pending>/docs/roadmap",
+  "root": "<fixture:valid-no-pending>",
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "ok",
+    "warnings": 0
+  },
+  "version": 1
+}

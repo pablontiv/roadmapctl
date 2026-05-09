@@ -1,0 +1,24 @@
+{
+  "count": 2,
+  "diagnostics": [],
+  "kind": "roadmapctl/pending",
+  "roadmap_root": "<fixture:valid-direct-tasks>/docs/roadmap",
+  "root": "<fixture:valid-direct-tasks>",
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "ok",
+    "warnings": 0
+  },
+  "tasks": [
+    {
+      "path": "T001-first.md",
+      "status": "Pending"
+    },
+    {
+      "path": "T002-second.md",
+      "status": "Pending"
+    }
+  ],
+  "version": 1
+}

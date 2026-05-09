@@ -37,6 +37,11 @@ func TestCheckGoldenJSONFixtures(t *testing.T) {
 		{name: "root escape", command: "check", fixture: "invalid-root-escape", wantExit: 2, wantID: "RMC_CONFIG_ROADMAP_ROOT_ESCAPE", goldenName: "check-invalid-root-escape.json"},
 		{name: "context legacy", command: "context", fixture: "valid-legacy-config-fallback", wantExit: 0, goldenName: "context-valid-legacy-config-fallback.json"},
 		{name: "context workspace", command: "context", fixture: "valid-workspace", wantExit: 0, goldenName: "context-valid-workspace.json"},
+		{name: "pending direct tasks", command: "pending", fixture: "valid-direct-tasks", wantExit: 0, goldenName: "pending-valid-direct-tasks.json"},
+		{name: "pending outcome tasks", command: "pending", fixture: "valid-outcome-with-tasks", wantExit: 0, goldenName: "pending-valid-outcome-with-tasks.json"},
+		{name: "pending none", command: "pending", fixture: "valid-no-pending", wantExit: 0, goldenName: "pending-valid-no-pending.json"},
+		{name: "next ready blocked", command: "next", fixture: "valid-next-with-blocked", wantExit: 0, goldenName: "next-valid-next-with-blocked.json"},
+		{name: "decision reverse dependencies", command: "decision", fixture: "valid-next-with-blocked", wantExit: 0, goldenName: "decision-valid-next-with-blocked.json"},
 	}
 
 	for _, tt := range tests {
@@ -57,6 +62,33 @@ func TestCheckGoldenJSONFixtures(t *testing.T) {
 			testutil.AssertGoldenJSON(t, testutil.GoldenPath(tt.goldenName), stdout.Bytes(), map[string]string{
 				absoluteFixturePath(t, tt.fixture): fmt.Sprintf("<fixture:%s>", tt.fixture),
 			})
+		})
+	}
+}
+
+func TestReadOnlyTextGoldens(t *testing.T) {
+	tests := []struct {
+		name       string
+		command    string
+		fixture    string
+		goldenName string
+	}{
+		{name: "pending", command: "pending", fixture: "valid-outcome-with-tasks", goldenName: "pending-valid-outcome-with-tasks.txt"},
+		{name: "next", command: "next", fixture: "valid-next-with-blocked", goldenName: "next-valid-next-with-blocked.txt"},
+		{name: "decision", command: "decision", fixture: "valid-next-with-blocked", goldenName: "decision-valid-next-with-blocked.txt"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			code := Execute([]string{tt.command, "--repo", testutil.FixturePath(t, tt.fixture), "--output", "text"}, &stdout, &stderr)
+			testutil.AssertExit(t, code, 0, &stdout, &stderr)
+			want, err := os.ReadFile(testutil.GoldenPath(tt.goldenName))
+			if err != nil {
+				t.Fatalf("read text golden: %v\nactual:\n%s", err, stdout.String())
+			}
+			if !bytes.Equal(bytes.TrimSpace(want), bytes.TrimSpace(stdout.Bytes())) {
+				t.Fatalf("text golden mismatch\nwant:\n%s\ngot:\n%s", bytes.TrimSpace(want), bytes.TrimSpace(stdout.Bytes()))
+			}
 		})
 	}
 }
