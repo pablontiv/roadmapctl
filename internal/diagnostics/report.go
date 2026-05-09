@@ -57,6 +57,17 @@ const (
 	DiagnosticTransitionApplyFailed       = "RMC_TRANSITION_APPLY_FAILED"
 )
 
+const (
+	DiagnosticMaterializeInputVersionUnsupported   = "RMC_MATERIALIZE_INPUT_VERSION_UNSUPPORTED"
+	DiagnosticMaterializeInputKindInvalid          = "RMC_MATERIALIZE_INPUT_KIND_INVALID"
+	DiagnosticMaterializeInputEmpty                = "RMC_MATERIALIZE_INPUT_EMPTY"
+	DiagnosticMaterializeInputFieldMissing         = "RMC_MATERIALIZE_INPUT_FIELD_MISSING"
+	DiagnosticMaterializeInputSlugInvalid          = "RMC_MATERIALIZE_INPUT_SLUG_INVALID"
+	DiagnosticMaterializeInputDependencyInvalid    = "RMC_MATERIALIZE_INPUT_DEPENDENCY_INVALID"
+	DiagnosticMaterializeInputDependencyUnresolved = "RMC_MATERIALIZE_INPUT_DEPENDENCY_UNRESOLVED"
+	DiagnosticMaterializePlanConflict              = "RMC_MATERIALIZE_PLAN_CONFLICT"
+)
+
 type Severity string
 
 type Report struct {

@@ -30,7 +30,8 @@ Commands:
   doctor    Diagnose repo/workspace, roadmap config, Rootline availability and schema prerequisites.
   check     Validate canonical roadmap structure, metadata, Rootline graph and blocking dependencies.
   lint        Validate deterministic semantic roadmap conventions.
-  transition  Planned: evaluate and apply policy-checked status transitions.
+  transition  Evaluate and apply policy-checked status transitions.
+  materialize  Planned: validate and write approved structured roadmap plans.
 ```
 
 Commands support `--output text` and `--output json`.
@@ -341,6 +342,10 @@ Severity policy:
 - `warning`: deterministic semantic or documentation consistency issue; exits `0` unless `--strict` is set.
 - `error`: deterministic portability or schema problem that can break roadmapctl operation or supported filesystems.
 - `lint` must not reclassify MVP `RMC_STRUCTURE_*`, `RMC_GRAPH_*`, `RMC_ROOTLINE_*`, or `RMC_STATUS_*` diagnostics without compatibility notes.
+
+## Materialize plan input contract
+
+The planned `roadmapctl materialize` command accepts only structured, approved JSON input. It does not parse free-form chat or call an LLM. The versioned input schema, examples, validation rules, dependency representation, and `RMC_MATERIALIZE_*` diagnostics are specified in [materialize-plan-schema.md](materialize-plan-schema.md).
 
 ## Transition controller contract
 
