@@ -25,7 +25,7 @@ run_and_capture() {
 assert_log_contains() {
   local name="$1"
   local needle="$2"
-  if ! grep -Fq "$needle" "$evidence_dir/${name}.log"; then
+  if ! grep -Fq -- "$needle" "$evidence_dir/${name}.log"; then
     echo "expected ${name}.log to contain: $needle" >&2
     return 1
   fi
@@ -35,7 +35,7 @@ assert_log_contains_any() {
   local name="$1"
   shift
   for needle in "$@"; do
-    if grep -Fqi "$needle" "$evidence_dir/${name}.log"; then
+    if grep -Fqi -- "$needle" "$evidence_dir/${name}.log"; then
       return 0
     fi
   done
@@ -57,7 +57,21 @@ run_and_capture materialize-preflight \
     --no-extensions \
     --skill .claude/skills/roadmap/SKILL.md \
     --tools read,bash \
-    -p 'HEADLESS VERIFICATION TEST. Use the roadmap skill. Scenario: there is an already approved plan to materialize one direct task, and the user says "crea las tareas". Do not create or modify files and do not run git commit/push. Perform only bootstrap and the required preflight checks that must happen before any roadmap write, then stop. In your final answer, list exact commands run and whether roadmapctl context/doctor/check were required and passed; confirm no files were modified.'
+    -p 'HEADLESS VERIFICATION TEST. Use the roadmap skill. Scenario: there is an already approved plan to materialize one direct task, and the user says "crea las tareas". Do not create or modify files and do not run git commit/push. Perform only bootstrap and the required preflight checks that must happen before any roadmap write, then stop. In your final answer, list exact commands run and whether roadmapctl context/doctor/check were required and passed; confirm no files were modified. End with exactly: HEADLESS_RESULT materialize_preflight=pass.'
+
+run_and_capture no-args-pending \
+  env PI_SKIP_VERSION_CHECK=1 pi \
+    --no-extensions \
+    --skill .claude/skills/roadmap/SKILL.md \
+    --tools read,bash \
+    -p 'HEADLESS VERIFICATION TEST. Use the roadmap skill as if the user invoked /roadmap with no arguments in this repository. Do not modify files and do not run git commit/push. Perform only read-only bootstrap and dispatch, then stop. You must run roadmapctl pending and must not run roadmapctl decision. In your final answer, list exact commands run. End with exactly: HEADLESS_RESULT no_args_pending=pass pending=used decision=not_used.'
+
+run_and_capture materialize-dry-run-token-light \
+  env PI_SKIP_VERSION_CHECK=1 pi \
+    --no-extensions \
+    --skill .claude/skills/roadmap/SKILL.md \
+    --tools read,bash \
+    -p 'HEADLESS VERIFICATION TEST. Use the roadmap skill. Scenario: there is an already approved plan to materialize one direct task named "Headless token light smoke" in this repository. Do not modify repository files and do not run git commit/push. Perform bootstrap/preflight, serialize the plan only to a temp file, run roadmapctl materialize --dry-run only with output redirected to a temp dry-run JSON file, review only summary/diagnostics/path/operation/applied/preconditions, then stop before apply. Do not dump changes[].content or full diffs. In your final answer, list exact commands run, state whether git status changed due to this scenario, and end with exactly: HEADLESS_RESULT materialize_dry_run=pass concise=pass modified=no.'
 
 set +e
 (
@@ -95,6 +109,16 @@ assert_log_contains loop-preflight "roadmapctl check"
 assert_log_contains materialize-preflight "roadmapctl context"
 assert_log_contains materialize-preflight "roadmapctl doctor"
 assert_log_contains materialize-preflight "roadmapctl check"
-assert_log_contains_any materialize-preflight "No files" "no files" "no modifi"
+assert_log_contains materialize-preflight "HEADLESS_RESULT materialize_preflight=pass"
+assert_log_contains_any materialize-preflight "No files" "No roadmap files" "No roadmap materialization" "file creation" "no files" "no modifi"
+assert_log_contains no-args-pending "HEADLESS_RESULT no_args_pending=pass pending=used decision=not_used"
+assert_log_contains no-args-pending "roadmapctl pending"
+assert_log_contains materialize-dry-run-token-light "HEADLESS_RESULT materialize_dry_run=pass concise=pass modified=no"
+assert_log_contains materialize-dry-run-token-light "roadmapctl materialize --plan"
+assert_log_contains materialize-dry-run-token-light "--dry-run"
+if grep -Eq '"content"[[:space:]]*:|^diff --git|^@@ ' "$evidence_dir/materialize-dry-run-token-light.log"; then
+  echo "materialize-dry-run-token-light.log appears to contain full content/diff output" >&2
+  exit 1
+fi
 
 echo "roadmap headless evidence saved to: $evidence_dir"
