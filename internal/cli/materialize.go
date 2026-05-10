@@ -11,6 +11,7 @@ import (
 
 	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
 	"github.com/pablontiv/roadmapctl/internal/materialize"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 	"github.com/spf13/cobra"
@@ -69,6 +70,9 @@ func runMaterialize(ctx context.Context, options Options, planPath string, chang
 	}
 	var result materialize.Result
 	var found []diagnostics.Diagnostic
+	if apply {
+		found = append(found, materializeSchemaCompatibilityDiagnostics(ctx, cfg, options)...)
+	}
 	if changesPath != "" {
 		changes, readFound := readMaterializeChanges(changesPath)
 		found = append(found, readFound...)
@@ -81,7 +85,9 @@ func runMaterialize(ctx context.Context, options Options, planPath string, chang
 		}
 	} else {
 		var plan materialize.Plan
-		plan, found = readMaterializePlan(planPath)
+		var readFound []diagnostics.Diagnostic
+		plan, readFound = readMaterializePlan(planPath)
+		found = append(found, readFound...)
 		if len(found) == 0 {
 			if apply {
 				result, found, err = materialize.Apply(cfg.RoadmapRoot, plan)
@@ -134,6 +140,19 @@ func validateMaterializedFiles(ctx context.Context, cfg *config.Config, options 
 		}
 	}
 	return found
+}
+
+func materializeSchemaCompatibilityDiagnostics(ctx context.Context, cfg *config.Config, options Options) []diagnostics.Diagnostic {
+	stemPath := filepath.Join(cfg.RoadmapRoot, ".stem")
+	if _, err := os.Stat(stemPath); err != nil {
+		return nil
+	}
+	client := rootlinecli.New(rootlinecli.Options{Binary: options.Rootline, Dir: cfg.RepoRoot, Timeout: options.Timeout})
+	describe, err := client.Describe(ctx, ensureRootlineDirPath(cfg.RoadmapRoot))
+	if err != nil {
+		return []diagnostics.Diagnostic{rootlineDiagnostic(err)}
+	}
+	return roadmaplint.CheckOutcomeSchemaCompatibility(describe.Decoded)
 }
 
 func readMaterializeChanges(path string) ([]materialize.Change, []diagnostics.Diagnostic) {

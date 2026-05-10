@@ -10,6 +10,8 @@ import (
 
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
 	"github.com/pablontiv/roadmapctl/internal/fsx"
+	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
+	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 	"github.com/pablontiv/roadmapctl/internal/templates"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +43,7 @@ func newBootstrapCommand(options *Options, stdout io.Writer, stderr io.Writer, e
 
 func newBootstrapInspectCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
 	return &cobra.Command{Use: "inspect", Short: "Inspect missing bootstrap files without writing.", Args: cobra.NoArgs, SilenceUsage: true, SilenceErrors: true, RunE: func(cmd *cobra.Command, args []string) error {
-		report := buildBootstrapInspect(*options)
+		report := buildBootstrapInspect(context.Background(), *options)
 		*exitCode = renderBootstrap(report, options.Output, stdout, stderr)
 		return nil
 	}}
@@ -63,11 +65,12 @@ func newBootstrapInitCommand(options *Options, stdout io.Writer, stderr io.Write
 	return cmd
 }
 
-func buildBootstrapInspect(options Options) bootstrapReport {
+func buildBootstrapInspect(ctx context.Context, options Options) bootstrapReport {
 	root, roadmapRoot, diagnosticsFound := bootstrapRoots(options)
 	report := bootstrapReport{Version: 1, Kind: "roadmapctl/bootstrap/inspect", Root: root, RoadmapRoot: roadmapRoot, Diagnostics: diagnosticsFound}
 	if len(diagnosticsFound) == 0 {
 		report.Missing = missingBootstrapPaths(root, roadmapRoot)
+		report.Diagnostics = append(report.Diagnostics, bootstrapSchemaCompatibilityDiagnostics(ctx, options, root, roadmapRoot)...)
 	}
 	report.Summary = diagnostics.NewReport(report.Kind, root, roadmapRoot, report.Diagnostics).Summary
 	return report
@@ -77,6 +80,9 @@ func buildBootstrapInit(ctx context.Context, options Options, apply bool) bootst
 	root, roadmapRoot, diagnosticsFound := bootstrapRoots(options)
 	report := bootstrapReport{Version: 1, Kind: "roadmapctl/bootstrap/init", Root: root, RoadmapRoot: roadmapRoot, Diagnostics: diagnosticsFound}
 	if len(diagnosticsFound) == 0 {
+		report.Diagnostics = append(report.Diagnostics, bootstrapSchemaCompatibilityDiagnostics(ctx, options, root, roadmapRoot)...)
+	}
+	if len(report.Diagnostics) == 0 {
 		report.Changes = proposedBootstrapChanges(root, roadmapRoot, apply)
 		if apply {
 			report.Diagnostics = append(report.Diagnostics, applyBootstrapChanges(root, report.Changes)...)
@@ -157,6 +163,19 @@ func applyBootstrapChanges(root string, changes []bootstrapChange) []diagnostics
 
 func bootstrapApplyDiagnostic(path string, err error) diagnostics.Diagnostic {
 	return diagnostics.Diagnostic{ID: "RMC_BOOTSTRAP_APPLY_FAILED", Severity: diagnostics.SeverityError, Message: err.Error(), Path: path, ExitCode: diagnostics.ExitValidation}
+}
+
+func bootstrapSchemaCompatibilityDiagnostics(ctx context.Context, options Options, root string, roadmapRoot string) []diagnostics.Diagnostic {
+	stemPath := filepath.Join(roadmapRoot, ".stem")
+	if _, err := os.Stat(stemPath); err != nil {
+		return nil
+	}
+	client := rootlinecli.New(rootlinecli.Options{Binary: options.Rootline, Dir: root, Timeout: options.Timeout})
+	describe, err := client.Describe(ctx, ensureRootlineDirPath(roadmapRoot))
+	if err != nil {
+		return []diagnostics.Diagnostic{rootlineDiagnostic(err)}
+	}
+	return roadmaplint.CheckOutcomeSchemaCompatibility(describe.Decoded)
 }
 
 func renderBootstrap(report bootstrapReport, output string, stdout io.Writer, stderr io.Writer) int {

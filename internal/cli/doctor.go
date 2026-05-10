@@ -10,6 +10,7 @@ import (
 
 	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )
 
@@ -56,6 +57,12 @@ func runDoctor(ctx context.Context, options Options) diagnostics.Report {
 				"rootline_version": strings.TrimSpace(string(version.Stdout)),
 			},
 		})
+		describe, err := client.Describe(ctx, ensureRootlineDirPath(cfg.RoadmapRoot))
+		if err != nil {
+			found = append(found, rootlineDiagnostic(err))
+		} else {
+			found = append(found, roadmaplint.CheckOutcomeSchemaCompatibility(describe.Decoded)...)
+		}
 	}
 
 	return diagnostics.NewReport("roadmapctl/doctor", cfg.RepoRoot, cfg.RoadmapRoot, found)
@@ -184,4 +191,11 @@ func relToRoot(root string, path string) string {
 		return filepath.ToSlash(filepath.Clean(path))
 	}
 	return filepath.ToSlash(rel)
+}
+
+func ensureRootlineDirPath(path string) string {
+	if strings.HasSuffix(path, "/") || strings.HasSuffix(path, `\`) {
+		return path
+	}
+	return path + string(filepath.Separator)
 }

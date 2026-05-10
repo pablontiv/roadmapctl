@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )
 
@@ -70,6 +71,7 @@ func CheckRootline(ctx context.Context, client RootlineClient, options RootlineC
 		schemaStatuses = extractStatusValues(describeResult.Decoded)
 		schemaTypes = extractTypeValues(describeResult.Decoded)
 		found = append(found, operationalStatusDiagnostics(options.OperationalStatuses, schemaStatuses)...)
+		found = append(found, roadmaplint.CheckOutcomeSchemaCompatibility(describeResult.Decoded)...)
 	}
 
 	queryResult, err := client.Query(ctx, options.RoadmapRoot, options.LeafFilter, `tipo == "task"`)
