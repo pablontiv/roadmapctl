@@ -81,6 +81,82 @@ func CheckSchemaCompatibility(describe map[string]any) []diagnostics.Diagnostic 
 	return found
 }
 
+func CheckOutcomeSchemaCompatibility(describe map[string]any) []diagnostics.Diagnostic {
+	var found []diagnostics.Diagnostic
+	schema, _ := describe["schema"].(map[string]any)
+	if estado, ok := schema["estado"].(map[string]any); ok {
+		found = append(found, checkEstadoSchemaCompatibility(estado)...)
+	}
+	found = append(found, checkEstadoValidateCompatibility(describe)...)
+	sortDiagnostics(found)
+	return found
+}
+
+func checkEstadoSchemaCompatibility(estado map[string]any) []diagnostics.Diagnostic {
+	required, _ := estado["required"].(bool)
+	requiredMatch, hasRequiredMatch := estado["required_match"].(map[string]any)
+	if required && !hasRequiredMatch {
+		return []diagnostics.Diagnostic{lintSchemaDiagnostic(diagnostics.DiagnosticLintSchemaOutcomeEstadoRequired, "effective schema requires estado globally; outcome README files must be able to omit estado", "estado.required")}
+	}
+	if hasRequiredMatch && patternsIncludeOutcome(requiredMatch["patterns"]) {
+		return []diagnostics.Diagnostic{lintSchemaDiagnostic(diagnostics.DiagnosticLintSchemaOutcomeEstadoRequired, "effective schema requires estado for outcomes; outcome README files must be able to omit estado", "estado.required_match")}
+	}
+	return nil
+}
+
+func checkEstadoValidateCompatibility(describe map[string]any) []diagnostics.Diagnostic {
+	var found []diagnostics.Diagnostic
+	for _, value := range arrayValue(describe["validate"]) {
+		rule, ok := value.(map[string]any)
+		if !ok || stringValue(rule["field"]) != "estado" || stringValue(rule["rule"]) != "non_empty" {
+			continue
+		}
+		if validateRuleScoped(rule) {
+			continue
+		}
+		found = append(found, lintSchemaDiagnostic(diagnostics.DiagnosticLintSchemaOutcomeEstadoNonEmpty, "effective schema has global estado non_empty validation; outcome README files must be able to omit estado", "validate.estado.non_empty"))
+	}
+	return found
+}
+
+func patternsIncludeOutcome(value any) bool {
+	for _, pattern := range arrayValue(value) {
+		if stringValue(pattern) == "O*" {
+			return true
+		}
+	}
+	return false
+}
+
+func validateRuleScoped(rule map[string]any) bool {
+	for _, key := range []string{"match", "where", "when", "required_match"} {
+		if _, ok := rule[key]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func arrayValue(value any) []any {
+	switch typed := value.(type) {
+	case []any:
+		return typed
+	case []string:
+		items := make([]any, 0, len(typed))
+		for _, item := range typed {
+			items = append(items, item)
+		}
+		return items
+	default:
+		return nil
+	}
+}
+
+func stringValue(value any) string {
+	text, _ := value.(string)
+	return text
+}
+
 func reservedWindowsName(name string) string {
 	base := strings.TrimSuffix(name, filepath.Ext(name))
 	base = strings.TrimRight(base, " .")

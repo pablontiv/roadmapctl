@@ -88,6 +88,10 @@ Para dependencias duras entre Outcomes, usar path relativo explícito:
 
 No usar targets bare como `[[blocked_by:T001-setup]]`: rootline solo puede resolverlos por basename único y se rompen si hay duplicados.
 
+## Compatibilidad de schema
+
+El schema efectivo debe permitir que los README de Outcome omitan `estado`; solo las tasks requieren estado operativo. Un `.stem` que exige `estado` para `O*` o declara `validate` global `estado non_empty` es legacy/stale y debe reportarse con diagnostics accionables antes de materializar nuevos Outcomes.
+
 ## Criterios de aceptación
 
 Los ACs de una task deben ser:
