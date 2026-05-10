@@ -76,7 +76,7 @@ Every release candidate should pass:
 go build ./cmd/roadmapctl
 ```
 
-`./scripts/check-coverage.sh` runs `go test ./... -coverprofile` and enforces a minimum total statement coverage of 85%. Override only for local experiments with `COVERAGE_THRESHOLD=<percent>`; release and CI runs use the default 85% gate.
+`./scripts/check-coverage.sh` runs `go test ./... -coverprofile` and enforces a minimum total statement coverage. Precedence is `COVERAGE_THRESHOLD=<percent>` for explicit overrides, then `required_code_coverage` from `${ROADMAP_ROOT:-docs/roadmap}/.roadmapctl.toml`, then fallback `85.0` when the TOML or key is absent.
 
 The initial CI matrix runs those commands on:
 

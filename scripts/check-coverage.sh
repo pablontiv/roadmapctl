@@ -1,7 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-threshold="${COVERAGE_THRESHOLD:-85.0}"
+coverage_threshold_from_toml() {
+    local config_path="$1"
+    [[ -f "$config_path" ]] || return 0
+    awk -F= '
+        /^[[:space:]]*required_code_coverage[[:space:]]*=/ {
+            value = $2
+            sub(/#.*/, "", value)
+            gsub(/[[:space:]]/, "", value)
+            print value
+            exit
+        }
+    ' "$config_path"
+}
+
+if [[ -n "${COVERAGE_THRESHOLD:-}" ]]; then
+    threshold="$COVERAGE_THRESHOLD"
+else
+    roadmap_root="${ROADMAP_ROOT:-docs/roadmap}"
+    threshold="$(coverage_threshold_from_toml "$roadmap_root/.roadmapctl.toml")"
+    threshold="${threshold:-85.0}"
+fi
 profile="${COVERAGE_PROFILE:-${TMPDIR:-/tmp}/roadmapctl.cover}"
 
 go test ./... -coverprofile="$profile"
