@@ -28,6 +28,7 @@ outcome_close_verify = ["go test ./..."]
 pr_merge_strategy = "merge"
 commit_style = "conventional"
 auto_push = false
+required_code_coverage = 91.5
 loop_max_tasks = 7
 parallel = false
 autonomy = "manual"
@@ -58,6 +59,9 @@ completed = "Done"
 	}
 	if loaded.AutoPush {
 		t.Fatal("AutoPush = true, want false")
+	}
+	if loaded.RequiredCodeCoverage != 91.5 {
+		t.Fatalf("RequiredCodeCoverage = %v, want 91.5", loaded.RequiredCodeCoverage)
 	}
 	if loaded.LoopMaxTasks != 7 || loaded.Parallel || loaded.Autonomy != "manual" || loaded.CompactAfterTaskCommit || !loaded.PRMode {
 		t.Fatalf("execution settings = max:%d parallel:%t autonomy:%q compact:%t pr:%t", loaded.LoopMaxTasks, loaded.Parallel, loaded.Autonomy, loaded.CompactAfterTaskCommit, loaded.PRMode)
@@ -109,6 +113,9 @@ func TestLoadUsesDefaultsWhenTOMLMissingButRoadmapRootExists(t *testing.T) {
 	}
 	if loaded.RoadmapRootRel != "docs/roadmap" || loaded.StatusValues.Completed != "Completed" {
 		t.Fatalf("loaded = %#v", loaded)
+	}
+	if loaded.RequiredCodeCoverage != 85.0 {
+		t.Fatalf("RequiredCodeCoverage = %v, want 85.0", loaded.RequiredCodeCoverage)
 	}
 }
 
@@ -224,6 +231,22 @@ func TestLoadRejectsInvalidExecutionSettings(t *testing.T) {
 			t.Fatalf("Load() error = %#v, want RMC_CONFIG_PARSE", err)
 		}
 	})
+
+	for _, value := range []string{"-0.1", "100.1"} {
+		t.Run("required code coverage out of range "+value, func(t *testing.T) {
+			repo := t.TempDir()
+			writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), "required_code_coverage = "+value+"\n")
+
+			_, err := Load(repo, Options{})
+			if err == nil {
+				t.Fatal("Load() error = nil, want validation error")
+			}
+			var cfgErr *Error
+			if !errors.As(err, &cfgErr) || cfgErr.Code != ErrConfigParse {
+				t.Fatalf("Load() error = %#v, want RMC_CONFIG_PARSE", err)
+			}
+		})
+	}
 }
 
 func TestLegacyMigrationPlanGeneratesTOMLWithoutWriting(t *testing.T) {
@@ -243,7 +266,7 @@ auto-push: false
 	if plan.TargetPath != filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml") {
 		t.Fatalf("TargetPath = %q", plan.TargetPath)
 	}
-	for _, want := range []string{`done_statuses = ['Done', 'Archived']`, `active_statuses = ['Ready']`, `completed = 'Done'`, `auto_push = false`} {
+	for _, want := range []string{`done_statuses = ['Done', 'Archived']`, `active_statuses = ['Ready']`, `completed = 'Done'`, `auto_push = false`, `required_code_coverage = 85.0`} {
 		if !strings.Contains(plan.Content, want) {
 			t.Fatalf("migration content missing %q:\n%s", want, plan.Content)
 		}

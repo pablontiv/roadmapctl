@@ -26,6 +26,7 @@
   "parallel": true,
   "pr_merge_strategy": "squash",
   "pr_mode": false,
+  "required_code_coverage": 85,
   "roadmap_root": "<fixture:valid-legacy-config-fallback>/docs/roadmap",
   "root": "<fixture:valid-legacy-config-fallback>",
   "rootline_version": "<rootline-version>",

@@ -77,6 +77,7 @@ outcome_close_verify = []
 pr_merge_strategy = "squash"
 commit_style = "conventional"
 auto_push = true
+required_code_coverage = 85.0
 loop_max_tasks = 0
 parallel = true
 autonomy = "until_done"
@@ -105,6 +106,7 @@ Config keys:
 | `pr_merge_strategy` | enum string | `squash` | Preferred PR merge strategy (`squash`, `merge`, `rebase`). |
 | `commit_style` | enum string | `conventional` | Commit message style. |
 | `auto_push` | bool | `true` | Whether loop workflows push after commits. |
+| `required_code_coverage` | float | `85.0` | Minimum required Go coverage percentage used by release/coverage tooling; valid range is `0..100`. |
 | `loop_max_tasks` | integer | `0` | Repo-default loop cap; `0` means unlimited. `/roadmap loop --max` may apply a one-run lower cap in the skill layer. |
 | `parallel` | bool | `true` | Whether `/roadmap loop` may execute safe independent waves through conflict-controlled isolation. |
 | `autonomy` | enum string | `until_done` | Loop continuation policy: `manual`, `supervised`, or `until_done`. |
@@ -190,7 +192,7 @@ roadmapctl check --repo . --output text --strict
 
 | Command | `kind` | Purpose | Key fields |
 |---------|--------|---------|------------|
-| `context` | `roadmapctl/context` | Resolve effective repo, roadmap root, config source, schema, status roles, operational loop config, and prompt helpers. | `config_path`, `config_source`, `rootline_version`, `schema`, `status_values`, `done_statuses`, `active_statuses`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode`, `auto_push`, `commit_style`, `pr_merge_strategy`, `outcome_close_verify`, `helpers` |
+| `context` | `roadmapctl/context` | Resolve effective repo, roadmap root, config source, schema, status roles, operational loop config, and prompt helpers. | `config_path`, `config_source`, `rootline_version`, `schema`, `status_values`, `done_statuses`, `active_statuses`, `required_code_coverage`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode`, `auto_push`, `commit_style`, `pr_merge_strategy`, `outcome_close_verify`, `helpers` |
 | `pending` | `roadmapctl/pending` | List active non-done tasks without mutating state. | `count`, `tasks[]`, workspace `repos[]` when applicable |
 | `next` | `roadmapctl/next` | Separate ready and blocked active tasks. | `ready[]`, `blocked[]` |
 | `decision` | `roadmapctl/decision` | Provide deterministic prioritization data. | `recommendations[]`, `quick_wins[]`, `critical_blockers[]`, `blocked[]` |

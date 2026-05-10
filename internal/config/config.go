@@ -52,10 +52,11 @@ type Config struct {
 	StatusValues   StatusValues
 	LeafFilter     string
 
-	OutcomeCloseVerify []string
-	PRMergeStrategy    string
-	CommitStyle        string
-	AutoPush           bool
+	OutcomeCloseVerify   []string
+	PRMergeStrategy      string
+	CommitStyle          string
+	AutoPush             bool
+	RequiredCodeCoverage float64
 
 	LoopMaxTasks           int
 	Parallel               bool
@@ -182,6 +183,7 @@ type tomlConfig struct {
 	PRMergeStrategy        string           `toml:"pr_merge_strategy"`
 	CommitStyle            string           `toml:"commit_style"`
 	AutoPush               *bool            `toml:"auto_push"`
+	RequiredCodeCoverage   *float64         `toml:"required_code_coverage"`
 	LoopMaxTasks           *int             `toml:"loop_max_tasks"`
 	Parallel               *bool            `toml:"parallel"`
 	Autonomy               string           `toml:"autonomy"`
@@ -280,6 +282,9 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig) {
 	if decoded.AutoPush != nil {
 		cfg.AutoPush = *decoded.AutoPush
 	}
+	if decoded.RequiredCodeCoverage != nil {
+		cfg.RequiredCodeCoverage = *decoded.RequiredCodeCoverage
+	}
 	if decoded.LoopMaxTasks != nil {
 		cfg.LoopMaxTasks = *decoded.LoopMaxTasks
 	}
@@ -324,6 +329,7 @@ func renderTOMLConfig(cfg *Config) string {
 	fmt.Fprintf(&b, "pr_merge_strategy = '%s'\n", cfg.PRMergeStrategy)
 	fmt.Fprintf(&b, "commit_style = '%s'\n", cfg.CommitStyle)
 	fmt.Fprintf(&b, "auto_push = %t\n", cfg.AutoPush)
+	fmt.Fprintf(&b, "required_code_coverage = %.1f\n", cfg.RequiredCodeCoverage)
 	fmt.Fprintf(&b, "loop_max_tasks = %d\n", cfg.LoopMaxTasks)
 	fmt.Fprintf(&b, "parallel = %t\n", cfg.Parallel)
 	fmt.Fprintf(&b, "autonomy = '%s'\n", cfg.Autonomy)
@@ -358,6 +364,7 @@ func configDiffers(left *Config, right *Config) bool {
 		left.PRMergeStrategy != right.PRMergeStrategy ||
 		left.CommitStyle != right.CommitStyle ||
 		left.AutoPush != right.AutoPush ||
+		left.RequiredCodeCoverage != right.RequiredCodeCoverage ||
 		left.LoopMaxTasks != right.LoopMaxTasks ||
 		left.Parallel != right.Parallel ||
 		left.Autonomy != right.Autonomy ||
@@ -414,6 +421,7 @@ func defaultConfig(repo string) *Config {
 		PRMergeStrategy:        "squash",
 		CommitStyle:            "conventional",
 		AutoPush:               true,
+		RequiredCodeCoverage:   85.0,
 		LoopMaxTasks:           0,
 		Parallel:               true,
 		Autonomy:               "until_done",
@@ -443,6 +451,9 @@ func applyFields(cfg *Config, fields map[string]any) {
 	}
 	if v, ok := boolValue(fields["auto-push"]); ok {
 		cfg.AutoPush = v
+	}
+	if v, ok := floatValue(fields["required-code-coverage"]); ok {
+		cfg.RequiredCodeCoverage = v
 	}
 	if v, ok := intValue(fields["loop-max-tasks"]); ok {
 		cfg.LoopMaxTasks = v
@@ -554,6 +565,10 @@ func parseScalar(value string) any {
 	if value == "false" {
 		return false
 	}
+	var number float64
+	if _, err := fmt.Sscanf(value, "%f", &number); err == nil {
+		return number
+	}
 	return unquote(value)
 }
 
@@ -618,7 +633,23 @@ func intValue(value any) (int, bool) {
 	}
 }
 
+func floatValue(value any) (float64, bool) {
+	switch v := value.(type) {
+	case float64:
+		return v, true
+	case int:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	default:
+		return 0, false
+	}
+}
+
 func validateConfig(cfg *Config, path string) error {
+	if cfg.RequiredCodeCoverage < 0 || cfg.RequiredCodeCoverage > 100 {
+		return &Error{Code: ErrConfigParse, Message: "required_code_coverage must be between 0 and 100", Path: path, ExitCode: 2}
+	}
 	if cfg.LoopMaxTasks < 0 {
 		return &Error{Code: ErrConfigParse, Message: "loop_max_tasks must be greater than or equal to 0", Path: path, ExitCode: 2}
 	}

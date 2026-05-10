@@ -37,6 +37,7 @@
       "parallel": true,
       "pr_merge_strategy": "squash",
       "pr_mode": false,
+      "required_code_coverage": 85,
       "roadmap_root": "<fixture:valid-workspace>/alpha/docs/roadmap",
       "root": "<fixture:valid-workspace>/alpha"
     },
@@ -57,10 +58,12 @@
       "parallel": true,
       "pr_merge_strategy": "squash",
       "pr_mode": false,
+      "required_code_coverage": 85,
       "roadmap_root": "<fixture:valid-workspace>/beta/docs/roadmap",
       "root": "<fixture:valid-workspace>/beta"
     }
   ],
+  "required_code_coverage": 0,
   "roadmap_root": "",
   "root": "<fixture:valid-workspace>",
   "rootline_version": "<rootline-version>",

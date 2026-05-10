@@ -24,6 +24,7 @@ func TestContextWorkspaceJSONIncludesRepos(t *testing.T) {
 			Autonomy               string   `json:"autonomy"`
 			CompactAfterTaskCommit bool     `json:"compact_after_task_commit"`
 			PRMode                 bool     `json:"pr_mode"`
+			RequiredCodeCoverage   float64  `json:"required_code_coverage"`
 			AutoPush               bool     `json:"auto_push"`
 			CommitStyle            string   `json:"commit_style"`
 			PRMergeStrategy        string   `json:"pr_merge_strategy"`
@@ -37,7 +38,7 @@ func TestContextWorkspaceJSONIncludesRepos(t *testing.T) {
 		t.Fatalf("report = %#v", report)
 	}
 	for _, repo := range report.Repos {
-		if repo.LoopMaxTasks != 0 || !repo.Parallel || repo.Autonomy != "until_done" || !repo.CompactAfterTaskCommit || repo.PRMode {
+		if repo.LoopMaxTasks != 0 || !repo.Parallel || repo.Autonomy != "until_done" || !repo.CompactAfterTaskCommit || repo.PRMode || repo.RequiredCodeCoverage != 85.0 {
 			t.Fatalf("repo execution settings = %#v", repo)
 		}
 		if !repo.AutoPush || repo.CommitStyle != "conventional" || repo.PRMergeStrategy != "squash" || repo.OutcomeCloseVerify == nil {
@@ -84,6 +85,7 @@ func TestContextJSONIncludesEffectiveHelpersAndOperationalSettings(t *testing.T)
 		Autonomy               string   `json:"autonomy"`
 		CompactAfterTaskCommit bool     `json:"compact_after_task_commit"`
 		PRMode                 bool     `json:"pr_mode"`
+		RequiredCodeCoverage   float64  `json:"required_code_coverage"`
 		AutoPush               bool     `json:"auto_push"`
 		CommitStyle            string   `json:"commit_style"`
 		PRMergeStrategy        string   `json:"pr_merge_strategy"`
@@ -107,7 +109,7 @@ func TestContextJSONIncludesEffectiveHelpersAndOperationalSettings(t *testing.T)
 	if report.ConfigSource != "toml" {
 		t.Fatalf("ConfigSource = %q", report.ConfigSource)
 	}
-	if report.LoopMaxTasks != 0 || !report.Parallel || report.Autonomy != "until_done" || !report.CompactAfterTaskCommit || report.PRMode {
+	if report.LoopMaxTasks != 0 || !report.Parallel || report.Autonomy != "until_done" || !report.CompactAfterTaskCommit || report.PRMode || report.RequiredCodeCoverage != 85.0 {
 		t.Fatalf("execution settings = %#v", report)
 	}
 	if !report.AutoPush || report.CommitStyle != "conventional" || report.PRMergeStrategy != "squash" || report.OutcomeCloseVerify == nil {

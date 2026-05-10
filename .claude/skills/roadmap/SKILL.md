@@ -116,7 +116,7 @@ Usar el JSON devuelto como fuente de verdad para:
 - `<where-leaf>` = `helpers.where_leaf`
 - `<where-not-done>` = `helpers.where_not_done`
 - `<where-active>` = `helpers.where_active`
-- schema/status/config operacional = campos `schema`, `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `pr_merge_strategy`, `commit_style`, `auto_push`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode` y cualquier campo adicional expuesto por `roadmapctl context`
+- schema/status/config operacional = campos `schema`, `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `pr_merge_strategy`, `commit_style`, `auto_push`, `required_code_coverage`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode` y cualquier campo adicional expuesto por `roadmapctl context`
 
 `roadmapctl doctor` y `roadmapctl check` no forman parte del bootstrap read-only. Ejecutarlos solo antes de escribir, mutar, ejecutar tasks o declarar validez del roadmap, y como postcheck después de materializar o mutar.
 

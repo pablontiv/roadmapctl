@@ -32,6 +32,7 @@ type contextReport struct {
 	PRMergeStrategy        string                   `json:"pr_merge_strategy"`
 	CommitStyle            string                   `json:"commit_style"`
 	AutoPush               bool                     `json:"auto_push"`
+	RequiredCodeCoverage   float64                  `json:"required_code_coverage"`
 	LoopMaxTasks           int                      `json:"loop_max_tasks"`
 	Parallel               bool                     `json:"parallel"`
 	Autonomy               string                   `json:"autonomy"`
@@ -56,6 +57,7 @@ type workspaceRepoContext struct {
 	PRMergeStrategy        string         `json:"pr_merge_strategy"`
 	CommitStyle            string         `json:"commit_style"`
 	AutoPush               bool           `json:"auto_push"`
+	RequiredCodeCoverage   float64        `json:"required_code_coverage"`
 	LoopMaxTasks           int            `json:"loop_max_tasks"`
 	Parallel               bool           `json:"parallel"`
 	Autonomy               string         `json:"autonomy"`
@@ -142,6 +144,7 @@ func discoverWorkspaceRepos(workspaceRoot string) ([]workspaceRepoContext, []dia
 			PRMergeStrategy:        cfg.PRMergeStrategy,
 			CommitStyle:            cfg.CommitStyle,
 			AutoPush:               cfg.AutoPush,
+			RequiredCodeCoverage:   cfg.RequiredCodeCoverage,
 			LoopMaxTasks:           cfg.LoopMaxTasks,
 			Parallel:               cfg.Parallel,
 			Autonomy:               cfg.Autonomy,
@@ -177,6 +180,7 @@ func newContextReport(root string, roadmapRoot string, configPath string, config
 		result.PRMergeStrategy = cfg.PRMergeStrategy
 		result.CommitStyle = cfg.CommitStyle
 		result.AutoPush = cfg.AutoPush
+		result.RequiredCodeCoverage = cfg.RequiredCodeCoverage
 		result.LoopMaxTasks = cfg.LoopMaxTasks
 		result.Parallel = cfg.Parallel
 		result.Autonomy = cfg.Autonomy
