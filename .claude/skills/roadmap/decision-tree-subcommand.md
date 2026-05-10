@@ -2,6 +2,8 @@
 
 Generar un árbol de decisión que muestre recomendaciones ejecutables, quick wins, dependencias y bloqueos usando `roadmapctl` como fuente determinística.
 
+Ruta normal autosuficiente: usar el `roadmapctl context` ya obtenido en bootstrap y luego `roadmapctl decision` o `roadmapctl next`. No leer `common-logic.md`, documentación de integración ni archivos Rootline para este flujo. No ejecutar `roadmapctl doctor`/`check`: decision/next son read-only y sus comandos son la fuente canónica.
+
 ## Workspace mode
 
 Si `<repos>` existe, ejecutar por repo y agrupar salida con prefijo `[repo]`. Si el usuario quiere focalizar, sugerir `/roadmap --repo <name>`.
@@ -80,6 +82,8 @@ CRITERIOS
 
 Reglas:
 
+- Si `summary.status != "ok"`, detenerse y reportar `diagnostics`.
+- No llamar `roadmapctl doctor` ni `roadmapctl check` para decision/next.
 - No llamar `rootline tree`, `rootline graph` ni `rootline query` directamente para pending/next/decision.
 - No postprocesar JSON crudo de Rootline para construir blockers, reverse dependencies, quick wins, scoring o recomendaciones.
 - No buscar links con grep.

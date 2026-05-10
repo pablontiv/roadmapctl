@@ -79,9 +79,9 @@ Prohibido:
 
 Permitido: `roadmapctl materialize --plan <plan-json> --apply` o `roadmapctl materialize --changes <dry-run-json> --apply` puede aplicar múltiples archivos en una ejecución, porque roadmapctl owns canonical writes, per-file diagnostics, validation, ordering and postcheck.
 
-## Bootstrap obligatorio
+## Bootstrap mínimo y autosuficiente
 
-Ejecutar SIEMPRE antes de cualquier operación.
+Ejecutar solo el bootstrap necesario para despachar el flujo. No leer documentación adicional para resolver configuración, schema, helpers, pending, next o decision; `roadmapctl` es la API autosuficiente para esos datos.
 
 ### Paso 0: Detectar modo
 
@@ -94,15 +94,15 @@ test -d .git
 
 ### Fuente primaria de contexto
 
-Preferir `roadmapctl context` para resolver configuración efectiva, schema, helpers y comportamiento operacional. `.roadmapctl.toml` dentro de `<roadmap-root>/` es la configuración canónica; cualquier config local legacy es solo input de migración gestionado opacamente por roadmapctl.
+`roadmapctl context` resuelve configuración efectiva, schema, helpers y comportamiento operacional. `.roadmapctl.toml` dentro de `<roadmap-root>/` es la configuración canónica; cualquier config local legacy es solo input de migración gestionado opacamente por roadmapctl.
 
-Gate inicial:
+Gate inicial para flujos implementados:
 
 ```bash
 command -v roadmapctl
 ```
 
-Si `roadmapctl` está disponible, ejecutar para cada repo objetivo:
+Ejecutar para cada repo objetivo:
 
 ```bash
 roadmapctl context --repo <repo-path> --roadmap-root <roadmap-root-si-se-conoce> --output json
@@ -116,11 +116,13 @@ Usar el JSON devuelto como fuente de verdad para:
 - `<where-leaf>` = `helpers.where_leaf`
 - `<where-not-done>` = `helpers.where_not_done`
 - `<where-active>` = `helpers.where_active`
-- status/config operacional = campos `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `pr_merge_strategy`, `commit_style`, `auto_push`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode`
+- schema/status/config operacional = campos `schema`, `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `pr_merge_strategy`, `commit_style`, `auto_push`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode` y cualquier campo adicional expuesto por `roadmapctl context`
+
+`roadmapctl doctor` y `roadmapctl check` no forman parte del bootstrap read-only. Ejecutarlos solo antes de escribir, mutar, ejecutar tasks o declarar validez del roadmap, y como postcheck después de materializar o mutar.
 
 Si `roadmapctl context` falla o `roadmapctl` no existe:
 
-- Para writes, mutaciones, ejecución o declaraciones de validez: detenerse; no fallback.
+- Para flujos implementados read-only, writes, mutaciones, ejecución o declaraciones de validez: detenerse; no fallback.
 - Para planificación conceptual sin writes/mutaciones/ejecución/validez: se permite usar defaults explícitos solo como ayuda conceptual, dejando claro que los guards faltan para materializar/ejecutar. El skill no migra ni parsea legacy para flujos implementados.
 
 ### Workspace mode
@@ -208,32 +210,15 @@ Bootstrap:
 
 `roadmapctl context`, `roadmapctl doctor` y `roadmapctl check` son los únicos validadores de configuración para flujos implementados. El skill no debe leer ni validar archivos de config legacy directamente.
 
-Si `<roadmap-root>` existe:
-
-```bash
-rootline describe <roadmap-root>/ --field schema.estado
-```
-
-Verificar que los status configurados existan en el schema.
+No ejecutar `rootline describe` como paso normal de validación de configuración: el schema y los status efectivos vienen en el JSON de `roadmapctl context`, y `roadmapctl doctor/check` validan los flujos que escriben, mutan, ejecutan o declaran validez.
 
 ## Dependencias CLI
 
 ### rootline
 
-Requerido para materializar, consultar y ejecutar roadmaps.
+Rootline es dependencia interna de `roadmapctl` para validar y consultar roadmaps. En flujos normales del skill, no hacer gate directo con `command -v rootline`; dejar que `roadmapctl context`, `roadmapctl doctor` o `roadmapctl check` reporten `RMC_ENV_ROOTLINE_MISSING` con diagnostics estables.
 
-Gate antes de ejecutar rootline:
-
-```bash
-command -v rootline
-```
-
-Si no está disponible, informar:
-
-```text
-`rootline` no está instalado. Es requerido para materializar/consultar el roadmap.
-Instalar con: curl -fsSL https://raw.githubusercontent.com/pablontiv/rootline/master/install.sh | bash
-```
+Usar comandos `rootline` directos solo para troubleshooting explícito después de que el flujo principal de `roadmapctl` lo requiera o reporte diagnostics.
 
 ### roadmapctl
 
@@ -280,9 +265,10 @@ Después del bootstrap:
 
 | `$ARGUMENTS` | Archivo | Descripción |
 |--------------|---------|-------------|
+| *(sin argumentos)* | [pending-subcommand.md](pending-subcommand.md) | Trabajo pendiente por defecto |
 | `pending` | [pending-subcommand.md](pending-subcommand.md) | Trabajo pendiente |
+| `decision`, `next`, `prioriza`, `qué sigue` | [decision-tree-subcommand.md](decision-tree-subcommand.md) | Priorizar qué ejecutar |
 | `plan` | [plan-subcommand.md](plan-subcommand.md) | Materializar plan como `.md` |
-| *(sin argumentos)* | [decision-tree-subcommand.md](decision-tree-subcommand.md) | Priorizar qué ejecutar |
 | `loop [--filter] [--max]` | [loop-subcommand.md](loop-subcommand.md) | Ejecutar tasks pendientes |
 | *(texto libre)* | [autonomous-mode.md](autonomous-mode.md) | Descomponer en Outcome/Tasks |
 
@@ -295,12 +281,13 @@ Solo workspace mode:
 
 ## Regla de dispatch
 
-1. Si empieza con `pending`, `loop`, `plan` → subcomando directo.
-2. Si vacío → decision tree.
-3. Si pide estado/progreso/pendientes → `pending`.
-4. Si dice "crea las tareas", "materializa", "genera los archivos",
+1. Si vacío → `pending`.
+2. Si empieza con `pending`, `loop`, `plan` → subcomando directo.
+3. Si empieza con `decision`/`next` o pide priorización/“qué sigue” → `decision-tree`.
+4. Si pide estado/progreso/pendientes → `pending`.
+5. Si dice "crea las tareas", "materializa", "genera los archivos",
    "pasalo al roadmap", "crea el roadmap" o equivalente → `plan`.
-5. Si describe algo a construir o descomponer sin pedir archivos → modo autónomo.
+6. Si describe algo a construir o descomponer sin pedir archivos → modo autónomo.
 
 Ambigüedad crítica:
 
@@ -310,7 +297,7 @@ Ambigüedad crítica:
 
 ## Lógica común
 
-Leer [common-logic.md](common-logic.md) cuando se crean/modifican archivos del roadmap o se ejecuta loop.
+[common-logic.md](common-logic.md) es referencia de mantenimiento. Los subcomandos implementados deben ser autosuficientes en su ruta normal: no leer lógica común para `pending`/`decision`/`next`; leerla solo para troubleshooting o cambios al skill.
 
 ## Referencia
 

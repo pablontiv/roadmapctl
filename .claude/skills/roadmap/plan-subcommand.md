@@ -1,8 +1,8 @@
 # /roadmap plan
 
-> Pre-requisito: leer [common-logic.md](common-logic.md).
-
 Materializa el plan de la conversación como archivos `.md` del roadmap. No implementa código.
+
+Ruta normal autosuficiente: este archivo contiene el procedimiento operativo completo. No leer `common-logic.md` ni documentación de integración para ejecutar el flujo; esos documentos son referencia de mantenimiento/troubleshooting.
 
 Materializar es una operación estructural. Está prohibido crear un único archivo
 con una lista de tareas. Cada task debe tener su propio archivo `TXXX-*.md`.
@@ -80,7 +80,13 @@ Guardrail obligatorio antes de escribir:
 
 ### Paso 1: Serializar plan estructurado
 
-Convertir el árbol aprobado a JSON `roadmapctl/materialize-plan` versión 1 según `docs/materialize-plan-schema.md`:
+Convertir el árbol aprobado a JSON `roadmapctl/materialize-plan` versión 1 y guardarlo en un archivo temporal, por ejemplo:
+
+```bash
+plan_json="$(mktemp)"
+```
+
+Schema operativo mínimo autosuficiente:
 
 ```json
 {
@@ -90,9 +96,12 @@ Convertir el árbol aprobado a JSON `roadmapctl/materialize-plan` versión 1 seg
 }
 ```
 
+`items[]` contiene Outcomes y/o Tasks aprobadas con `slug`, `title`, `description`, `preserves`, `context`, `scope_in`, `scope_out`, `acceptance_criteria`, `source_of_truth`, `initial_status` y `hard_blockers` cuando correspondan. `docs/materialize-plan-schema.md` es la referencia canónica de mantenimiento en el repo `roadmapctl`, no una lectura obligatoria durante el flujo normal del skill.
+
 Reglas:
 
 - No pasar prose libre a `roadmapctl materialize`.
+- No pegar el JSON completo en la respuesta si es grande; guardar el plan en `plan_json` y reportar solo un resumen.
 - Cada Outcome/task aprobado debe tener `slug`, `title`, `description`, ACs, `source_of_truth` y límites suficientes.
 - Serializar `blocked_by` **solo** desde hard blockers aprobados, con `ref` plan-local o `path` explícito; nunca targets bare.
 - Antes de incluir cualquier `blocked_by`, responder: “¿Qué fallaría objetivamente si ejecuto esta task antes?”. Si la respuesta es “nada; solo es mejor orden/contexto”, no es hard blocker.
@@ -104,10 +113,11 @@ Reglas:
 Ejecutar:
 
 ```bash
-roadmapctl materialize --plan <plan-json> --dry-run --repo <repo-path> --roadmap-root <roadmap-root> --output json
+dry_run_json="$(mktemp)"
+roadmapctl materialize --plan "$plan_json" --dry-run --repo <repo-path> --roadmap-root <roadmap-root> --output json >"$dry_run_json"
 ```
 
-Revisar el JSON:
+Revisar el JSON desde `dry_run_json` sin volcar contenido/diffs completos al contexto:
 
 - `summary.status == "ok"`.
 - `changes[]` contiene únicamente operaciones canónicas permitidas:
@@ -120,18 +130,20 @@ Revisar el JSON:
 
 Si el dry-run falla o propone rutas fuera del allowlist, detenerse y reportar diagnostics. No escribir archivos manualmente.
 
+Reporte normal del dry-run: `summary`, `diagnostics`, `path`, `operation`, `applied` y preconditions relevantes. Leer `changes[].content` o diffs completos solo si el usuario lo pide explícitamente o para troubleshooting dirigido.
+
 ### Paso 3: Aplicación batch gobernada por roadmapctl
 
 Solo después del dry-run válido y aprobación humana explícita, aplicar con una única operación owned by roadmapctl:
 
 ```bash
-roadmapctl materialize --plan <plan-json> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
+roadmapctl materialize --plan "$plan_json" --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
 ```
 
 Alternativa con change-set congelado revisado:
 
 ```bash
-roadmapctl materialize --changes <dry-run-json> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
+roadmapctl materialize --changes "$dry_run_json" --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
 ```
 
 Reglas:

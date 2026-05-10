@@ -1,5 +1,7 @@
 # Lógica Común — Materialización y Ejecución
 
+Referencia de mantenimiento/troubleshooting para el skill. Los subcomandos implementados deben ser autosuficientes en su ruta normal y no depender de leer este archivo para operaciones simples.
+
 > En workspace mode, `<roadmap-root>` se reemplaza por `<abs-roadmap-root>` y los comandos git usan `git -C <repo-path>`.
 
 ## Guard obligatorio: roadmapctl
@@ -90,17 +92,11 @@ El skill no calcula números `OXX`/`TXXX`. `roadmapctl materialize` asigna numbe
 
 ## Verificación de padre
 
-Antes de crear un archivo, verificar que el directorio destino existe:
+La verificación normal de padres, rutas, allowlist y orden de creación pertenece a `roadmapctl materialize --dry-run` y `--apply`. No ejecutar `rootline describe` como paso primario antes de crear archivos.
 
-```bash
-rootline describe <directorio>/
-```
+Si `roadmapctl materialize` reporta que falta un padre, schema, `.stem`, permisos o estructura, informar al usuario y no crear archivos fuera del roadmap.
 
-Si no existe, informar al usuario y no crear archivos fuera del roadmap.
-
-Excepción permitida: `plan-subcommand.md` puede crear `<roadmap-root>/` y
-`<roadmap-root>/.stem` durante su bootstrap explícito. Fuera de ese flujo, no
-crear directorios ad-hoc.
+Excepción permitida: `plan-subcommand.md` puede crear `<roadmap-root>/` y `<roadmap-root>/.stem` solo mediante el bootstrap explícito gobernado por `roadmapctl bootstrap init`. Fuera de ese flujo, no crear directorios ad-hoc.
 
 ## Cascading links
 

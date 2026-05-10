@@ -2,6 +2,8 @@
 
 Vista filtrada de trabajo pendiente. Muestra tasks pendientes usando `roadmapctl` como capa determinística de roadmap.
 
+Ruta normal autosuficiente: usar el `roadmapctl context` ya obtenido en bootstrap y luego `roadmapctl pending`. No leer `common-logic.md`, documentación de integración ni archivos Rootline para este flujo. No ejecutar `roadmapctl doctor`/`check`: pending es read-only y `roadmapctl pending` es la fuente canónica.
+
 ## Workspace mode
 
 Si `<repos>` existe o bootstrap detectó workspace:
@@ -28,6 +30,8 @@ roadmapctl pending --repo <repo> --roadmap-root <roadmap-root> --output json
 
 Reglas:
 
+- Si `summary.status != "ok"`, detenerse y reportar `diagnostics`.
+- No llamar `roadmapctl doctor` ni `roadmapctl check` para pending.
 - No llamar `rootline tree` directamente para pending.
 - No parsear tablas.
 - No ejecutar `rootline stats`.

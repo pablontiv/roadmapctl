@@ -1,8 +1,8 @@
 # /roadmap loop [--filter PATTERN] [--max N]
 
-> Pre-requisito: leer [common-logic.md](common-logic.md).
-
 Ejecutar tasks pendientes usando la configuración efectiva devuelta por `roadmapctl context`. El loop acepta solo `--filter`, `--max` y el flag global `--repo` (workspace mode).
+
+Ruta normal autosuficiente: este archivo contiene el procedimiento operativo completo. No leer `common-logic.md` ni documentación de integración para ejecutar el loop; esos documentos son referencia de mantenimiento/troubleshooting.
 
 ## Opciones CLI permitidas
 
