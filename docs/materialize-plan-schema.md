@@ -1,6 +1,6 @@
 # Materialize plan input schema
 
-`roadmapctl materialize` is planned as a deterministic writer for already-approved roadmap plans. It does **not** decompose free-form chat, ask an LLM for task boundaries, or infer missing requirements. The `/roadmap plan` skill remains responsible for AI-assisted decomposition and user approval, then passes structured JSON to roadmapctl.
+`roadmapctl materialize` is planned as a deterministic writer for already-approved roadmap plans. It does **not** decompose free-form chat, ask an LLM for task boundaries, or infer missing requirements. The `/roadmap plan` skill remains responsible for AI-assisted decomposition and user approval, then passes structured JSON to roadmapctl. The keep-writer decision and revisit criteria are recorded in `docs/decisions/materialize-writer-vs-guard-flow.md`.
 
 ## Versioning
 

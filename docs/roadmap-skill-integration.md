@@ -2,7 +2,7 @@
 
 `roadmapctl` is mandatory from day 1 for every implemented `/roadmap` command that writes files, mutates roadmap state, executes tasks, or claims that a roadmap is valid.
 
-This document describes how the skill must use `roadmapctl doctor` and `roadmapctl check` as blocking guards while preserving Rootline as the generic filesystem database and constraint engine.
+This document describes how the skill must use `roadmapctl doctor` and `roadmapctl check` as blocking guards while preserving Rootline as the generic filesystem database and constraint engine. The current product decision is to keep `roadmapctl materialize` as the deterministic writer for roadmap plan files; see `docs/decisions/materialize-writer-vs-guard-flow.md`.
 
 ## Applicability
 
