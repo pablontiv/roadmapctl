@@ -5,6 +5,7 @@ outcome_close_verify = []
 pr_merge_strategy = "squash"
 commit_style = "conventional"
 auto_push = true
+required_code_coverage = 85.0
 
 [status_values]
 pending = "Ready"

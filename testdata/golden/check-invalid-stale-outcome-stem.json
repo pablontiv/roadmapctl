@@ -1,0 +1,45 @@
+{
+  "diagnostics": [
+    {
+      "details": {
+        "invalid": 1,
+        "kind": "execution",
+        "operation": "validate",
+        "stderr": "validation failed\n"
+      },
+      "id": "RMC_ROOTLINE_VALIDATE_FAILED",
+      "message": "rootline validation reported invalid roadmap records",
+      "severity": "error"
+    },
+    {
+      "details": {
+        "schema_key": "validate.estado.non_empty",
+        "target": "validate.estado.non_empty"
+      },
+      "id": "RMC_LINT_SCHEMA_OUTCOME_ESTADO_NON_EMPTY",
+      "message": "effective schema has global estado non_empty validation; outcome README files must be able to omit estado",
+      "path": ".stem",
+      "severity": "error"
+    },
+    {
+      "details": {
+        "schema_key": "estado.required_match",
+        "target": "estado.required_match"
+      },
+      "id": "RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED",
+      "message": "effective schema requires estado for outcomes; outcome README files must be able to omit estado",
+      "path": ".stem",
+      "severity": "error"
+    }
+  ],
+  "kind": "roadmapctl/check",
+  "roadmap_root": "<fixture:invalid-stale-outcome-stem>/docs/roadmap",
+  "root": "<fixture:invalid-stale-outcome-stem>",
+  "summary": {
+    "errors": 3,
+    "infos": 0,
+    "status": "error",
+    "warnings": 0
+  },
+  "version": 1
+}

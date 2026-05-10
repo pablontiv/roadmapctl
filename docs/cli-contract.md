@@ -176,7 +176,8 @@ It checks:
 6. Rootline graph results for cycles and broken links;
 7. `blocked_by` links use explicit relative paths and resolve to task files;
 8. markdown `estado`/`tipo` values are valid according to the effective Rootline schema;
-9. operational status roles from config (`status-values`, `done-statuses`, `active-statuses`) refer to statuses present in the effective Rootline schema.
+9. operational status roles from config (`status-values`, `done-statuses`, `active-statuses`) refer to statuses present in the effective Rootline schema;
+10. outcome schema compatibility: Outcome README files must be able to omit `estado`, so stale `.stem` rules that require `estado` for `O*` or add global `validate estado non_empty` are errors.
 
 `check` must not write, materialize, fix, or normalize roadmap files.
 
@@ -213,7 +214,7 @@ Initial lint rule groups:
 1. Outcome `## Tasks` table consistency with child `TXXX-*.md` files.
 2. Required task sections: `Preserva`, `Contexto`, `Alcance`, `Estado inicial esperado`, `Criterios de Aceptación`, `Fuente de verdad`.
 3. Presence-only checks for acceptance criteria and source-of-truth entries.
-4. Effective schema compatibility for roadmapctl-required `estado`, `tipo`, and `blocked_by`.
+4. Effective schema compatibility for roadmapctl-required `estado`, `tipo`, and `blocked_by`, plus stale outcome `estado` requirements.
 5. Cross-platform filename and name portability.
 
 Example future invocation:
@@ -386,6 +387,8 @@ Rootline operation diagnostics use `details.kind` to distinguish `missing_binary
 | `RMC_LINT_FILENAME_RESERVED` | error | `lint` | Roadmap entry name is reserved or problematic on supported platforms. |
 | `RMC_LINT_SCHEMA_FIELD_MISSING` | error | `lint` | Effective schema lacks a required field such as `estado` or `tipo`. |
 | `RMC_LINT_SCHEMA_LINK_MISSING` | error | `lint` | Effective schema lacks a required link relation such as `blocked_by`. |
+| `RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED` | error | `check`, `doctor`, `lint`, `bootstrap`, `materialize` | Effective schema requires `estado` for `O*`/outcome README records. |
+| `RMC_LINT_SCHEMA_OUTCOME_ESTADO_NON_EMPTY` | error | `check`, `doctor`, `lint`, `bootstrap`, `materialize` | Effective schema has global `validate estado non_empty`, which forces outcome README records to carry manual status. |
 
 Severity policy:
 

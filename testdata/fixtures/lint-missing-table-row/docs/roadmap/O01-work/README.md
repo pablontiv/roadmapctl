@@ -1,5 +1,4 @@
 ---
-estado: Pending
 tipo: outcome
 ---
 # Work
