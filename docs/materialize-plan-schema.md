@@ -184,6 +184,8 @@ Rules:
 
 ## Skill integration
 
+This document is the canonical schema source inside the `roadmapctl` repository. Installed roadmap skills and consuming repositories must not assume this file exists relative to their own working tree. A future `roadmapctl materialize schema --output json` command may expose a machine-readable schema, but that CLI surface is deferred until explicitly approved.
+
 The `/roadmap plan` skill must:
 
 1. decompose and present the proposed tree to the user;

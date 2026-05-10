@@ -398,7 +398,9 @@ Severity policy:
 
 ## Materialize plan input contract
 
-`roadmapctl materialize` accepts only structured, approved JSON input. It does not parse free-form chat or call an LLM. The versioned input schema, examples, validation rules, dependency representation, and `RMC_MATERIALIZE_*` diagnostics are specified in [materialize-plan-schema.md](materialize-plan-schema.md).
+`roadmapctl materialize` accepts only structured, approved JSON input. It does not parse free-form chat or call an LLM. The versioned input schema, examples, validation rules, dependency representation, and `RMC_MATERIALIZE_*` diagnostics are specified in [materialize-plan-schema.md](materialize-plan-schema.md), which is a roadmapctl-repo-relative documentation path.
+
+CLI schema exposure is deferred: there is currently no `roadmapctl materialize schema --output json` subcommand. If consumers need machine-readable schema discovery later, add that as a new explicitly versioned command instead of implying that consuming repos contain `docs/materialize-plan-schema.md`.
 
 Implemented modes:
 

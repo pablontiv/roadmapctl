@@ -96,7 +96,9 @@ Schema operativo mínimo autosuficiente:
 }
 ```
 
-`items[]` contiene Outcomes y/o Tasks aprobadas con `slug`, `title`, `description`, `preserves`, `context`, `scope_in`, `scope_out`, `acceptance_criteria`, `source_of_truth`, `initial_status` y `hard_blockers` cuando correspondan. `docs/materialize-plan-schema.md` es la referencia canónica de mantenimiento en el repo `roadmapctl`, no una lectura obligatoria durante el flujo normal del skill.
+`items[]` contiene Outcomes y/o Tasks aprobadas con `slug`, `title`, `description`, `preserves`, `context`, `scope_in`, `scope_out`, `acceptance_criteria`, `source_of_truth`, `initial_status` y `hard_blockers` cuando correspondan.
+
+Fuente del schema: el contrato canónico versionado vive en el repositorio `roadmapctl` como `docs/materialize-plan-schema.md`; esa ruta es repo-relativa cuando se está trabajando dentro de `roadmapctl`, no relativa al directorio del skill instalado. En repos consumidores normales, usar el schema mínimo autosuficiente de este archivo y los diagnostics de `roadmapctl materialize`; no buscar un `docs/materialize-plan-schema.md` local salvo que el repo sea `roadmapctl`. Exposición CLI tipo `roadmapctl materialize schema --output json` queda diferida hasta que se apruebe una versión de schema exportable.
 
 Reglas:
 

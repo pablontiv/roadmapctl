@@ -151,7 +151,7 @@ Before creating or modifying any roadmap file:
      roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
   4. If either normal preflight command exits non-zero, stop. Do not write files and do not fall back to a summary markdown file.
 
-After approval, the skill serializes non-bootstrap plans to `roadmapctl/materialize-plan` JSON and delegates deterministic writes. Before serialization, it must classify dependencies strictly:
+After approval, the skill serializes non-bootstrap plans to `roadmapctl/materialize-plan` JSON and delegates deterministic writes. The versioned schema source is `docs/materialize-plan-schema.md` in the `roadmapctl` repository; that path is not assumed to exist in consuming repos or inside the installed skill directory. Until a future `roadmapctl materialize schema --output json` command is explicitly approved, agents should use the skill's embedded minimal schema plus roadmapctl diagnostics outside this repo. Before serialization, it must classify dependencies strictly:
   - `blocked_by` is only for hard blockers: the task cannot execute or validate until the target is completed.
   - For every proposed `blocked_by`, the skill must be able to answer: “What would objectively fail if this task ran first?”
   - Sequencing preference, shared context, provenance, thematic grouping, or “use its output if available” must stay in task context/source-of-truth prose and must not be serialized as `blocked_by`.
