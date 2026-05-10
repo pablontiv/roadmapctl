@@ -188,9 +188,10 @@ The `/roadmap plan` skill must:
 
 1. decompose and present the proposed tree to the user;
 2. stop for explicit approval;
-3. serialize the approved tree to this JSON shape;
-4. pass it to roadmapctl for dry-run materialization;
-5. save the dry-run JSON when using a frozen change-set and apply approved files with roadmapctl-owned batch apply (`--plan ... --apply` or `--changes <dry-run-json> --apply`);
-6. avoid writing roadmap markdown directly once roadmapctl materialization exists. Granular `--target` apply is reserved for recovery/troubleshooting or explicit one-file approval.
+3. serialize the approved tree to this JSON shape in a temporary plan file rather than pasting large JSON into chat;
+4. pass the temp plan file to roadmapctl for dry-run materialization and save stdout to a temporary dry-run JSON file;
+5. review dry-run output normally by extracting only `summary`, `diagnostics`, `path`, `operation`, `applied`, and `preconditions`; inspect `changes[].content` or full diffs only on explicit user request or targeted troubleshooting;
+6. save the dry-run JSON when using a frozen change-set and apply approved files with roadmapctl-owned batch apply (`--plan ... --apply` or `--changes <dry-run-json> --apply`);
+7. avoid writing roadmap markdown directly once roadmapctl materialization exists. Granular `--target` apply is reserved for recovery/troubleshooting or explicit one-file approval.
 
 roadmapctl must reject free-form prose input. If the skill lacks enough information to populate required fields, the skill asks the user before calling roadmapctl.

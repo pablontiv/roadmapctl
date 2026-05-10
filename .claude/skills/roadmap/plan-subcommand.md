@@ -130,7 +130,7 @@ Revisar el JSON desde `dry_run_json` sin volcar contenido/diffs completos al con
 
 Si el dry-run falla o propone rutas fuera del allowlist, detenerse y reportar diagnostics. No escribir archivos manualmente.
 
-Reporte normal del dry-run: `summary`, `diagnostics`, `path`, `operation`, `applied` y preconditions relevantes. Leer `changes[].content` o diffs completos solo si el usuario lo pide explícitamente o para troubleshooting dirigido.
+Reporte normal del dry-run: `summary`, `diagnostics`, `path`, `operation`, `applied` y preconditions relevantes. No usar `cat "$dry_run_json"` ni pegar el JSON completo en la respuesta; extraer esos campos de forma selectiva. Leer `changes[].content` o diffs completos solo si el usuario lo pide explícitamente o para troubleshooting dirigido.
 
 ### Paso 3: Aplicación batch gobernada por roadmapctl
 

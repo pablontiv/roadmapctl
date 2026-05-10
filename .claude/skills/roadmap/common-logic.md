@@ -72,10 +72,12 @@ Permitido: un único comando `roadmapctl materialize --plan <plan-json> --apply`
 
 En `/roadmap plan`:
 
-1. Revisar siempre un dry-run determinístico antes de aplicar.
-2. Guardar el dry-run JSON como change-set congelado cuando se use `--changes`.
-3. Preferir batch apply owned by roadmapctl cuando `parallel = true`; usar `--target` granular solo para recuperación puntual, selección humana de un único archivo, o troubleshooting.
-4. Bootstrap explícito (`.` / `.stem` / `.roadmapctl.toml`) conserva su flujo canónico propio.
+1. Guardar el plan aprobado en un archivo temporal (`plan_json`); no pegar JSON grande en el prompt o respuesta.
+2. Revisar siempre un dry-run determinístico guardado en archivo temporal (`dry_run_json`).
+3. Para la revisión normal, mostrar solo `summary`, `diagnostics`, y por cambio `path`, `operation`, `applied`, `preconditions`; no volcar `changes[].content` ni diffs completos salvo pedido explícito o troubleshooting puntual.
+4. Guardar el dry-run JSON como change-set congelado cuando se use `--changes`.
+5. Preferir batch apply owned by roadmapctl cuando `parallel = true`; usar `--target` granular solo para recuperación puntual, selección humana de un único archivo, o troubleshooting.
+6. Bootstrap explícito (`.` / `.stem` / `.roadmapctl.toml`) conserva su flujo canónico propio.
 
 ## Materialización determinística
 
