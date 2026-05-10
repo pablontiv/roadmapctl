@@ -119,7 +119,7 @@ Config keys:
 | `[status_values].blocked` | string | `Blocked` | Operational blocked role value. |
 | `[status_values].obsolete` | string | `Obsolete` | Operational obsolete role value. |
 
-Operational config does not define or constrain the full document schema. The effective Rootline `.stem` remains the source of truth for valid `estado`, `tipo`, and link values. `roadmapctl check` validates operational status values against the schema separately and emits `RMC_CONFIG_STATUS_SCHEMA_MISMATCH` when a role points at a status absent from `.stem`.
+Operational config does not define or constrain the full document schema. The effective Rootline `.stem` remains the source of truth for valid `estado`, `tipo`, and link values. `roadmapctl check` validates operational status values against the schema separately and emits `RMC_CONFIG_STATUS_SCHEMA_MISMATCH` when a role points at a status absent from `.stem`; diagnostics point at the effective config path (`<roadmap-root>/.roadmapctl.toml` for TOML-backed repos, legacy path only for legacy-only migration inputs).
 
 Precedence:
 

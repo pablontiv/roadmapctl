@@ -60,11 +60,15 @@ func operationalStatusDiagnostics(statuses []OperationalStatus, schemaStatuses [
 			continue
 		}
 		seen[key] = true
+		path := status.Path
+		if path == "" {
+			path = ".claude/roadmap.local.md"
+		}
 		found = append(found, Diagnostic{
 			ID:       DiagnosticConfigStatusSchemaMismatch,
 			Severity: diagnostics.SeverityError,
 			Message:  "configured operational status is not allowed by Rootline schema",
-			Path:     ".claude/roadmap.local.md",
+			Path:     path,
 			Details:  map[string]any{"source": status.Source, "status": status.Value},
 		})
 	}

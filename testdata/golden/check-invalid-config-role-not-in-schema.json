@@ -7,7 +7,7 @@
       },
       "id": "RMC_CONFIG_STATUS_SCHEMA_MISMATCH",
       "message": "configured operational status is not allowed by Rootline schema",
-      "path": ".claude/roadmap.local.md",
+      "path": "docs/roadmap/.roadmapctl.toml",
       "severity": "error"
     },
     {
@@ -17,7 +17,7 @@
       },
       "id": "RMC_CONFIG_STATUS_SCHEMA_MISMATCH",
       "message": "configured operational status is not allowed by Rootline schema",
-      "path": ".claude/roadmap.local.md",
+      "path": "docs/roadmap/.roadmapctl.toml",
       "severity": "error"
     },
     {
@@ -27,7 +27,7 @@
       },
       "id": "RMC_CONFIG_STATUS_SCHEMA_MISMATCH",
       "message": "configured operational status is not allowed by Rootline schema",
-      "path": ".claude/roadmap.local.md",
+      "path": "docs/roadmap/.roadmapctl.toml",
       "severity": "error"
     }
   ],

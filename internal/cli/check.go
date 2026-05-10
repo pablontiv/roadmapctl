@@ -69,19 +69,20 @@ func configuredStatuses(cfg *config.Config) []string {
 }
 
 func operationalStatuses(cfg *config.Config) []roadmap.OperationalStatus {
+	configPath := relToRoot(cfg.RepoRoot, cfg.ConfigPath)
 	values := []roadmap.OperationalStatus{
-		{Source: "status-values.pending", Value: cfg.StatusValues.Pending},
-		{Source: "status-values.specified", Value: cfg.StatusValues.Specified},
-		{Source: "status-values.in-progress", Value: cfg.StatusValues.InProgress},
-		{Source: "status-values.completed", Value: cfg.StatusValues.Completed},
-		{Source: "status-values.blocked", Value: cfg.StatusValues.Blocked},
-		{Source: "status-values.obsolete", Value: cfg.StatusValues.Obsolete},
+		{Source: "status-values.pending", Value: cfg.StatusValues.Pending, Path: configPath},
+		{Source: "status-values.specified", Value: cfg.StatusValues.Specified, Path: configPath},
+		{Source: "status-values.in-progress", Value: cfg.StatusValues.InProgress, Path: configPath},
+		{Source: "status-values.completed", Value: cfg.StatusValues.Completed, Path: configPath},
+		{Source: "status-values.blocked", Value: cfg.StatusValues.Blocked, Path: configPath},
+		{Source: "status-values.obsolete", Value: cfg.StatusValues.Obsolete, Path: configPath},
 	}
 	for _, value := range cfg.DoneStatuses {
-		values = append(values, roadmap.OperationalStatus{Source: "done-statuses", Value: value})
+		values = append(values, roadmap.OperationalStatus{Source: "done-statuses", Value: value, Path: configPath})
 	}
 	for _, value := range cfg.ActiveStatuses {
-		values = append(values, roadmap.OperationalStatus{Source: "active-statuses", Value: value})
+		values = append(values, roadmap.OperationalStatus{Source: "active-statuses", Value: value, Path: configPath})
 	}
 	return values
 }

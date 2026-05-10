@@ -31,6 +31,7 @@ type RootlineClient interface {
 type OperationalStatus struct {
 	Source string
 	Value  string
+	Path   string
 }
 
 type RootlineCheckOptions struct {

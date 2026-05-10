@@ -117,15 +117,15 @@ func TestCheckRootlineDetectsOperationalStatusOutsideSchema(t *testing.T) {
 		RoadmapRoot: "/repo/docs/roadmap",
 		LeafFilter:  "isIndex == false",
 		OperationalStatuses: []OperationalStatus{
-			{Source: "status-values.completed", Value: "Done"},
-			{Source: "done-statuses", Value: "Archived"},
-			{Source: "active-statuses", Value: "Doing"},
+			{Source: "status-values.completed", Value: "Done", Path: "docs/roadmap/.roadmapctl.toml"},
+			{Source: "done-statuses", Value: "Archived", Path: "docs/roadmap/.roadmapctl.toml"},
+			{Source: "active-statuses", Value: "Doing", Path: "docs/roadmap/.roadmapctl.toml"},
 		},
 	})
 	if err != nil {
 		t.Fatalf("CheckRootline error = %v", err)
 	}
-	assertHasDiagnostic(t, diagnostics, DiagnosticConfigStatusSchemaMismatch, ".claude/roadmap.local.md")
+	assertHasDiagnostic(t, diagnostics, DiagnosticConfigStatusSchemaMismatch, "docs/roadmap/.roadmapctl.toml")
 	if !hasDiagnosticDetail(diagnostics, DiagnosticConfigStatusSchemaMismatch, "status", "Done") {
 		t.Fatalf("missing status-values mismatch in %#v", diagnostics)
 	}
