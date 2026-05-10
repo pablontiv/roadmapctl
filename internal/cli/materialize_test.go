@@ -126,6 +126,27 @@ func TestMaterializeApplyWritesFilesAndRunsPostcheck(t *testing.T) {
 	}
 }
 
+func TestMaterializeApplyReportsPostcheckFailureAfterPartialWrite(t *testing.T) {
+	fixture := copyFixture(t, "valid-outcome-with-tasks")
+	changesPath := filepath.Join(t.TempDir(), "changes.json")
+	changesJSON := `{"changes":[{"path":"T999-invalid.md","operation":"create","applied":false,"content":"---\ntipo: task\n---\n# Missing estado\n"}]}`
+	if err := os.WriteFile(changesPath, []byte(changesJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--changes", changesPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 1, &stdout, &stderr)
+	report := testutil.DecodeJSON(t, stdout.Bytes())
+	if report["applied"] != false {
+		t.Fatalf("applied = %v, want false after postcheck failure", report["applied"])
+	}
+	testutil.RequireDiagnosticID(t, report, "RMC_ROOTLINE_ERROR")
+	if _, err := os.Stat(filepath.Join(fixture, "docs", "roadmap", "T999-invalid.md")); err != nil {
+		t.Fatalf("expected partial write to remain for explicit recovery: %v", err)
+	}
+}
+
 func TestMaterializeChangesApplyWritesWholeFrozenChangeSet(t *testing.T) {
 	fixture := copyFixture(t, "valid-outcome-with-tasks")
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")

@@ -117,7 +117,7 @@ roadmapctl check \
   --strict
 ```
 
-This postcheck is mandatory before reporting successful materialization, completing a loop iteration, committing roadmap mutations, or claiming that the roadmap is valid.
+This postcheck is mandatory before reporting successful materialization, completing a loop iteration, committing roadmap mutations, or claiming that the roadmap is valid. If materialization wrote files and then postcheck fails, the agent must report the partial state, inspect/validate affected paths, deliberately repair or revert, rerun `roadmapctl check --strict`, and only then commit or claim success.
 
 ### Optional binary override
 
@@ -168,7 +168,7 @@ After approval, the skill serializes non-bootstrap plans to `roadmapctl/material
   5. Never use prompt-side raw writes for dry-run `content`.
   6. Run:
      roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
-  7. If any command exits non-zero, report diagnostics and stop before claiming success or committing.
+  7. If any command exits non-zero, report diagnostics and stop before claiming success or committing. If files were already applied, report `changes[].path` where `applied=true`, run `rootline validate` on affected markdown or rerun `roadmapctl check --strict`, then explicitly repair or revert and rerun the postcheck before any commit.
 ```
 
 The materialized shape must remain canonical:

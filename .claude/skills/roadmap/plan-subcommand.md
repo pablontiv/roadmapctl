@@ -161,7 +161,15 @@ Tras completar todos los targets, ejecutar:
 roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
 ```
 
-Si falla, detenerse y reportar diagnostics.
+Si falla, detenerse y reportar diagnostics. No declarar éxito, no commitear y no continuar con más materialización hasta resolverlo.
+
+#### Recuperación ante postcheck fallido o materialización parcial
+
+1. Reportar `summary`, diagnostic IDs y `changes[]` con `applied=true` para dejar claro qué quedó escrito.
+2. Inspeccionar solo los paths aplicados relevantes; no reescribirlos manualmente en batch.
+3. Ejecutar `rootline validate <path>` sobre los `.md` aplicados o `roadmapctl check --strict` para confirmar el fallo actual.
+4. Elegir explícitamente una de dos rutas: corregir con una edición puntual aprobada o revertir los paths aplicados.
+5. Volver a ejecutar `roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict` y solo entonces permitir commit o declaración de éxito.
 
 ### Paso 5: Commit + push
 

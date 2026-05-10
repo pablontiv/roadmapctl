@@ -24,6 +24,8 @@ roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json 
 
 Si `roadmapctl` no existe o cualquier comando sale non-zero, detenerse antes de continuar. Reportar comando, exit code y diagnostic IDs si hubo JSON. No auto-fix, no fallback a markdown libre, no ejecutar tasks y no commitear mutaciones del roadmap.
 
+Si una materialización escribió algunos cambios y luego falló postcheck, reportar los paths aplicados, validar los paths afectados (`rootline validate <path>` o `roadmapctl check --strict`), y elegir explícitamente corregir o revertir antes de volver a ejecutar `roadmapctl check --strict`. No declarar éxito ni commitear mientras el postcheck falle.
+
 Los diagnostics `RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED` y `RMC_LINT_SCHEMA_OUTCOME_ESTADO_NON_EMPTY` indican `.stem` stale que impide materializar Outcomes sin `estado`; bloquear writes hasta corregir el schema mediante roadmapctl o intervención explícita.
 
 La planificación conceptual que no escribe, no muta, no ejecuta y no declara validez puede continuar sin `roadmapctl`.
