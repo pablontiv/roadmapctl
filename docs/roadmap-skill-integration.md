@@ -156,15 +156,19 @@ After approval, the skill serializes non-bootstrap plans to `roadmapctl/material
   - For every proposed `blocked_by`, the skill must be able to answer: “What would objectively fail if this task ran first?”
   - Sequencing preference, shared context, provenance, thematic grouping, or “use its output if available” must stay in task context/source-of-truth prose and must not be serialized as `blocked_by`.
 
-  1. Run:
-     roadmapctl materialize --plan <plan-json> --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json
-  2. Save that dry-run JSON as the frozen change-set and verify it proposes only canonical allowlisted paths and no `*-tasks.md` fallback.
-  3. After explicit human approval of the dry-run, apply each canonical file target independently:
+  1. Save the approved structured plan in a temp file and run:
+     roadmapctl materialize --plan <plan-json> --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json > <dry-run-json>
+  2. Save that dry-run JSON as the frozen change-set and verify it proposes only canonical allowlisted paths and no `*-tasks.md` fallback. Normal review shows only `summary`, `diagnostics`, and per-change `path`, `operation`, `applied`, `preconditions`; do not dump `changes[].content` or full diffs unless explicitly requested or troubleshooting.
+  3. After explicit human approval of the dry-run, prefer roadmapctl-owned batch apply for the approved change-set:
+     roadmapctl materialize --changes <dry-run-json> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
+     or equivalently:
+     roadmapctl materialize --plan <plan-json> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
+  4. Use target apply only for recovery, troubleshooting, or explicit one-file approval:
      roadmapctl materialize --changes <dry-run-json> --target <target.path> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
-  4. Never use prompt-side raw writes for dry-run `content`, and never use one batch `--plan ... --apply` from the `/roadmap` skill for multi-file plans.
-  5. Run:
+  5. Never use prompt-side raw writes for dry-run `content`.
+  6. Run:
      roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
-  6. If any command exits non-zero, report diagnostics and stop before claiming success or committing.
+  7. If any command exits non-zero, report diagnostics and stop before claiming success or committing.
 ```
 
 The materialized shape must remain canonical:
@@ -180,7 +184,7 @@ or:
 <roadmap-root>/TXXX-task.md
 ```
 
-Never create a single fallback file such as `<roadmap-root>/feature-tasks.md` for multiple tasks. The skill must not duplicate numbering, `rootline new`, README task-table edits, dependency-link writing, or dry-run content writes once `roadmapctl materialize` is available; those deterministic writes belong to the CLI. Granular writes use `--changes <dry-run-json> --target <path> --apply` so the target content comes from a frozen CLI change-set.
+Never create a single fallback file such as `<roadmap-root>/feature-tasks.md` for multiple tasks. The skill must not duplicate numbering, `rootline new`, README task-table edits, dependency-link writing, or dry-run content writes once `roadmapctl materialize` is available; those deterministic writes belong to the CLI. Batch apply is the normal path because roadmapctl validates and writes the approved change-set atomically enough for the roadmap workflow. Granular writes use `--changes <dry-run-json> --target <path> --apply` only for recovery, troubleshooting, or explicit one-file approval so the target content still comes from a frozen CLI change-set.
 
 ## `/roadmap loop` integration snippet
 
