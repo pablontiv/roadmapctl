@@ -3,8 +3,8 @@
   "changes": [
     {
       "applied": false,
-      "content": "---\ntipo: outcome\n---\n# New Outcome\n\nOutcome description.\n\n## Criterios de Aceptación\n\n- Outcome works.\n\n## Tasks\n\n| Task | Descripción |\n|------|-------------|\n| [T001](T001-first-task.md) | Implement first task. |\n",
-      "diff": "--- /dev/null\n+++ b/O02-new-outcome/README.md\n+---\n+tipo: outcome\n+---\n+# New Outcome\n+\n+Outcome description.\n+\n+## Criterios de Aceptación\n+\n+- Outcome works.\n+\n+## Tasks\n+\n+| Task | Descripción |\n+|------|-------------|\n+| [T001](T001-first-task.md) | Implement first task. |\n",
+      "content": "---\ntipo: outcome\n---\n# New Outcome\n\nOutcome description.\n",
+      "diff": "--- /dev/null\n+++ b/O02-new-outcome/README.md\n+---\n+tipo: outcome\n+---\n+# New Outcome\n+\n+Outcome description.\n",
       "operation": "create",
       "path": "O02-new-outcome/README.md",
       "preconditions": [

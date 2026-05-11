@@ -101,8 +101,9 @@ func TestMaterializeDryRunAppendsExistingOutcomeSlugWithoutWriting(t *testing.T)
 	if report["applied"] != false {
 		t.Fatalf("applied = %v; report = %#v", report["applied"], report)
 	}
-	if !strings.Contains(stdout.String(), `"path":"O01-work/README.md","operation":"update"`) {
-		t.Fatalf("dry-run missing README update:\n%s", stdout.String())
+	// README is a computed view; appending tasks must NOT produce a README update change
+	if strings.Contains(stdout.String(), `"path":"O01-work/README.md"`) {
+		t.Fatalf("dry-run must not include README update when appending tasks:\n%s", stdout.String())
 	}
 	if !strings.Contains(stdout.String(), `"path":"O01-work/T003-new-task.md","operation":"create"`) {
 		t.Fatalf("dry-run missing appended task create:\n%s", stdout.String())
@@ -131,8 +132,9 @@ func TestMaterializeApplyAppendsExistingOutcomeSlug(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(readme), "| [T003](T003-new-task.md) | Task description. |") {
-		t.Fatalf("README missing appended row:\n%s", string(readme))
+	// README is a computed view; content must be unchanged after append
+	if strings.Contains(string(readme), "T003") {
+		t.Fatalf("README must not be modified when appending tasks:\n%s", string(readme))
 	}
 	if _, err := os.Stat(filepath.Join(fixture, "docs", "roadmap", "O01-work", "T003-new-task.md")); err != nil {
 		t.Fatalf("appended task missing: %v", err)

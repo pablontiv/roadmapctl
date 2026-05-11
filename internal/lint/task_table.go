@@ -52,7 +52,8 @@ func checkOutcomeTaskTable(root string, outcomePath string) ([]diagnostics.Diagn
 	}
 	table := doc.TableBySection("Tasks")
 	if table == nil {
-		return []diagnostics.Diagnostic{lintTaskTableDiagnostic(diagnostics.DiagnosticLintTaskTableMissing, root, readmePath, "outcome README must include a ## Tasks table", "")}, nil
+		// ## Tasks is a computed view; its absence is expected and not an error
+		return nil, nil
 	}
 	linked := map[string]bool{}
 	var found []diagnostics.Diagnostic

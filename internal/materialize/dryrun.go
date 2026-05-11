@@ -327,14 +327,12 @@ func DryRun(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, er
 		item := outcomeBySlug[outcomePlan.Slug]
 		if outcomePlan.Existing {
 			readmePath := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(outcomePlan.Path))
-			previous, err := os.ReadFile(readmePath)
-			if os.IsNotExist(err) {
+			if _, err := os.Stat(readmePath); os.IsNotExist(err) {
 				return Result{}, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, outcomePlan.Path, "existing outcome README is missing", outcomePlan.Path)}, nil
 			} else if err != nil {
-				return Result{}, nil, fmt.Errorf("read existing outcome README: %w", err)
+				return Result{}, nil, fmt.Errorf("stat existing outcome README: %w", err)
 			}
-			content := appendOutcomeTaskRows(string(previous), item, outcomePlan)
-			result.Changes = append(result.Changes, newUpdateChange(outcomePlan.Path, string(previous), content))
+			// README is a computed view; appending tasks only creates new TXXX files
 		} else {
 			content := renderOutcome(item, outcomePlan)
 			result.Changes = append(result.Changes, newCreateChange(outcomePlan.Path, content))
@@ -516,62 +514,10 @@ func renderOutcome(item Item, plan roadmap.OutcomePathPlan) string {
 	b.WriteString("---\ntipo: outcome\n---\n")
 	fmt.Fprintf(&b, "# %s\n\n", item.Title)
 	b.WriteString(item.Description)
-	b.WriteString("\n\n## Criterios de Aceptación\n\n")
-	writeBullets(&b, item.AcceptanceCriteria)
-	b.WriteString("\n## Tasks\n\n| Task | Descripción |\n|------|-------------|\n")
-	for i, taskPlan := range plan.Tasks {
-		description := ""
-		if i < len(item.Tasks) {
-			description = item.Tasks[i].Description
-		}
-		fmt.Fprintf(&b, "| [%s](%s) | %s |\n", taskID(taskPlan.Path), filepath.Base(taskPlan.Path), description)
-	}
+	b.WriteString("\n")
 	return b.String()
 }
 
-func appendOutcomeTaskRows(previous string, item Item, plan roadmap.OutcomePathPlan) string {
-	var rows []string
-	for i, taskPlan := range plan.Tasks {
-		description := ""
-		if i < len(item.Tasks) {
-			description = item.Tasks[i].Description
-		}
-		rows = append(rows, fmt.Sprintf("| [%s](%s) | %s |", taskID(taskPlan.Path), filepath.Base(taskPlan.Path), description))
-	}
-	if len(rows) == 0 {
-		return previous
-	}
-	content := strings.TrimRight(previous, "\n")
-	lines := strings.Split(content, "\n")
-	for i, line := range lines {
-		if strings.TrimSpace(line) != "## Tasks" {
-			continue
-		}
-		insertAt := i + 1
-		for insertAt < len(lines) && strings.TrimSpace(lines[insertAt]) == "" {
-			insertAt++
-		}
-		if insertAt+1 >= len(lines) || !strings.HasPrefix(strings.TrimSpace(lines[insertAt]), "|") || !strings.HasPrefix(strings.TrimSpace(lines[insertAt+1]), "|") {
-			section := append([]string{"", "| Task | Descripción |", "|------|-------------|"}, rows...)
-			lines = append(lines[:i+1], append(section, lines[i+1:]...)...)
-			return strings.Join(lines, "\n") + "\n"
-		}
-		insertAt += 2
-		for insertAt < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[insertAt]), "|") {
-			insertAt++
-		}
-		lines = append(lines[:insertAt], append(rows, lines[insertAt:]...)...)
-		return strings.Join(lines, "\n") + "\n"
-	}
-	var b strings.Builder
-	b.WriteString(content)
-	b.WriteString("\n\n## Tasks\n\n| Task | Descripción |\n|------|-------------|\n")
-	for _, row := range rows {
-		b.WriteString(row)
-		b.WriteByte('\n')
-	}
-	return b.String()
-}
 
 func renderTask(task Task, outcome Item, links []string, id string) string {
 	var b strings.Builder

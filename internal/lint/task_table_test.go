@@ -49,25 +49,39 @@ func TestCheckOutcomeTaskTablesFindsMissingAndStaleRows(t *testing.T) {
 	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintTaskTableStaleRow, "O01-work/README.md", "T999-stale.md")
 }
 
-func TestCheckOutcomeTaskTablesFindsMissingAndInvalidTableLinks(t *testing.T) {
+func TestCheckOutcomeTaskTablesNoMissingDiagnosticWhenTableAbsent(t *testing.T) {
 	root := t.TempDir()
-	writeOutcome(t, root, "O01-missing", `# Work
-`, []string{"T001-first.md"})
-	writeOutcome(t, root, "O02-invalid", `# Other
-
-## Tasks
-
-| Task | Description |
-| --- | --- |
-| [bad](../O01-missing/T001-first.md) | Outside |
+	// Outcome without ## Tasks table is valid: tasks are a computed view
+	writeOutcome(t, root, "O01-no-table", `# Work
 `, []string{"T001-first.md"})
 
 	found, err := CheckOutcomeTaskTables(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintTaskTableMissing, "O01-missing/README.md", "")
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintTaskTableInvalidLink, "O02-invalid/README.md", "../O01-missing/T001-first.md")
+	for _, d := range found {
+		if d.ID == diagnostics.DiagnosticLintTaskTableMissing {
+			t.Fatalf("unexpected missing-table diagnostic: %#v", d)
+		}
+	}
+}
+
+func TestCheckOutcomeTaskTablesFindsinvalidTableLinks(t *testing.T) {
+	root := t.TempDir()
+	writeOutcome(t, root, "O01-invalid", `# Other
+
+## Tasks
+
+| Task | Description |
+| --- | --- |
+| [bad](../O02-other/T001-first.md) | Outside |
+`, []string{"T001-first.md"})
+
+	found, err := CheckOutcomeTaskTables(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintTaskTableInvalidLink, "O01-invalid/README.md", "../O02-other/T001-first.md")
 }
 
 func writeOutcome(t *testing.T, root string, name string, readme string, tasks []string) {

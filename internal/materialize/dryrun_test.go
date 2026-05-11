@@ -183,7 +183,8 @@ func TestDryRunAppendsToExistingOutcomeSlug(t *testing.T) {
 	if len(diagnostics) != 0 {
 		t.Fatalf("diagnostics = %#v", diagnostics)
 	}
-	wantPaths := []string{"O01-new-outcome/README.md", "O01-new-outcome/T002-first-task.md", "T001-direct-task.md"}
+	// README is a computed view; only task files are created when appending to an existing outcome
+	wantPaths := []string{"O01-new-outcome/T002-first-task.md", "T001-direct-task.md"}
 	if len(result.Changes) != len(wantPaths) {
 		t.Fatalf("changes = %#v", result.Changes)
 	}
@@ -192,14 +193,8 @@ func TestDryRunAppendsToExistingOutcomeSlug(t *testing.T) {
 			t.Fatalf("change[%d] = %#v, want path %s applied=false", i, result.Changes[i], want)
 		}
 	}
-	if result.Changes[0].Operation != "update" {
-		t.Fatalf("README change = %#v, want update", result.Changes[0])
-	}
-	if !strings.Contains(result.Changes[0].Content, "| [T002](T002-first-task.md) | Implement first task. |") {
-		t.Fatalf("README update missing new task row:\n%s", result.Changes[0].Content)
-	}
-	if result.Changes[1].Operation != "create" || !strings.Contains(result.Changes[1].Content, "# T002: First task") {
-		t.Fatalf("task change = %#v", result.Changes[1])
+	if result.Changes[0].Operation != "create" || !strings.Contains(result.Changes[0].Content, "# T002: First task") {
+		t.Fatalf("task change = %#v", result.Changes[0])
 	}
 	currentREADME, err := os.ReadFile(filepath.Join(outcomeDir, "README.md"))
 	if err != nil {
