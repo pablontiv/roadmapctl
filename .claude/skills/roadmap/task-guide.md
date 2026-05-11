@@ -2,7 +2,7 @@
 
 ## Workflow
 
-Este archivo define el contenido AI-ready de una task. No es el procedimiento primario para escribir archivos: `/roadmap plan` debe serializar el árbol aprobado a JSON y delegar rutas, numbering, creación de archivos, tabla del README y links `blocked_by` en `roadmapctl materialize`.
+Este archivo define el contenido AI-ready de una task. El procedimiento primario (`/roadmap plan`) descompone el árbol en Outcomes/Tasks, pide aprobación del usuario, y luego **el skill escribe directamente los archivos `.md`** tras aprobación.
 
 ### Paso 1: Parsear argumentos
 
@@ -14,11 +14,17 @@ Extraer para el plan estructurado:
 
 ### Paso 2: Poblar plan estructurado
 
-Para cada task, completar campos requeridos del schema `roadmapctl/materialize-plan`: slug, título, descripción, `preserves`, contexto, `scope_in`, `scope_out`, estado inicial, criterios de aceptación, fuentes de verdad y hard blockers opcionales.
+Para cada task, completar campos requeridos: slug, título, descripción, preserves, contexto, scope_in, scope_out, estado inicial, criterios de aceptación, fuentes de verdad y hard blockers opcionales.
 
-### Paso 3: Delegar materialización
+### Paso 3: Escritura directa tras aprobación
 
-`roadmapctl materialize --dry-run` asigna `TXXX`, detecta colisiones/escapes y muestra rutas. `roadmapctl materialize --apply` crea el archivo y actualiza el README padre si corresponde. El skill no debe ejecutar `rootline new` ni editar tablas manualmente.
+Después de que el usuario aprueba explícitamente el árbol visual propuesto:
+
+1. El skill escribe archivos `.md` directamente usando Write tool.
+2. Cada Task crea un archivo `TXXX-task-slug.md` con template definido abajo.
+3. El skill puede escribir archivos en paralelo si los parents (Outcomes) ya existen o fueron creados en el mismo batch.
+4. Tras escribir, ejecutar `rootline validate <path>` sobre cada archivo crítico.
+5. Ejecutar `roadmapctl check --strict` tras escribir todos los archivos para postcheck obligatorio.
 
 ## Dependencias duras
 
@@ -30,7 +36,7 @@ Antes de declarar cualquier `blocked_by`, responder:
 ¿Qué fallaría objetivamente si ejecuto esta task antes?
 ```
 
-Usar `blocked_by` solo si hay una respuesta concreta: falta una API, contrato, archivo, migración, test base o decisión sin la cual la task actual no puede validarse. Si la relación es orden sugerido, contexto, tema compartido, provenance, “conviene después de” o “usar su output si existe”, no usar `blocked_by`; ponerlo en `Contexto`, `Fuente de verdad` o prose.
+Usar `blocked_by` solo si hay una respuesta concreta: falta una API, contrato, archivo, migración, test base o decisión sin la cual la task actual no puede validarse. Si la relación es orden sugerido, contexto, tema compartido, provenance, "conviene después de" o "usar su output si existe", no usar `blocked_by`; ponerlo en `Contexto`, `Fuente de verdad` o prose.
 
 Si existe hard blocker, declararlo en la task bloqueada con path relativo explícito:
 
@@ -111,7 +117,7 @@ Antes de finalizar una task, verificar:
 1. ¿Cabe en una sesión?
 2. ¿Contiene todo el contexto?
 3. ¿Los ACs son pass/fail?
-4. Si declara `blocked_by`, ¿hay respuesta concreta a “qué fallaría objetivamente si ejecuto esta task antes”?
+4. Si declara `blocked_by`, ¿hay respuesta concreta a "qué fallaría objetivamente si ejecuto esta task antes"?
 5. ¿Los links `blocked_by` son paths relativos explícitos y no orden/contexto blando?
 6. ¿Lista fuentes de verdad?
 7. ¿Preserva invariantes relevantes?

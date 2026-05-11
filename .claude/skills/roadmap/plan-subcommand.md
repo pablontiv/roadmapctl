@@ -11,7 +11,7 @@ con una lista de tareas. Cada task debe tener su propio archivo `TXXX-*.md`.
 
 1. Contexto actual de conversación.
 
-Si no hay plan, informar: “No hay plan en esta conversación. Primero planificar, luego ejecutar `/roadmap plan`.” y parar.
+Si no hay plan, informar: "No hay plan en esta conversación. Primero planificar, luego ejecutar `/roadmap plan`." y parar.
 
 ## Workspace mode
 
@@ -78,106 +78,69 @@ Guardrail obligatorio antes de escribir:
 3. Si no hay información suficiente para nombrar/separar tasks, preguntar.
 4. Si falta `rootline` y no se puede crear estructura canónica, detenerse.
 
-### Paso 1: Serializar plan estructurado
+### Paso 1: Path planning y propuesta visual
 
-Convertir el árbol aprobado a JSON `roadmapctl/materialize-plan` versión 1 y guardarlo en un archivo temporal, por ejemplo:
+Determinar rutas canónicas para Outcomes y Tasks:
 
-```bash
-plan_json="$(mktemp)"
+1. Si existe comando `roadmapctl path-planning`, usarlo para proponer rutas:
+   ```bash
+   roadmapctl path-planning --repo <repo-path> --roadmap-root <roadmap-root> --outcomes [...] --tasks [...] --output json
+   ```
+   Revisar la propuesta: `summary.status == "ok"` y `paths[]` contiene rutas canónicas `OXX-slug/README.md` y `OXX-slug/TXXX-*.md` o `TXXX-*.md` directas.
+
+2. Si el comando no existe aún, usar `roadmapctl next` como referencia para numbering determinístico de Tasks/Outcomes y documentar que el path-planning guard está pendiente.
+
+Presentar la propuesta visual al usuario en formato legible:
+
+```
+Propuesta aprobada:
+
+O01-nombre-del-objetivo/
+├── README.md
+└── T001-task-corta.md
+    - AC1: ...
+    - AC2: ...
+└── T002-task-larga.md
+    - AC1: ...
 ```
 
-Schema operativo mínimo autosuficiente:
+**STOP obligatorio hasta aprobación explícita del usuario.** Solo si el usuario aprueba el árbol exacto propuesto, pasar a Paso 2.
 
-```json
-{
-  "version": 1,
-  "kind": "roadmapctl/materialize-plan",
-  "items": []
-}
-```
+### Paso 2: Re-pregunta y divergencia
 
-`items[]` contiene Outcomes y/o Tasks aprobadas con `slug`, `title`, `description`, `preserves`, `context`, `scope_in`, `scope_out`, `acceptance_criteria`, `source_of_truth`, `initial_status` y `hard_blockers` cuando correspondan.
+Re-preguntar **solo si**:
 
-Fuente del schema: el contrato canónico versionado vive en el repositorio `roadmapctl` como `docs/materialize-plan-schema.md`; esa ruta es repo-relativa cuando se está trabajando dentro de `roadmapctl`, no relativa al directorio del skill instalado. En repos consumidores normales, usar el schema mínimo autosuficiente de este archivo y los diagnostics de `roadmapctl materialize`; no buscar un `docs/materialize-plan-schema.md` local salvo que el repo sea `roadmapctl`. Exposición CLI tipo `roadmapctl materialize schema --output json` queda diferida hasta que se apruebe una versión de schema exportable.
+- Hay divergencia entre las rutas propuestas en Paso 1 y lo que el usuario aprobó (ej: cambió cantidad de tasks, destino, o slugs).
+- El usuario pide cambios estructura respecto a la propuesta visual presentada.
 
-Reglas:
+Si el usuario aprueba explícitamente el árbol visual propuesto (rutas, slugs, tasks, ACs), no re-preguntar; pasar directo a Paso 3.
 
-- No pasar prose libre a `roadmapctl materialize`.
-- No pegar el JSON completo en la respuesta si es grande; guardar el plan en `plan_json` y reportar solo un resumen.
-- Cada Outcome/task aprobado debe tener `slug`, `title`, `description`, ACs, `source_of_truth` y límites suficientes.
-- Los Outcome v1 crean un Outcome nuevo cuando el `slug` no existe. Si el `slug` ya existe como `OXX-<slug>`, `roadmapctl materialize` debe appendear las tasks dentro de ese Outcome con un `update` gobernado del `README.md` y `create` de los `TXXX-*.md`; el skill no debe intentar append/update manual ni proponer un Outcome numerado duplicado.
-- Serializar `blocked_by` **solo** desde hard blockers aprobados, con `ref` plan-local o `path` explícito; nunca targets bare.
-- Antes de incluir cualquier `blocked_by`, responder: “¿Qué fallaría objetivamente si ejecuto esta task antes?”. Si la respuesta es “nada; solo es mejor orden/contexto”, no es hard blocker.
-- No usar `blocked_by` para orden sugerido, secuencia narrativa, agrupación por Outcome, relación temática, provenance, “conviene después de”, ni “usar su output si existe”. Poner ese contexto en `context`, `source_of_truth` o prose de la task.
-- Si falta información para poblar campos requeridos o justificar un hard blocker, preguntar antes de materializar.
+### Paso 3: Escritura directa de archivos aprobados
 
-### Paso 2: Dry-run determinístico
+Después del `preflight` y **aprobación explícita** del árbol visual propuesto en Paso 1:
 
-Ejecutar:
+1. **Crear directorios padre**: si una task pertenece a un Outcome (ej: `OXX-slug/TXXX-task.md`), crear el directorio `OXX-slug/` si no existe.
 
-```bash
-dry_run_json="$(mktemp)"
-roadmapctl materialize --plan "$plan_json" --dry-run --repo <repo-path> --roadmap-root <roadmap-root> --output json >"$dry_run_json"
-```
+2. **Escribir archivos en paralelo** usando Write tool:
+   - Outcome `README.md` con template `outcome-guide.md`: frontmatter `tipo: outcome`, título, descripción/contexto (SIN `## Criterios de Aceptación` persistidos, SIN `## Tasks` persistida — son vistas calculadas).
+   - Task `TXXX-*.md` con template `task-guide.md`: frontmatter `estado: Specified`, título, descripción, ACs en `## Criterios de Aceptación`, contexto, scope, hard blockers si aplican.
 
-Revisar el JSON desde `dry_run_json` sin volcar contenido/diffs completos al contexto:
+3. **Validación local post-write**:
+   ```bash
+   rootline validate <path-creado>
+   ```
+   Ejecutar después de escribir cada archivo crítico; si `rootline validate` falla, reportar error antes de continuar.
 
-- `summary.status == "ok"`.
-- `changes[]` contiene únicamente operaciones canónicas permitidas:
-  - `.` / `.stem` / `.roadmapctl.toml` solo en bootstrap explícito aprobado (preferir `roadmapctl bootstrap init` para crear solo bootstrap),
-  - `OXX-slug/README.md`,
-  - `OXX-slug/TXXX-task.md`,
-  - `TXXX-task.md`.
-- `applied == false` para todo dry-run.
-- No aparece ningún `*-tasks.md`.
+4. **Postcheck obligatorio**: tras escribir todos los archivos,
+   ```bash
+   roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+   ```
+   Si falla, detener y reportar diagnostics. No declarar éxito ni commitear hasta resolverlo.
 
-Si el dry-run falla o propone rutas fuera del allowlist, detenerse y reportar diagnostics. No escribir archivos manualmente.
-
-Reporte normal del dry-run: `summary`, `diagnostics`, `path`, `operation`, `applied` y preconditions relevantes. No usar `cat "$dry_run_json"` ni pegar el JSON completo en la respuesta; extraer esos campos de forma selectiva. Leer `changes[].content` o diffs completos solo si el usuario lo pide explícitamente o para troubleshooting dirigido.
-
-### Paso 3: Aplicación batch gobernada por roadmapctl
-
-Solo después del dry-run válido y aprobación humana explícita, aplicar con una única operación owned by roadmapctl:
-
-```bash
-roadmapctl materialize --plan "$plan_json" --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
-```
-
-Alternativa con change-set congelado revisado:
-
-```bash
-roadmapctl materialize --changes "$dry_run_json" --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
-```
-
-Reglas:
-
-1. El skill no escribe `content` del dry-run manualmente y no usa shell heredocs/loops para crear archivos.
-2. `roadmapctl` debe reportar `summary.status == "ok"`, `applied == true`, y `changes[]` con todos los paths aplicados.
-3. Si `summary.status != "ok"`, detener la materialización y reportar diagnostics; no continuar ni hacer fallback.
-4. Usar `--changes <dry-run-json> --target <target.path> --apply` solo para recuperación puntual o cuando se aprobó explícitamente aplicar un único archivo.
-
-### Paso 4: Postcheck explícito
-
-Tras completar todos los targets, ejecutar:
-
-```bash
-roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
-```
-
-Si falla, detenerse y reportar diagnostics. No declarar éxito, no commitear y no continuar con más materialización hasta resolverlo.
-
-#### Recuperación ante postcheck fallido o materialización parcial
-
-1. Reportar `summary`, diagnostic IDs y `changes[]` con `applied=true` para dejar claro qué quedó escrito.
-2. Inspeccionar solo los paths aplicados relevantes; no reescribirlos manualmente en batch.
-3. Ejecutar `rootline validate <path>` sobre los `.md` aplicados o `roadmapctl check --strict` para confirmar el fallo actual.
-4. Elegir explícitamente una de dos rutas: corregir con una edición puntual aprobada o revertir los paths aplicados.
-5. Volver a ejecutar `roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict` y solo entonces permitir commit o declaración de éxito.
-
-### Paso 5: Commit + push
+### Paso 4: Commit + push
 
 - `git add` solo archivos `.md` y `.stem` creados/modificados del roadmap.
 - `git commit -m "chore(roadmap): create planning docs"`
 - `git push` si `<auto-push>` es true.
 
-STOP obligatorio. Informar: “Archivos de planificación creados. Ejecutar `/roadmap loop` cuando esté listo para implementar.”
+STOP obligatorio. Informar: "Archivos de planificación creados. Ejecutar `/roadmap loop` cuando esté listo para implementar."

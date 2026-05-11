@@ -13,7 +13,7 @@ Si el trabajo cabe en 1–5 tasks auto-contenidas, crear tasks directas bajo `<r
 
 ## Auto-numbering
 
-El skill no calcula `OXX`. `roadmapctl materialize --dry-run` asigna el siguiente Outcome determinísticamente y muestra la ruta propuesta en `changes[]`; `--apply` crea el directorio/README si el dry-run fue aprobado.
+El skill no calcula `OXX`. `roadmapctl path-planning` (cuando esté disponible) asigna el siguiente Outcome determinísticamente y muestra la ruta propuesta. Mientras tanto, usar `roadmapctl next` como referencia para numbering determinístico.
 
 ## Estructura
 
@@ -34,22 +34,13 @@ tipo: outcome
 
 [Descripción del resultado observable que existirá cuando todas las tasks estén completadas.]
 
-## Criterios de Aceptación
-
-- [criterio verificable]
-
-## Tasks
-
-| Task | Descripción |
-|------|-------------|
-| [T001](T001-ejemplo.md) | Descripción breve |
+[Contexto adicional, background, o motivación si aplica — prose libre sin secciones fijas.]
 ```
 
 ## Reglas
 
-- La tabla de tasks no incluye estado; el estado vive en el frontmatter de cada task.
-- El título del README usa el título del plan (`# [Nombre del objetivo]`); el identificador `OXX` vive en la ruta asignada por `roadmapctl materialize`.
-- El cuerpo materializado contiene descripción, `## Criterios de Aceptación` y `## Tasks`; no agregar secciones prose-only al template si el renderer no las emite.
+- El title del README usa el título del plan (`# [Nombre del objetivo]`); el identificador `OXX` vive en la ruta asignada por path-planning.
+- El cuerpo materializado contiene descripción y contexto; no incluye `## Criterios de Aceptación` ni `## Tasks` (son vistas calculadas derivadas de los archivos `TXXX-*.md` hijas).
 - El estado de `README.md` (outcome/index) no debe escribirse manualmente: se deriva desde las `TXXX-*` hijas y/o el estado del índice jerárquico.
 - No crear subniveles bajo Outcome.
 - Las dependencias duras entre tasks se declaran con `[[blocked_by:./TXXX-name.md]]` en la task bloqueada solo si la task no puede ejecutarse/validarse antes; orden sugerido o relación temática van en contexto/prose, no en `blocked_by`.

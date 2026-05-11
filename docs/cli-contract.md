@@ -15,6 +15,7 @@ Implemented commands:
 - `roadmapctl lint`
 - `roadmapctl transition`
 - `roadmapctl materialize`
+- `roadmapctl plan-paths`
 - `roadmapctl bootstrap`
 
 `roadmapctl` does not decompose roadmap plans with AI, auto-fix invalid roadmap data, or add roadmap-specific subcommands to `rootline`.
@@ -43,8 +44,9 @@ Commands:
   decision     Provide deterministic prioritization recommendations.
   lint         Validate deterministic semantic roadmap conventions.
   transition   Evaluate and apply policy-checked status transitions.
-  materialize   Validate and write approved structured roadmap plans.
-  bootstrap     Inspect or initialize missing bootstrap files.
+  materialize  Validate and write approved structured roadmap plans.
+  plan-paths   Plan canonical paths for outcomes and tasks without writing content.
+  bootstrap    Inspect or initialize missing bootstrap files.
 ```
 
 Commands support `--output text` and `--output json`.
@@ -395,6 +397,59 @@ Severity policy:
 - `warning`: deterministic semantic or documentation consistency issue; exits `0` unless `--strict` is set.
 - `error`: deterministic portability or schema problem that can break roadmapctl operation or supported filesystems.
 - `lint` must not reclassify MVP `RMC_STRUCTURE_*`, `RMC_GRAPH_*`, `RMC_ROOTLINE_*`, or `RMC_STATUS_*` diagnostics without compatibility notes.
+
+## `plan-paths` command
+
+`plan-paths` proposes canonical filesystem paths for outcomes and tasks without rendering content. It is used by the skill layer to validate that paths will be correct before asking Pi write to create files. The command validates slugs, detects collisions with existing roadmap items, and returns a compact JSON result describing what paths would be created or updated.
+
+This command is the guard/path planner layer that the skill uses to show the user what files will be created and detect problems before writing content.
+
+Input format: compact JSON with item slugs and type information.
+
+```bash
+roadmapctl plan-paths --input plan.json --repo <repo> --roadmap-root <roadmap-root> --output json
+```
+
+Example input:
+
+```json
+{
+  "version": 1,
+  "kind": "roadmapctl/path-plan",
+  "items": [
+    {"type": "outcome", "slug": "rebuild-api"},
+    {"type": "task", "slug": "add-endpoint"}
+  ]
+}
+```
+
+Example output:
+
+```json
+{
+  "version": 1,
+  "kind": "roadmapctl/path-plan-result",
+  "summary": {"status": "ok", "errors": 0, "warnings": 0, "infos": 0},
+  "root": "/abs/path/to/repo",
+  "roadmap_root": "/abs/path/to/repo/docs/roadmap",
+  "result": {
+    "paths": [
+      {"path": "O14-rebuild-api/README.md", "operation": "create", "type": "outcome"},
+      {"path": "O14-rebuild-api/T001-add-endpoint.md", "operation": "create", "type": "task"}
+    ],
+    "collisions": [],
+    "diagnostics": []
+  },
+  "diagnostics": []
+}
+```
+
+The skill layer uses the `result.paths` to:
+1. Show the user what paths will be created.
+2. Ask for approval before calling Pi write.
+3. Validate that the written files match the planned paths (no divergence).
+
+The skill layer does not use `plan-paths` to render markdown content; that remains in the skill layer.
 
 ## Materialize plan input contract
 
