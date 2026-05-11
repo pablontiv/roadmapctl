@@ -47,6 +47,22 @@ function buildInstructions(params: {
 	return lines.join("\n");
 }
 
+function isCancellation(error: Error): boolean {
+	return /cancelled|canceled/i.test(error.message);
+}
+
+function queueRoadmapContinuation(pi: ExtensionAPI, statusLine: string): void {
+	pi.sendUserMessage(
+		[
+			statusLine,
+			"",
+			"Continue the /roadmap loop from the compaction summary.",
+			"Re-run roadmapctl context, doctor, check, and next before mutating roadmap state; then resume only tasks reported ready by roadmapctl next.",
+		].join("\n"),
+		{ deliverAs: "followUp" as const },
+	);
+}
+
 export default function (pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "compact_roadmap_context",
@@ -72,10 +88,17 @@ export default function (pi: ExtensionAPI) {
 						if (ctx.hasUI) {
 							ctx.ui.notify("Roadmap context compaction completed", "info");
 						}
+						queueRoadmapContinuation(pi, "Roadmap context compaction completed after the durable task.");
 					},
 					onError: (error) => {
 						if (ctx.hasUI) {
 							ctx.ui.notify(`Roadmap context compaction failed: ${error.message}`, "error");
+						}
+						if (!isCancellation(error)) {
+							queueRoadmapContinuation(
+								pi,
+								`Compaction failed after the durable task: ${error.message}`,
+							);
 						}
 					},
 				});
