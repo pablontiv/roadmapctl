@@ -1,64 +1,50 @@
-# Decision: keep `roadmapctl materialize` as deterministic writer
+# Decision: roadmapctl as guard/policy layer; Pi write owns roadmap materialization
 
 Status: Accepted
-Date: 2026-05-10
+Date: 2026-05-11
 
 ## Decision
 
-Keep `roadmapctl materialize` as the required deterministic writer for `/roadmap plan` materialization. The roadmap skill should continue to create a structured temp plan, run `roadmapctl materialize --dry-run`, show only concise dry-run evidence by default, and apply through roadmapctl-owned batch apply after approval.
+`roadmapctl` evolves from a deterministic writer to a guard, validator, policy layer, path planner, and state query engine. The skill (Pi agent) becomes the sole writer of approved roadmap files after human authorization.
 
-Do not reintroduce prompt-side direct roadmap file writes as the normal flow. Do not remove `roadmapctl materialize` in favor of a guard-only command yet.
+### Semantic boundary
 
-## Evidence considered
+**Outcome README**: does not persist `## Tasks` section. The task table is a computed view generated from child `TXXX-*.md` files. Outcomes are purely container/context documents. `roadmapctl lint` may warn if a stale table exists, but `roadmapctl` never writes it.
 
-- Local docs already define materialize as a deterministic writer that rejects free-form prose and owns numbering, dependency links, canonical paths, dry-run, frozen change-set apply, and postcheck recovery (`docs/materialize-plan-schema.md`, `docs/roadmap-skill-integration.md`).
-- Backscroll evidence shows the original consistency risk: invalid single-summary fallback files were explicitly tested and blocked with `RMC_STRUCTURE_SINGLE_FILE_FALLBACK` in prior roadmapctl sessions.
-- Backscroll evidence also shows current UX cost: materialize dry-runs previously created excessive context from `changes[].content`/diffs, which was addressed by the token-light dry-run flow.
-- Headless regression coverage now verifies no-argument `/roadmap` routes through `roadmapctl pending` and materialize dry-run can be reviewed concisely without repository writes.
+**Outcome scope**: Outcomes do not require acceptance criteria in the README. Acceptance criteria live exclusively in child `TXXX-*.md` task files as structured sections. An Outcome README carries narrative, goals, constraints, and motivation; Tasks carry work items and their specific ACs.
 
-## Alternatives
+**Pi write authority**: After human approval of a roadmap plan (dry-run review), the skill serializes only data—not prose. It sends `roadmapctl materialize --dry-run` for validation and preflight diagnostics. On explicit human approval, the skill then directly writes canonical Outcome README and Task files using approved Markdown content. There is no hidden content generation; the skill writes exactly what the human saw. After writing, `roadmapctl check` validates the written files.
 
-### Keep deterministic writer
+**roadmapctl role**: 
+- Guard/policy layer: blocking validation before writes/executions (`roadmapctl doctor`, `roadmapctl check`).
+- Path planner: deterministic ID numbering, canonical paths, dependency resolution.
+- Validator: structural invariants, schema compliance, graph validation, stale content warnings.
+- View/query layer: read-only state queries (`roadmapctl pending`, `roadmapctl next`, `roadmapctl decision`).
+- Policy engine: status transition rules and operator muscle memory (`roadmapctl transition`).
 
-Pros:
-- Preserves the strongest guard against `*-tasks.md` fallback and malformed roadmap structure.
-- Keeps numbering, canonical paths, dependency serialization, preconditions, and postcheck in code instead of prompt logic.
-- Supports dry-run review, frozen change-set apply, and recovery after partial apply/postcheck failure.
+`roadmapctl materialize` may be deprecated, deferred, or refactored to a schema validator/formatter once the skill stabilizes as the write owner. No obligatory compatibility is maintained with the current `materialize` writer interface.
 
-Cons:
-- More implementation and documentation surface area than a simple validator.
-- Requires token discipline around dry-run output.
+**Rootline boundary**: Rootline remains the generic Markdown filesystem database and constraint engine. It validates markdown structure, schema compliance, and graph integrity. `roadmapctl` consumes Rootline outputs and adds roadmap-specific policy interpretation.
 
-### Guard-only validation
+## Evidence
 
-Pros:
-- Smaller CLI write surface.
-- Easier to reason about if the skill owns all writes.
+This decision addresses the experimental session agreement that:
+1. No compatibility is obligatory with the current materialize contract.
+2. Outcome README is not a persistent task list (tasks are child files).
+3. Acceptance criteria belong to Task files, not Outcome README.
+4. A human-approved Markdown write is acceptable after validation, not a burden.
 
-Cons:
-- Reopens prompt-side writer drift: the skill would need to duplicate numbering, path generation, dependency links, and file rendering.
-- Validation would catch some failures only after files were already written.
-- Historical single-file fallback failures would be easier to reintroduce.
-
-### Direct write plus `roadmapctl check`
-
-Pros:
-- Lowest CLI complexity.
-- Fastest for simple plans.
-
-Cons:
-- Weakest safety model. It relies on the agent to generate every file correctly and then recover after failures.
-- Increases chance of non-canonical intermediate states and token-heavy manual diffs.
-- Conflicts with current skill guidance that deterministic writes belong to roadmapctl.
+The prior decision (keep deterministic writer) was precautionary. Evidence now supports moving writer authority to the skill:
+- The skill has proven it can decompose, serialize, and present structured plans for human review.
+- Human approval before write is standard in `/roadmap plan` already.
+- Postcheck via `roadmapctl check` provides the same safety guarantee regardless of who writes files.
+- Removing duplication (skill generating prose + CLI rendering it) simplifies both layers.
 
 ## Revisit criteria
 
-Reconsider simplifying or deprecating `roadmapctl materialize` only if all of the following are true:
+This decision is final unless all of the following occur:
+1. A measurable regression in safety or consistency is discovered (fallback files, stale links, invalid schema).
+2. Human review of dry-runs is no longer practical (e.g., plan sizes exceed review capacity).
+3. A new tooling requirement emerges that requires deterministic CLI-side renders (e.g., Rootline native roadmap types).
 
-1. Headless and fixture coverage prove direct or guard-only flows cannot create single-summary fallback files, stale schema output, invalid dependency links, or non-canonical paths.
-2. The skill no longer needs to duplicate deterministic writer logic in prompt text.
-3. Token overhead remains low without hiding required diagnostics or recovery evidence.
-4. Postcheck failure recovery is at least as explicit as the current frozen change-set flow.
-5. A migration plan exists for existing docs, tests, and operator muscle memory.
-
-Until then, optimize materialize UX and schema discoverability rather than replacing the writer.
+Until then, optimize skill write clarity and postcheck coverage rather than reintroducing CLI writers.
