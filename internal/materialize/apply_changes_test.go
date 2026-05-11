@@ -39,6 +39,54 @@ func TestApplyChangesAppliesSortedAllowlistedBatch(t *testing.T) {
 	}
 }
 
+func TestApplyChangesUpdatesOutcomeReadmeAndCreatesTask(t *testing.T) {
+	root := t.TempDir()
+	outcomeDir := filepath.Join(root, "O08-work")
+	if err := os.MkdirAll(outcomeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	oldREADME := "---\ntipo: outcome\n---\n# Work\n\n## Tasks\n\n| Task | Descripción |\n|------|-------------|\n| [T001](T001-old.md) | Old task. |\n"
+	newREADME := oldREADME + "| [T002](T002-new.md) | New task. |\n"
+	if err := os.WriteFile(filepath.Join(outcomeDir, "README.md"), []byte(oldREADME), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	changes := []Change{
+		{Path: "O08-work/README.md", Operation: "update", PreviousContent: oldREADME, Content: newREADME},
+		{Path: "O08-work/T002-new.md", Operation: "create", Content: "---\nestado: Specified\ntipo: task\n---\n# T002: New\n"},
+	}
+
+	result, found, err := ApplyChanges(root, changes)
+	if err != nil || len(found) != 0 {
+		t.Fatalf("ApplyChanges err=%v diagnostics=%#v", err, found)
+	}
+	if len(result.Changes) != 2 || result.Changes[0].Path != "O08-work/T002-new.md" || result.Changes[1].Path != "O08-work/README.md" {
+		t.Fatalf("changes = %#v", result.Changes)
+	}
+	for _, change := range result.Changes {
+		if !change.Applied {
+			t.Fatalf("change not applied: %#v", change)
+		}
+	}
+	currentREADME, err := os.ReadFile(filepath.Join(outcomeDir, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(currentREADME) != newREADME {
+		t.Fatalf("README = %q, want %q", currentREADME, newREADME)
+	}
+	if _, err := os.Stat(filepath.Join(outcomeDir, "T002-new.md")); err != nil {
+		t.Fatalf("task missing: %v", err)
+	}
+
+	_, found, err = ApplyChanges(root, changes)
+	if err != nil {
+		t.Fatalf("stale ApplyChanges err=%v", err)
+	}
+	if !hasDiagnostic(found, diagnostics.DiagnosticMaterializePlanConflict) {
+		t.Fatalf("stale diagnostics = %#v, want plan conflict", found)
+	}
+}
+
 func TestApplyChangesRejectsInvalidOrConflictingBatchBeforeWriting(t *testing.T) {
 	tests := []struct {
 		name    string

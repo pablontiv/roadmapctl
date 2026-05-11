@@ -161,13 +161,18 @@ func TestDryRunPlansOutcomeAndDirectTaskWithoutWriting(t *testing.T) {
 	}
 }
 
-func TestDryRunRejectsExistingOutcomeSlugWithoutChanges(t *testing.T) {
+func TestDryRunAppendsToExistingOutcomeSlug(t *testing.T) {
 	root := t.TempDir()
 	writeBootstrapFiles(t, root)
-	if err := os.Mkdir(filepath.Join(root, "O01-new-outcome"), 0o755); err != nil {
+	outcomeDir := filepath.Join(root, "O01-new-outcome")
+	if err := os.Mkdir(outcomeDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "O01-new-outcome", "README.md"), []byte("---\ntipo: outcome\n---\n# Existing\n"), 0o644); err != nil {
+	existingREADME := "---\ntipo: outcome\n---\n# Existing\n\n## Tasks\n\n| Task | Descripción |\n|------|-------------|\n| [T001](T001-existing.md) | Existing task. |\n"
+	if err := os.WriteFile(filepath.Join(outcomeDir, "README.md"), []byte(existingREADME), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(outcomeDir, "T001-existing.md"), []byte("---\nestado: Completed\ntipo: task\n---\n# T001: Existing\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -175,11 +180,33 @@ func TestDryRunRejectsExistingOutcomeSlugWithoutChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Changes) != 0 {
-		t.Fatalf("changes = %#v, want none", result.Changes)
-	}
-	if len(diagnostics) != 1 || diagnostics[0].ID != "RMC_MATERIALIZE_PLAN_CONFLICT" || diagnostics[0].Path != "O01-new-outcome/README.md" {
+	if len(diagnostics) != 0 {
 		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+	wantPaths := []string{"O01-new-outcome/README.md", "O01-new-outcome/T002-first-task.md", "T001-direct-task.md"}
+	if len(result.Changes) != len(wantPaths) {
+		t.Fatalf("changes = %#v", result.Changes)
+	}
+	for i, want := range wantPaths {
+		if result.Changes[i].Path != want || result.Changes[i].Applied {
+			t.Fatalf("change[%d] = %#v, want path %s applied=false", i, result.Changes[i], want)
+		}
+	}
+	if result.Changes[0].Operation != "update" {
+		t.Fatalf("README change = %#v, want update", result.Changes[0])
+	}
+	if !strings.Contains(result.Changes[0].Content, "| [T002](T002-first-task.md) | Implement first task. |") {
+		t.Fatalf("README update missing new task row:\n%s", result.Changes[0].Content)
+	}
+	if result.Changes[1].Operation != "create" || !strings.Contains(result.Changes[1].Content, "# T002: First task") {
+		t.Fatalf("task change = %#v", result.Changes[1])
+	}
+	currentREADME, err := os.ReadFile(filepath.Join(outcomeDir, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(currentREADME) != existingREADME {
+		t.Fatalf("dry-run wrote README:\n%s", string(currentREADME))
 	}
 }
 

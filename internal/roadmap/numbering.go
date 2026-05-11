@@ -43,10 +43,11 @@ type MaterializePathPlan struct {
 }
 
 type OutcomePathPlan struct {
-	Slug  string
-	Path  string
-	Dir   string
-	Tasks []TaskPathPlan
+	Slug     string
+	Path     string
+	Dir      string
+	Existing bool
+	Tasks    []TaskPathPlan
 }
 
 type TaskPathPlan struct {
@@ -83,24 +84,31 @@ func PlanMaterializePaths(roadmapRoot string, request MaterializePathRequest) (M
 			found = append(found, materializePathDiagnostic(DiagnosticMaterializeInputSlugInvalid, "", "outcome slug is not portable", outcome.Slug))
 			continue
 		}
-		if existingPath := existingOutcomeSlug(root, outcome.Slug); existingPath != "" {
-			found = append(found, materializePathDiagnostic(DiagnosticMaterializePlanConflict, existingPath, "planned outcome slug collides with an existing roadmap outcome", existingPath))
-			continue
+		dir, readme, existing := existingOutcomeForSlug(root, outcome.Slug)
+		nextTaskNumber := 0
+		if existing {
+			nextTaskNumber = maxTaskInOutcome(root, dir)
+		} else {
+			maxOutcome++
+			dir = fmt.Sprintf("O%02d-%s", maxOutcome, outcome.Slug)
+			readme = filepath.ToSlash(filepath.Join(dir, "README.md"))
+			if diagnostic, ok := plannedPathDiagnostic(root, readme, planned); ok {
+				found = append(found, diagnostic)
+				continue
+			}
 		}
-		maxOutcome++
-		dir := fmt.Sprintf("O%02d-%s", maxOutcome, outcome.Slug)
-		readme := filepath.ToSlash(filepath.Join(dir, "README.md"))
-		if diagnostic, ok := plannedPathDiagnostic(root, readme, planned); ok {
-			found = append(found, diagnostic)
-			continue
-		}
-		outcomePlan := OutcomePathPlan{Slug: outcome.Slug, Dir: dir, Path: readme}
-		for i, task := range outcome.Tasks {
+		outcomePlan := OutcomePathPlan{Slug: outcome.Slug, Dir: dir, Path: readme, Existing: existing}
+		for _, task := range outcome.Tasks {
 			if !validSlug(task.Slug) {
 				found = append(found, materializePathDiagnostic(DiagnosticMaterializeInputSlugInvalid, readme, "task slug is not portable", task.Slug))
 				continue
 			}
-			taskPath := filepath.ToSlash(filepath.Join(dir, fmt.Sprintf("T%03d-%s.md", i+1, task.Slug)))
+			if existingPath := existingOutcomeTaskSlug(root, dir, task.Slug); existingPath != "" {
+				found = append(found, materializePathDiagnostic(DiagnosticMaterializePlanConflict, existingPath, "planned task slug collides with an existing outcome task", existingPath))
+				continue
+			}
+			nextTaskNumber++
+			taskPath := filepath.ToSlash(filepath.Join(dir, fmt.Sprintf("T%03d-%s.md", nextTaskNumber, task.Slug)))
 			if diagnostic, ok := plannedPathDiagnostic(root, taskPath, planned); ok {
 				found = append(found, diagnostic)
 				continue
@@ -183,10 +191,10 @@ func plannedPathDiagnostic(root string, rel string, planned map[string]bool) (Di
 	return Diagnostic{}, false
 }
 
-func existingOutcomeSlug(root string, slug string) string {
+func existingOutcomeForSlug(root string, slug string) (string, string, bool) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		return ""
+		return "", "", false
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() || ignoredEntry(entry.Name()) {
@@ -197,7 +205,40 @@ func existingOutcomeSlug(root string, slug string) string {
 			continue
 		}
 		if strings.TrimPrefix(entry.Name(), id+"-") == slug {
-			return filepath.ToSlash(filepath.Join(entry.Name(), "README.md"))
+			readme := filepath.ToSlash(filepath.Join(entry.Name(), "README.md"))
+			return entry.Name(), readme, true
+		}
+	}
+	return "", "", false
+}
+
+func maxTaskInOutcome(root string, dir string) int {
+	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
+	if err != nil {
+		return 0
+	}
+	maxTask := 0
+	for _, entry := range entries {
+		if entry.IsDir() || ignoredEntry(entry.Name()) {
+			continue
+		}
+		maxTask = max(maxTask, numericSuffix(entry.Name(), TaskID))
+	}
+	return maxTask
+}
+
+func existingOutcomeTaskSlug(root string, dir string, slug string) string {
+	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
+	if err != nil {
+		return ""
+	}
+	suffix := "-" + slug + ".md"
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if _, ok := TaskID(entry.Name()); ok && strings.HasSuffix(entry.Name(), suffix) {
+			return filepath.ToSlash(filepath.Join(dir, entry.Name()))
 		}
 	}
 	return ""

@@ -66,12 +66,13 @@ type Result struct {
 }
 
 type Change struct {
-	Path          string   `json:"path"`
-	Operation     string   `json:"operation"`
-	Applied       bool     `json:"applied"`
-	Content       string   `json:"content,omitempty"`
-	Diff          string   `json:"diff,omitempty"`
-	Preconditions []string `json:"preconditions,omitempty"`
+	Path            string   `json:"path"`
+	Operation       string   `json:"operation"`
+	Applied         bool     `json:"applied"`
+	Content         string   `json:"content,omitempty"`
+	PreviousContent string   `json:"previous_content,omitempty"`
+	Diff            string   `json:"diff,omitempty"`
+	Preconditions   []string `json:"preconditions,omitempty"`
 }
 
 type plannedTask struct {
@@ -85,45 +86,7 @@ func Apply(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, err
 	if err != nil || len(found) > 0 {
 		return result, found, err
 	}
-	for i := range result.Changes {
-		change := &result.Changes[i]
-		if change.Operation == "mkdir" {
-			continue
-		}
-		abs := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(change.Path))
-		if _, err := os.Stat(abs); err == nil {
-			return result, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, change.Path, "planned path now exists; dry-run is stale", change.Path)}, nil
-		} else if !os.IsNotExist(err) {
-			return result, nil, fmt.Errorf("stat planned path: %w", err)
-		}
-	}
-	for i := range result.Changes {
-		change := &result.Changes[i]
-		abs := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(change.Path))
-		if change.Operation == "mkdir" {
-			if err := os.MkdirAll(abs, 0o755); err != nil {
-				return result, nil, fmt.Errorf("create materialization directory: %w", err)
-			}
-			change.Applied = true
-			continue
-		}
-		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-			return result, nil, fmt.Errorf("create parent directory: %w", err)
-		}
-		file, err := os.OpenFile(abs, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-		if err != nil {
-			return result, nil, fmt.Errorf("create materialized file: %w", err)
-		}
-		if _, err := file.WriteString(change.Content); err != nil {
-			_ = file.Close()
-			return result, nil, fmt.Errorf("write materialized file: %w", err)
-		}
-		if err := file.Close(); err != nil {
-			return result, nil, fmt.Errorf("close materialized file: %w", err)
-		}
-		change.Applied = true
-	}
-	return result, nil, nil
+	return ApplyChanges(roadmapRoot, result.Changes)
 }
 
 func ApplyChanges(roadmapRoot string, changes []Change) (Result, []diagnostics.Diagnostic, error) {
@@ -147,6 +110,18 @@ func ApplyChanges(roadmapRoot string, changes []Change) (Result, []diagnostics.D
 			}
 			continue
 		}
+		if change.Operation == "update" {
+			current, err := os.ReadFile(abs)
+			if os.IsNotExist(err) {
+				return Result{Changes: ordered}, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, change.Path, "planned update target is missing; dry-run is stale", change.Path)}, nil
+			} else if err != nil {
+				return Result{Changes: ordered}, nil, fmt.Errorf("read planned update target: %w", err)
+			}
+			if string(current) != change.PreviousContent {
+				return Result{Changes: ordered}, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, change.Path, "planned update target changed; dry-run is stale", change.Path)}, nil
+			}
+			continue
+		}
 		if _, err := os.Stat(abs); err == nil {
 			return Result{Changes: ordered}, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, change.Path, "planned path now exists; dry-run is stale", change.Path)}, nil
 		} else if !os.IsNotExist(err) {
@@ -159,6 +134,13 @@ func ApplyChanges(roadmapRoot string, changes []Change) (Result, []diagnostics.D
 		if change.Operation == "mkdir" {
 			if err := os.MkdirAll(abs, 0o755); err != nil {
 				return Result{Changes: ordered}, nil, fmt.Errorf("create materialization directory: %w", err)
+			}
+			change.Applied = true
+			continue
+		}
+		if change.Operation == "update" {
+			if err := os.WriteFile(abs, []byte(change.Content), 0o644); err != nil {
+				return Result{Changes: ordered}, nil, fmt.Errorf("write materialized update: %w", err)
 			}
 			change.Applied = true
 			continue
@@ -234,8 +216,11 @@ func batchApplyOrder(change Change) int {
 	if change.Path == ".stem" || change.Path == ".roadmapctl.toml" {
 		return 1
 	}
-	if strings.HasSuffix(change.Path, "/README.md") {
+	if change.Operation == "create" && strings.HasSuffix(change.Path, "/README.md") {
 		return 2
+	}
+	if change.Operation == "update" {
+		return 4
 	}
 	return 3
 }
@@ -251,8 +236,17 @@ func validateBatchChange(change Change) (diagnostics.Diagnostic, bool) {
 		}
 		return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "mkdir change must target roadmap root or an outcome directory", change.Path), false
 	}
+	if change.Operation == "update" {
+		if change.Content == "" || change.PreviousContent == "" {
+			return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "update change must include previous and next content", change.Path), false
+		}
+		if isOutcomeReadmePath(change.Path) {
+			return diagnostics.Diagnostic{}, true
+		}
+		return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "update change must target an outcome README", change.Path), false
+	}
 	if change.Operation != "create" {
-		return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "batch apply supports only mkdir and create changes", change.Path), false
+		return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "batch apply supports only mkdir, create, and outcome README update changes", change.Path), false
 	}
 	if change.Content == "" {
 		return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "create change must include content", change.Path), false
@@ -261,6 +255,11 @@ func validateBatchChange(change Change) (diagnostics.Diagnostic, bool) {
 		return diagnostics.Diagnostic{}, true
 	}
 	return materializeDiagnostic("RMC_MATERIALIZE_CHANGE_INVALID", change.Path, "create change must target an allowlisted bootstrap or canonical roadmap file", change.Path), false
+}
+
+func isOutcomeReadmePath(path string) bool {
+	parts := strings.Split(path, "/")
+	return len(parts) == 2 && isOutcomeDir(parts[0]) && parts[1] == "README.md"
 }
 
 func isCanonicalMaterializeFileTarget(path string) bool {
@@ -326,8 +325,20 @@ func DryRun(roadmapRoot string, plan Plan) (Result, []diagnostics.Diagnostic, er
 	result := Result{Changes: bootstrapChanges(roadmapRoot)}
 	for _, outcomePlan := range paths.Outcomes {
 		item := outcomeBySlug[outcomePlan.Slug]
-		content := renderOutcome(item, outcomePlan)
-		result.Changes = append(result.Changes, newCreateChange(outcomePlan.Path, content))
+		if outcomePlan.Existing {
+			readmePath := filepath.Join(filepath.Clean(roadmapRoot), filepath.FromSlash(outcomePlan.Path))
+			previous, err := os.ReadFile(readmePath)
+			if os.IsNotExist(err) {
+				return Result{}, []diagnostics.Diagnostic{materializeDiagnostic(diagnostics.DiagnosticMaterializePlanConflict, outcomePlan.Path, "existing outcome README is missing", outcomePlan.Path)}, nil
+			} else if err != nil {
+				return Result{}, nil, fmt.Errorf("read existing outcome README: %w", err)
+			}
+			content := appendOutcomeTaskRows(string(previous), item, outcomePlan)
+			result.Changes = append(result.Changes, newUpdateChange(outcomePlan.Path, string(previous), content))
+		} else {
+			content := renderOutcome(item, outcomePlan)
+			result.Changes = append(result.Changes, newCreateChange(outcomePlan.Path, content))
+		}
 		for i, taskPath := range outcomePlan.Tasks {
 			if i >= len(item.Tasks) {
 				continue
@@ -518,6 +529,50 @@ func renderOutcome(item Item, plan roadmap.OutcomePathPlan) string {
 	return b.String()
 }
 
+func appendOutcomeTaskRows(previous string, item Item, plan roadmap.OutcomePathPlan) string {
+	var rows []string
+	for i, taskPlan := range plan.Tasks {
+		description := ""
+		if i < len(item.Tasks) {
+			description = item.Tasks[i].Description
+		}
+		rows = append(rows, fmt.Sprintf("| [%s](%s) | %s |", taskID(taskPlan.Path), filepath.Base(taskPlan.Path), description))
+	}
+	if len(rows) == 0 {
+		return previous
+	}
+	content := strings.TrimRight(previous, "\n")
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		if strings.TrimSpace(line) != "## Tasks" {
+			continue
+		}
+		insertAt := i + 1
+		for insertAt < len(lines) && strings.TrimSpace(lines[insertAt]) == "" {
+			insertAt++
+		}
+		if insertAt+1 >= len(lines) || !strings.HasPrefix(strings.TrimSpace(lines[insertAt]), "|") || !strings.HasPrefix(strings.TrimSpace(lines[insertAt+1]), "|") {
+			section := append([]string{"", "| Task | Descripción |", "|------|-------------|"}, rows...)
+			lines = append(lines[:i+1], append(section, lines[i+1:]...)...)
+			return strings.Join(lines, "\n") + "\n"
+		}
+		insertAt += 2
+		for insertAt < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[insertAt]), "|") {
+			insertAt++
+		}
+		lines = append(lines[:insertAt], append(rows, lines[insertAt:]...)...)
+		return strings.Join(lines, "\n") + "\n"
+	}
+	var b strings.Builder
+	b.WriteString(content)
+	b.WriteString("\n\n## Tasks\n\n| Task | Descripción |\n|------|-------------|\n")
+	for _, row := range rows {
+		b.WriteString(row)
+		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
 func renderTask(task Task, outcome Item, links []string, id string) string {
 	var b strings.Builder
 	b.WriteString("---\nestado: Specified\ntipo: task\n---\n")
@@ -614,6 +669,10 @@ func bootstrapChanges(roadmapRoot string) []Change {
 
 func newCreateChange(path string, content string) Change {
 	return Change{Path: path, Operation: "create", Applied: false, Content: content, Diff: diff.NewFile(path, content), Preconditions: []string{"path must not exist at apply time"}}
+}
+
+func newUpdateChange(path string, previous string, content string) Change {
+	return Change{Path: path, Operation: "update", Applied: false, PreviousContent: previous, Content: content, Diff: diff.UpdateFile(path, previous, content), Preconditions: []string{"path content must match dry-run previous_content at apply time"}}
 }
 
 func materializeDiagnostic(id string, path string, message string, pointer string) diagnostics.Diagnostic {

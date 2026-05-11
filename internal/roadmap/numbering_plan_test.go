@@ -31,9 +31,32 @@ func TestPlanMaterializePathsHandlesMixedScopes(t *testing.T) {
 	}
 }
 
-func TestPlanMaterializePathsRejectsExistingOutcomeSlug(t *testing.T) {
+func TestPlanMaterializePathsAppendsToExistingOutcomeSlug(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "O08-soporte-scip-todos-los-repos", "README.md"))
+	writeFile(t, filepath.Join(root, "O08-soporte-scip-todos-los-repos", "T011-existing.md"))
+
+	plan, diagnostics, err := PlanMaterializePaths(root, MaterializePathRequest{
+		Outcomes: []OutcomePathRequest{{Slug: "soporte-scip-todos-los-repos", Tasks: []TaskPathRequest{{Slug: "new-task"}}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+	if len(plan.Outcomes) != 1 || plan.Outcomes[0].Path != "O08-soporte-scip-todos-los-repos/README.md" || plan.Outcomes[0].Dir != "O08-soporte-scip-todos-los-repos" || !plan.Outcomes[0].Existing {
+		t.Fatalf("outcome plan = %#v", plan.Outcomes)
+	}
+	if len(plan.Outcomes[0].Tasks) != 1 || plan.Outcomes[0].Tasks[0].Path != "O08-soporte-scip-todos-los-repos/T012-new-task.md" {
+		t.Fatalf("task plan = %#v", plan.Outcomes[0].Tasks)
+	}
+}
+
+func TestPlanMaterializePathsRejectsExistingOutcomeTaskSlugCollision(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "O08-soporte-scip-todos-los-repos", "README.md"))
+	writeFile(t, filepath.Join(root, "O08-soporte-scip-todos-los-repos", "T011-new-task.md"))
 
 	plan, diagnostics, err := PlanMaterializePaths(root, MaterializePathRequest{
 		Outcomes: []OutcomePathRequest{{Slug: "soporte-scip-todos-los-repos", Tasks: []TaskPathRequest{{Slug: "new-task"}}}},
@@ -42,9 +65,9 @@ func TestPlanMaterializePathsRejectsExistingOutcomeSlug(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(plan.Outcomes) != 0 {
-		t.Fatalf("plan = %#v, want no duplicate outcome plan", plan)
+		t.Fatalf("plan = %#v, want no duplicate task slug plan", plan)
 	}
-	assertHasDiagnostic(t, diagnostics, DiagnosticMaterializePlanConflict, "O08-soporte-scip-todos-los-repos/README.md")
+	assertHasDiagnostic(t, diagnostics, DiagnosticMaterializePlanConflict, "O08-soporte-scip-todos-los-repos/T011-new-task.md")
 }
 
 func TestPlanMaterializePathsDetectsCollisionsInvalidSlugsAndEscapes(t *testing.T) {

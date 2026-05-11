@@ -89,55 +89,56 @@ func TestMaterializeDependenciesUseExplicitRelativeLinks(t *testing.T) {
 	}
 }
 
-func TestMaterializeDryRunRejectsExistingOutcomeSlugWithoutWriting(t *testing.T) {
+func TestMaterializeDryRunAppendsExistingOutcomeSlugWithoutWriting(t *testing.T) {
 	fixture := copyFixture(t, "valid-outcome-with-tasks")
 	before := listRoadmapFiles(t, fixture)
-	planPath := filepath.Join(t.TempDir(), "duplicate-outcome.json")
-	planJSON := `{
-  "version": 1,
-  "kind": "roadmapctl/materialize-plan",
-  "items": [
-    {
-      "type": "outcome",
-      "slug": "work",
-      "title": "Work",
-      "description": "Duplicate existing outcome slug.",
-      "acceptance_criteria": ["Reports conflict."],
-      "tasks": [
-        {
-          "slug": "new-task",
-          "title": "New task",
-          "description": "Task description.",
-          "preserves": ["No duplicate outcome is created."],
-          "context": "Duplicate outcome dry-run.",
-          "scope_in": ["Validate diagnostic."],
-          "scope_out": ["Do not write files."],
-          "initial_state": "O01-work exists.",
-          "acceptance_criteria": ["Conflict is reported."],
-          "source_of_truth": ["docs/materialize-plan-schema.md"]
-        }
-      ]
-    }
-  ]
-}`
-	if err := os.WriteFile(planPath, []byte(planJSON), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	planPath := writeExistingOutcomeAppendPlan(t)
 	var stdout, stderr bytes.Buffer
 
 	code := Execute([]string{"materialize", "--plan", planPath, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
-	testutil.AssertExit(t, code, 1, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
-	testutil.RequireDiagnosticID(t, report, "RMC_MATERIALIZE_PLAN_CONFLICT")
-	if !strings.Contains(stdout.String(), "O01-work/README.md") {
-		t.Fatalf("conflict report missing existing outcome path:\n%s", stdout.String())
+	if report["applied"] != false {
+		t.Fatalf("applied = %v; report = %#v", report["applied"], report)
+	}
+	if !strings.Contains(stdout.String(), `"path":"O01-work/README.md","operation":"update"`) {
+		t.Fatalf("dry-run missing README update:\n%s", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `"path":"O01-work/T003-new-task.md","operation":"create"`) {
+		t.Fatalf("dry-run missing appended task create:\n%s", stdout.String())
 	}
 	if strings.Contains(stdout.String(), "O02-work") {
 		t.Fatalf("dry-run proposed duplicate outcome path:\n%s", stdout.String())
 	}
 	after := listRoadmapFiles(t, fixture)
 	if !bytes.Equal([]byte(before), []byte(after)) {
-		t.Fatalf("duplicate outcome dry-run wrote files\nbefore:\n%s\nafter:\n%s", before, after)
+		t.Fatalf("append dry-run wrote files\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
+func TestMaterializeApplyAppendsExistingOutcomeSlug(t *testing.T) {
+	fixture := copyFixture(t, "valid-outcome-with-tasks")
+	planPath := writeExistingOutcomeAppendPlan(t)
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", planPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 0, &stdout, &stderr)
+	report := testutil.DecodeJSON(t, stdout.Bytes())
+	if report["applied"] != true {
+		t.Fatalf("applied = %v; report = %#v", report["applied"], report)
+	}
+	readme, err := os.ReadFile(filepath.Join(fixture, "docs", "roadmap", "O01-work", "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "| [T003](T003-new-task.md) | Task description. |") {
+		t.Fatalf("README missing appended row:\n%s", string(readme))
+	}
+	if _, err := os.Stat(filepath.Join(fixture, "docs", "roadmap", "O01-work", "T003-new-task.md")); err != nil {
+		t.Fatalf("appended task missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(fixture, "docs", "roadmap", "O02-work")); !os.IsNotExist(err) {
+		t.Fatalf("duplicate outcome exists: %v", err)
 	}
 }
 
@@ -308,6 +309,42 @@ func TestMaterializeTargetApplyRejectsUnknownTargetBeforeWriting(t *testing.T) {
 	if !bytes.Equal([]byte(before), []byte(after)) {
 		t.Fatalf("unknown target wrote files\nbefore:\n%s\nafter:\n%s", before, after)
 	}
+}
+
+func writeExistingOutcomeAppendPlan(t *testing.T) string {
+	t.Helper()
+	planPath := filepath.Join(t.TempDir(), "append-outcome.json")
+	planJSON := `{
+  "version": 1,
+  "kind": "roadmapctl/materialize-plan",
+  "items": [
+    {
+      "type": "outcome",
+      "slug": "work",
+      "title": "Work",
+      "description": "Append to existing outcome slug.",
+      "acceptance_criteria": ["Appends task."],
+      "tasks": [
+        {
+          "slug": "new-task",
+          "title": "New task",
+          "description": "Task description.",
+          "preserves": ["No duplicate outcome is created."],
+          "context": "Existing outcome append.",
+          "scope_in": ["Validate appended task."],
+          "scope_out": ["Do not write duplicate outcomes."],
+          "initial_state": "O01-work exists.",
+          "acceptance_criteria": ["Task is appended."],
+          "source_of_truth": ["docs/materialize-plan-schema.md"]
+        }
+      ]
+    }
+  ]
+}`
+	if err := os.WriteFile(planPath, []byte(planJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return planPath
 }
 
 func listRoadmapFiles(t *testing.T, fixture string) string {
