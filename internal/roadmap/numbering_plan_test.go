@@ -31,6 +31,22 @@ func TestPlanMaterializePathsHandlesMixedScopes(t *testing.T) {
 	}
 }
 
+func TestPlanMaterializePathsRejectsExistingOutcomeSlug(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "O08-soporte-scip-todos-los-repos", "README.md"))
+
+	plan, diagnostics, err := PlanMaterializePaths(root, MaterializePathRequest{
+		Outcomes: []OutcomePathRequest{{Slug: "soporte-scip-todos-los-repos", Tasks: []TaskPathRequest{{Slug: "new-task"}}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Outcomes) != 0 {
+		t.Fatalf("plan = %#v, want no duplicate outcome plan", plan)
+	}
+	assertHasDiagnostic(t, diagnostics, DiagnosticMaterializePlanConflict, "O08-soporte-scip-todos-los-repos/README.md")
+}
+
 func TestPlanMaterializePathsDetectsCollisionsInvalidSlugsAndEscapes(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "T001-existing.md"))

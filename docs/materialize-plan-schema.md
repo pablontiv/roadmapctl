@@ -87,6 +87,7 @@ Validation:
 
 - `tasks` must contain at least one task.
 - `slug` must be portable and must not include path separators or numeric `OXX-` prefix.
+- A v1 outcome item creates a new outcome. If `slug` already matches an existing `OXX-<slug>` outcome directory, materialization fails with `RMC_MATERIALIZE_PLAN_CONFLICT` instead of creating a duplicate numbered outcome.
 - The materializer assigns `OXX` numbers deterministically from the current roadmap root.
 
 ## Task object

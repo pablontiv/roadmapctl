@@ -161,6 +161,28 @@ func TestDryRunPlansOutcomeAndDirectTaskWithoutWriting(t *testing.T) {
 	}
 }
 
+func TestDryRunRejectsExistingOutcomeSlugWithoutChanges(t *testing.T) {
+	root := t.TempDir()
+	writeBootstrapFiles(t, root)
+	if err := os.Mkdir(filepath.Join(root, "O01-new-outcome"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "O01-new-outcome", "README.md"), []byte("---\ntipo: outcome\n---\n# Existing\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, diagnostics, err := DryRun(root, samplePlan())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Changes) != 0 {
+		t.Fatalf("changes = %#v, want none", result.Changes)
+	}
+	if len(diagnostics) != 1 || diagnostics[0].ID != "RMC_MATERIALIZE_PLAN_CONFLICT" || diagnostics[0].Path != "O01-new-outcome/README.md" {
+		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+}
+
 func TestApplyTargetCreatesOnlySelectedCanonicalFile(t *testing.T) {
 	root := t.TempDir()
 	writeBootstrapFiles(t, root)

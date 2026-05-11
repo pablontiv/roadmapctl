@@ -83,6 +83,10 @@ func PlanMaterializePaths(roadmapRoot string, request MaterializePathRequest) (M
 			found = append(found, materializePathDiagnostic(DiagnosticMaterializeInputSlugInvalid, "", "outcome slug is not portable", outcome.Slug))
 			continue
 		}
+		if existingPath := existingOutcomeSlug(root, outcome.Slug); existingPath != "" {
+			found = append(found, materializePathDiagnostic(DiagnosticMaterializePlanConflict, existingPath, "planned outcome slug collides with an existing roadmap outcome", existingPath))
+			continue
+		}
 		maxOutcome++
 		dir := fmt.Sprintf("O%02d-%s", maxOutcome, outcome.Slug)
 		readme := filepath.ToSlash(filepath.Join(dir, "README.md"))
@@ -177,6 +181,26 @@ func plannedPathDiagnostic(root string, rel string, planned map[string]bool) (Di
 	}
 	planned[key] = true
 	return Diagnostic{}, false
+}
+
+func existingOutcomeSlug(root string, slug string) string {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return ""
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() || ignoredEntry(entry.Name()) {
+			continue
+		}
+		id, ok := OutcomeID(entry.Name())
+		if !ok {
+			continue
+		}
+		if strings.TrimPrefix(entry.Name(), id+"-") == slug {
+			return filepath.ToSlash(filepath.Join(entry.Name(), "README.md"))
+		}
+	}
+	return ""
 }
 
 func existingRootTaskSlug(root string, slug string) string {

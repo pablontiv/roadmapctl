@@ -89,6 +89,58 @@ func TestMaterializeDependenciesUseExplicitRelativeLinks(t *testing.T) {
 	}
 }
 
+func TestMaterializeDryRunRejectsExistingOutcomeSlugWithoutWriting(t *testing.T) {
+	fixture := copyFixture(t, "valid-outcome-with-tasks")
+	before := listRoadmapFiles(t, fixture)
+	planPath := filepath.Join(t.TempDir(), "duplicate-outcome.json")
+	planJSON := `{
+  "version": 1,
+  "kind": "roadmapctl/materialize-plan",
+  "items": [
+    {
+      "type": "outcome",
+      "slug": "work",
+      "title": "Work",
+      "description": "Duplicate existing outcome slug.",
+      "acceptance_criteria": ["Reports conflict."],
+      "tasks": [
+        {
+          "slug": "new-task",
+          "title": "New task",
+          "description": "Task description.",
+          "preserves": ["No duplicate outcome is created."],
+          "context": "Duplicate outcome dry-run.",
+          "scope_in": ["Validate diagnostic."],
+          "scope_out": ["Do not write files."],
+          "initial_state": "O01-work exists.",
+          "acceptance_criteria": ["Conflict is reported."],
+          "source_of_truth": ["docs/materialize-plan-schema.md"]
+        }
+      ]
+    }
+  ]
+}`
+	if err := os.WriteFile(planPath, []byte(planJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+
+	code := Execute([]string{"materialize", "--plan", planPath, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	testutil.AssertExit(t, code, 1, &stdout, &stderr)
+	report := testutil.DecodeJSON(t, stdout.Bytes())
+	testutil.RequireDiagnosticID(t, report, "RMC_MATERIALIZE_PLAN_CONFLICT")
+	if !strings.Contains(stdout.String(), "O01-work/README.md") {
+		t.Fatalf("conflict report missing existing outcome path:\n%s", stdout.String())
+	}
+	if strings.Contains(stdout.String(), "O02-work") {
+		t.Fatalf("dry-run proposed duplicate outcome path:\n%s", stdout.String())
+	}
+	after := listRoadmapFiles(t, fixture)
+	if !bytes.Equal([]byte(before), []byte(after)) {
+		t.Fatalf("duplicate outcome dry-run wrote files\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
 func TestMaterializeInvalidInputDoesNotWriteFiles(t *testing.T) {
 	fixture := copyFixture(t, "valid-outcome-with-tasks")
 	before := listRoadmapFiles(t, fixture)
