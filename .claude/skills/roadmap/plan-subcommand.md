@@ -105,6 +105,7 @@ Reglas:
 - No pasar prose libre a `roadmapctl materialize`.
 - No pegar el JSON completo en la respuesta si es grande; guardar el plan en `plan_json` y reportar solo un resumen.
 - Cada Outcome/task aprobado debe tener `slug`, `title`, `description`, ACs, `source_of_truth` y límites suficientes.
+- Los Outcome v1 son create-only: si un `slug` ya existe como `OXX-<slug>`, `roadmapctl materialize` debe fallar con `RMC_MATERIALIZE_PLAN_CONFLICT`; el skill no debe intentar append/update manual ni proponer un Outcome numerado duplicado.
 - Serializar `blocked_by` **solo** desde hard blockers aprobados, con `ref` plan-local o `path` explícito; nunca targets bare.
 - Antes de incluir cualquier `blocked_by`, responder: “¿Qué fallaría objetivamente si ejecuto esta task antes?”. Si la respuesta es “nada; solo es mejor orden/contexto”, no es hard blocker.
 - No usar `blocked_by` para orden sugerido, secuencia narrativa, agrupación por Outcome, relación temática, provenance, “conviene después de”, ni “usar su output si existe”. Poner ese contexto en `context`, `source_of_truth` o prose de la task.
