@@ -79,7 +79,7 @@ Rules:
 | `slug` | yes | string | Human slug without numeric prefix. Lowercase kebab-case recommended. |
 | `title` | yes | string | Outcome title for README heading. |
 | `description` | yes | string | Context paragraph for README. |
-| `acceptance_criteria` | yes | array(string) | Observable outcome-level criteria. |
+| `acceptance_criteria` | no | array(string) | Optional outcome-level context (not rendered; ACs live in child Tasks). |
 | `tasks` | yes | array(task) | One or more child tasks. |
 | `contributes_to` | no | array(string) | Outcome criterion labels if supplied by the plan. |
 
@@ -89,6 +89,7 @@ Validation:
 - `slug` must be portable and must not include path separators or numeric `OXX-` prefix.
 - A v1 outcome item creates a new outcome when `slug` does not match an existing canonical outcome directory.
 - If `slug` already matches an existing `OXX-<slug>` outcome directory, materialization appends the planned child tasks to that existing outcome: dry-run reports an `update` to `OXX-<slug>/README.md` and `create` changes for the new `OXX-<slug>/TXXX-*.md` files.
+- Existing outcome append only creates new `TXXX-*.md` files; the Outcome README is a computed view and is not modified.
 - Existing outcome append rejects child task slug/path collisions with `RMC_MATERIALIZE_PLAN_CONFLICT` instead of creating duplicate task files.
 - The materializer assigns `OXX` and `TXXX` numbers deterministically from the current roadmap root and destination scope.
 

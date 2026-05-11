@@ -393,7 +393,7 @@ func validateOutcome(item Item, pointer string) []diagnostics.Diagnostic {
 	found = append(found, requireString(item.Slug, pointer+"/slug")...)
 	found = append(found, requireString(item.Title, pointer+"/title")...)
 	found = append(found, requireString(item.Description, pointer+"/description")...)
-	found = append(found, requireStrings(item.AcceptanceCriteria, pointer+"/acceptance_criteria")...)
+	// acceptance_criteria is optional for Outcomes; ACs live in child Task files
 	if len(item.Tasks) == 0 {
 		found = append(found, materializeDiagnostic(diagnostics.DiagnosticMaterializeInputFieldMissing, "", "outcome must contain at least one task", pointer+"/tasks"))
 	}
