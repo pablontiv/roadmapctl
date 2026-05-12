@@ -58,7 +58,7 @@ func TestCheckConfigRoleOutsideSchemaExitsValidation(t *testing.T) {
 func TestCheckMissingRootlineExitsEnvironment(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	missingRootline := filepath.Join(t.TempDir(), "missing-rootline")
-	code := Execute([]string{"check", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--rootline", missingRootline, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"check", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--rootline", missingRootline, "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 3 {
 		t.Fatalf("check exit = %d, want 3; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -72,7 +72,7 @@ func TestCheckMissingRootlineExitsEnvironment(t *testing.T) {
 func runCheckJSON(t *testing.T, fixture string) (int, doctorReport, string) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"check", "--repo", doctorFixturePath(fixture), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"check", "--repo", doctorFixturePath(fixture), "--output", "json"}, &stdout, &stderr, "dev")
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr = %q, want empty", stderr.String())
 	}

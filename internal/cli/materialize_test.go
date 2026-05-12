@@ -19,7 +19,7 @@ func TestMaterializeUsageErrors(t *testing.T) {
 		{"materialize", "--plan", filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json"), "--target", "T001-direct-task.md", "--apply", "--repo", copyFixture(t, "valid-outcome-with-tasks"), "--output", "json"},
 	} {
 		var stdout, stderr bytes.Buffer
-		code := Execute(args, &stdout, &stderr)
+		code := Execute(args, &stdout, &stderr, "dev")
 		testutil.AssertExit(t, code, 2, &stdout, &stderr)
 	}
 }
@@ -29,7 +29,7 @@ func TestMaterializeTextOutputIncludesDiff(t *testing.T) {
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "text"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "text"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	if !strings.Contains(stdout.String(), "# create O02-new-outcome/README.md") || !strings.Contains(stdout.String(), "+++ b/O02-new-outcome/README.md") {
 		t.Fatalf("text output missing diff:\n%s", stdout.String())
@@ -41,7 +41,7 @@ func TestMaterializeDryRunGolden(t *testing.T) {
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	testutil.AssertGoldenJSON(t, testutil.GoldenPath("materialize-dry-run-outcome-and-direct.json"), stdout.Bytes(), map[string]string{
 		absoluteFixturePath(t, "valid-outcome-with-tasks"): "<fixture:valid-outcome-with-tasks>",
@@ -56,7 +56,7 @@ func TestMaterializeDryRunMissingRootShowsBootstrap(t *testing.T) {
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	changes, ok := report["changes"].([]any)
@@ -79,7 +79,7 @@ func TestMaterializeDependenciesUseExplicitRelativeLinks(t *testing.T) {
 	plan := filepath.Join("..", "..", "testdata", "plans", "dependencies-same-cross-outcome.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	if !strings.Contains(stdout.String(), "[[blocked_by:./T001-first.md]]") {
 		t.Fatalf("missing same-outcome explicit dependency link:\n%s", stdout.String())
@@ -95,7 +95,7 @@ func TestMaterializeDryRunAppendsExistingOutcomeSlugWithoutWriting(t *testing.T)
 	planPath := writeExistingOutcomeAppendPlan(t)
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", planPath, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", planPath, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	if report["applied"] != false {
@@ -122,7 +122,7 @@ func TestMaterializeApplyAppendsExistingOutcomeSlug(t *testing.T) {
 	planPath := writeExistingOutcomeAppendPlan(t)
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", planPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", planPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	if report["applied"] != true {
@@ -150,7 +150,7 @@ func TestMaterializeInvalidInputDoesNotWriteFiles(t *testing.T) {
 	plan := filepath.Join("..", "..", "testdata", "plans", "invalid-path-escape.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 1, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	testutil.RequireDiagnosticID(t, report, "RMC_MATERIALIZE_INPUT_SLUG_INVALID")
@@ -165,7 +165,7 @@ func TestMaterializeApplyWritesFilesAndRunsPostcheck(t *testing.T) {
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	if report["applied"] != true {
@@ -190,7 +190,7 @@ func TestMaterializeApplyReportsPostcheckFailureAfterPartialWrite(t *testing.T) 
 	}
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--changes", changesPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--changes", changesPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 1, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	if report["applied"] != false {
@@ -208,7 +208,7 @@ func TestMaterializeChangesApplyWritesWholeFrozenChangeSet(t *testing.T) {
 	changesPath := filepath.Join(t.TempDir(), "dry-run.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	if err := os.WriteFile(changesPath, stdout.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
@@ -216,7 +216,7 @@ func TestMaterializeChangesApplyWritesWholeFrozenChangeSet(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	code = Execute([]string{"materialize", "--changes", changesPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code = Execute([]string{"materialize", "--changes", changesPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	changes, _ := report["changes"].([]any)
@@ -236,7 +236,7 @@ func TestMaterializeChangesApplyReportsConflictPathBeforeWriting(t *testing.T) {
 	changesPath := filepath.Join(t.TempDir(), "dry-run.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	if err := os.WriteFile(changesPath, stdout.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
@@ -247,7 +247,7 @@ func TestMaterializeChangesApplyReportsConflictPathBeforeWriting(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	code = Execute([]string{"materialize", "--changes", changesPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code = Execute([]string{"materialize", "--changes", changesPath, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 1, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	testutil.RequireDiagnosticID(t, report, "RMC_MATERIALIZE_PLAN_CONFLICT")
@@ -265,7 +265,7 @@ func TestMaterializeTargetApplyWritesOnlySelectedDryRunChange(t *testing.T) {
 	changesPath := filepath.Join(t.TempDir(), "dry-run.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	if err := os.WriteFile(changesPath, stdout.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
@@ -273,7 +273,7 @@ func TestMaterializeTargetApplyWritesOnlySelectedDryRunChange(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	code = Execute([]string{"materialize", "--changes", changesPath, "--target", "T001-direct-task.md", "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code = Execute([]string{"materialize", "--changes", changesPath, "--target", "T001-direct-task.md", "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	changes, _ := report["changes"].([]any)
@@ -296,7 +296,7 @@ func TestMaterializeTargetApplyRejectsUnknownTargetBeforeWriting(t *testing.T) {
 	changesPath := filepath.Join(t.TempDir(), "dry-run.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	if err := os.WriteFile(changesPath, stdout.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
@@ -305,7 +305,7 @@ func TestMaterializeTargetApplyRejectsUnknownTargetBeforeWriting(t *testing.T) {
 	before := listRoadmapFiles(t, fixture)
 	stdout.Reset()
 	stderr.Reset()
-	code = Execute([]string{"materialize", "--changes", changesPath, "--target", "T999-missing.md", "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code = Execute([]string{"materialize", "--changes", changesPath, "--target", "T999-missing.md", "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 1, &stdout, &stderr)
 	after := listRoadmapFiles(t, fixture)
 	if !bytes.Equal([]byte(before), []byte(after)) {
@@ -378,7 +378,7 @@ func TestMaterializeDryRunJSONDoesNotWrite(t *testing.T) {
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
 	var stdout, stderr bytes.Buffer
 
-	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	if report["kind"] != "roadmapctl/materialize" {

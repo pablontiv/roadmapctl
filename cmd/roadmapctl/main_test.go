@@ -10,7 +10,7 @@ import (
 
 func TestRunDelegatesToCLI(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"--help"}, &stdout, &stderr)
+	code := run([]string{"--help"}, &stdout, &stderr, "dev")
 	if code != cli.ExitOK {
 		t.Fatalf("run exit = %d, want %d; stderr=%q", code, cli.ExitOK, stderr.String())
 	}

@@ -8,7 +8,7 @@ import (
 
 func TestPendingJSONListsOnlyNotDoneTasks(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"pending", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"pending", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("pending exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -50,7 +50,7 @@ func TestPendingJSONListsOnlyNotDoneTasks(t *testing.T) {
 
 func TestPendingWorkspaceGroupsByRepo(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"pending", "--workspace", "--repo", doctorFixturePath("valid-workspace"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"pending", "--workspace", "--repo", doctorFixturePath("valid-workspace"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("pending workspace exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}

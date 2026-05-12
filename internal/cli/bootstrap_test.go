@@ -13,7 +13,7 @@ import (
 func TestBootstrapInspectIsReadOnlyAndReportsMissing(t *testing.T) {
 	repo := t.TempDir()
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "inspect", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"bootstrap", "inspect", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("inspect exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -35,7 +35,7 @@ func TestBootstrapInspectIsReadOnlyAndReportsMissing(t *testing.T) {
 func TestBootstrapInitDryRunDoesNotWriteAndShowsChanges(t *testing.T) {
 	repo := t.TempDir()
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--dry-run", "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--dry-run", "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("init dry-run exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -74,7 +74,7 @@ func TestBootstrapInitApplyWritesAllowedFiles(t *testing.T) {
 	repo := t.TempDir()
 	initGitRepo(t, repo)
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("init apply exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -94,7 +94,7 @@ func TestBootstrapInitApplyRunsPostcheck(t *testing.T) {
 	initGitRepo(t, repo)
 	var stdout, stderr bytes.Buffer
 	missingRootline := filepath.Join(t.TempDir(), "missing-rootline")
-	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--rootline", missingRootline, "--apply", "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--rootline", missingRootline, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
 	if code == 0 {
 		t.Fatalf("init apply with failing postcheck exit = 0, want non-zero; stderr=%q stdout=%q", stderr.String(), stdout.String())
 	}
@@ -124,7 +124,7 @@ func initGitRepo(t *testing.T, repo string) {
 
 func TestBootstrapInitRequiresExplicitMode(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "init", "--repo", t.TempDir(), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"bootstrap", "init", "--repo", t.TempDir(), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 2 {
 		t.Fatalf("init without mode exit = %d, want 2", code)
 	}

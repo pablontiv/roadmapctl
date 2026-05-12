@@ -28,9 +28,9 @@ type Options struct {
 	Timeout     time.Duration
 }
 
-func Execute(args []string, stdout io.Writer, stderr io.Writer) int {
+func Execute(args []string, stdout io.Writer, stderr io.Writer, version string) int {
 	exitCode := ExitOK
-	cmd := newRootCommand(stdout, stderr, &exitCode)
+	cmd := newRootCommand(stdout, stderr, &exitCode, version)
 	cmd.SetArgs(args)
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintln(stderr, err)
@@ -39,11 +39,12 @@ func Execute(args []string, stdout io.Writer, stderr io.Writer) int {
 	return exitCode
 }
 
-func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
+func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int, version string) *cobra.Command {
 	options := Options{Repo: ".", Output: "text", Timeout: 10 * time.Second}
 	cmd := &cobra.Command{
 		Use:           "roadmapctl",
 		Short:         "roadmapctl validates Rootline-governed roadmaps.",
+		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

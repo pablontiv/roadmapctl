@@ -58,7 +58,7 @@ func TestCheckGoldenJSONFixtures(t *testing.T) {
 			if tt.command == "context" && strings.Contains(tt.fixture, "workspace") {
 				args = append(args, "--workspace")
 			}
-			code := Execute(args, &stdout, &stderr)
+			code := Execute(args, &stdout, &stderr, "dev")
 			testutil.AssertExit(t, code, tt.wantExit, &stdout, &stderr)
 			report := testutil.DecodeJSON(t, stdout.Bytes())
 			if tt.wantID != "" {
@@ -90,7 +90,7 @@ func TestTransitionJSONGoldens(t *testing.T) {
 			args := append([]string{}, tt.args...)
 			args = append(args, "--repo", fixture, "--output", "json")
 			var stdout, stderr bytes.Buffer
-			code := Execute(args, &stdout, &stderr)
+			code := Execute(args, &stdout, &stderr, "dev")
 			testutil.AssertExit(t, code, 0, &stdout, &stderr)
 			report := testutil.DecodeJSON(t, stdout.Bytes())
 			testutil.AssertNoBackslashes(t, report)
@@ -103,7 +103,7 @@ func TestTransitionJSONGoldens(t *testing.T) {
 
 func TestLintStrictPromotesWarnings(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"lint", "--repo", testutil.FixturePath(t, "lint-missing-table-row"), "--output", "json", "--strict"}, &stdout, &stderr)
+	code := Execute([]string{"lint", "--repo", testutil.FixturePath(t, "lint-missing-table-row"), "--output", "json", "--strict"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 1, &stdout, &stderr)
 }
 
@@ -121,7 +121,7 @@ func TestReadOnlyTextGoldens(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			code := Execute([]string{tt.command, "--repo", testutil.FixturePath(t, tt.fixture), "--output", "text"}, &stdout, &stderr)
+			code := Execute([]string{tt.command, "--repo", testutil.FixturePath(t, tt.fixture), "--output", "text"}, &stdout, &stderr, "dev")
 			testutil.AssertExit(t, code, 0, &stdout, &stderr)
 			want, err := os.ReadFile(testutil.GoldenPath(tt.goldenName))
 			if err != nil {
@@ -139,7 +139,7 @@ func TestCheckUsesRootlineBinEnvironmentOverride(t *testing.T) {
 	t.Setenv("ROOTLINE_BIN", os.Args[0])
 
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"check", "--repo", testutil.FixturePath(t, "valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"check", "--repo", testutil.FixturePath(t, "valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 0, &stdout, &stderr)
 
 	report := testutil.DecodeJSON(t, stdout.Bytes())

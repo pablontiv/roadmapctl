@@ -16,7 +16,7 @@ func TestCheckAndLintReportStaleOutcomeEstadoStem(t *testing.T) {
 			writeStaleOutcomeEstadoStem(t, fixture)
 
 			var stdout, stderr bytes.Buffer
-			code := Execute([]string{command, "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+			code := Execute([]string{command, "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 			testutil.AssertExit(t, code, 1, &stdout, &stderr)
 			report := testutil.DecodeJSON(t, stdout.Bytes())
 			testutil.RequireDiagnosticID(t, report, "RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED")
@@ -30,7 +30,7 @@ func TestDoctorReportsStaleOutcomeEstadoStem(t *testing.T) {
 	writeStaleOutcomeEstadoStem(t, fixture)
 
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"doctor", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"doctor", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 1, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	testutil.RequireDiagnosticID(t, report, "RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED")
@@ -46,7 +46,7 @@ func TestBootstrapInitApplyBlocksStaleStemBeforeWritingAdjacentFiles(t *testing.
 	writeStaleStemFile(t, filepath.Join(roadmapRoot, ".stem"))
 
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 1, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	testutil.RequireDiagnosticID(t, report, "RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED")
@@ -62,7 +62,7 @@ func TestMaterializeApplyBlocksStaleStemBeforeWritingPlannedFiles(t *testing.T) 
 	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
 
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"materialize", "--plan", plan, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"materialize", "--plan", plan, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	testutil.AssertExit(t, code, 1, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	testutil.RequireDiagnosticID(t, report, "RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED")

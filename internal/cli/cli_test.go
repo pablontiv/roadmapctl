@@ -9,7 +9,7 @@ import (
 
 func TestHelpListsImplementedCommands(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"--help"}, &stdout, &stderr)
+	code := Execute([]string{"--help"}, &stdout, &stderr, "dev")
 
 	if code != 0 {
 		t.Fatalf("Execute(--help) exit = %d, want 0; stderr=%q", code, stderr.String())
@@ -40,7 +40,7 @@ func TestCommandHelp(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			code := Execute(tt.args, &stdout, &stderr)
+			code := Execute(tt.args, &stdout, &stderr, "dev")
 			if code != 0 {
 				t.Fatalf("Execute(%v) exit = %d, want 0; stderr=%q", tt.args, code, stderr.String())
 			}
@@ -53,7 +53,7 @@ func TestCommandHelp(t *testing.T) {
 
 func TestUnsupportedOutputIsUsageError(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"doctor", "--output", "yaml"}, &stdout, &stderr)
+	code := Execute([]string{"doctor", "--output", "yaml"}, &stdout, &stderr, "dev")
 
 	if code != 2 {
 		t.Fatalf("Execute unsupported output exit = %d, want 2", code)
@@ -65,7 +65,7 @@ func TestUnsupportedOutputIsUsageError(t *testing.T) {
 
 func TestUnexpectedArgumentIsUsageError(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"doctor", "extra"}, &stdout, &stderr)
+	code := Execute([]string{"doctor", "extra"}, &stdout, &stderr, "dev")
 
 	if code != 2 {
 		t.Fatalf("Execute unexpected arg exit = %d, want 2", code)
@@ -77,7 +77,7 @@ func TestUnexpectedArgumentIsUsageError(t *testing.T) {
 
 func TestUnknownCommandIsUsageError(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"plan"}, &stdout, &stderr)
+	code := Execute([]string{"plan"}, &stdout, &stderr, "dev")
 
 	if code != 2 {
 		t.Fatalf("Execute unknown command exit = %d, want 2", code)
@@ -92,7 +92,7 @@ func TestUnknownCommandIsUsageError(t *testing.T) {
 
 func TestGlobalFlagsBeforeCommand(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json", "doctor"}, &stdout, &stderr)
+	code := Execute([]string{"--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json", "doctor"}, &stdout, &stderr, "dev")
 
 	if code != 0 {
 		t.Fatalf("Execute global flags before command exit = %d, want 0; stderr=%q", code, stderr.String())
@@ -113,7 +113,7 @@ func TestGlobalFlagsBeforeCommand(t *testing.T) {
 
 func TestJSONOutputEmitsOnlyParseableReport(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"doctor", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"doctor", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr, "dev")
 
 	if code != 0 {
 		t.Fatalf("Execute doctor --output json exit = %d, want 0; stderr=%q", code, stderr.String())

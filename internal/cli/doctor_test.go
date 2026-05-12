@@ -10,7 +10,7 @@ import (
 
 func TestDoctorValidOutcomeFixtureJSONStatusOK(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"doctor", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"doctor", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr, "dev")
 
 	if code != 0 {
 		t.Fatalf("doctor exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
@@ -34,7 +34,7 @@ func TestDoctorValidOutcomeFixtureJSONStatusOK(t *testing.T) {
 func TestDoctorMissingRootlineReturnsEnvironmentDiagnostic(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	missingRootline := filepath.Join(t.TempDir(), "missing-rootline")
-	code := Execute([]string{"doctor", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--rootline", missingRootline, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"doctor", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--rootline", missingRootline, "--output", "json"}, &stdout, &stderr, "dev")
 
 	if code != 3 {
 		t.Fatalf("doctor exit = %d, want 3; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
@@ -48,7 +48,7 @@ func TestDoctorMissingRootlineReturnsEnvironmentDiagnostic(t *testing.T) {
 
 func TestDoctorMissingConfigReportsConfigMissing(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"doctor", "--repo", t.TempDir(), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"doctor", "--repo", t.TempDir(), "--output", "json"}, &stdout, &stderr, "dev")
 
 	if code != 2 {
 		t.Fatalf("doctor exit = %d, want 2; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
@@ -62,7 +62,7 @@ func TestDoctorMissingConfigReportsConfigMissing(t *testing.T) {
 
 func TestDoctorJSONStdoutIsParseableWithoutExtraText(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"doctor", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"doctor", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr, "dev")
 
 	if code != 0 {
 		t.Fatalf("doctor exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())

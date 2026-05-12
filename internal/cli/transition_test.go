@@ -12,7 +12,7 @@ import (
 
 func TestTransitionCanStartReadyTaskAllows(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "can-start", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "can-start", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -32,7 +32,7 @@ func TestTransitionCanStartReadyTaskAllows(t *testing.T) {
 
 func TestTransitionCanStartAcceptsRepoRelativeTaskPath(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "can-start", "docs/roadmap/O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "can-start", "docs/roadmap/O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -50,7 +50,7 @@ func TestTransitionCanStartAcceptsRepoRelativeTaskPath(t *testing.T) {
 
 func TestTransitionCanStartBlockedTaskExplainsDependency(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "can-start", "O01-work/T002-blocked.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "can-start", "O01-work/T002-blocked.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -77,7 +77,7 @@ func TestTransitionStartDryRunReadyTaskShowsExactUnappliedChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -108,7 +108,7 @@ func TestTransitionStartDryRunReadyTaskShowsExactUnappliedChange(t *testing.T) {
 
 func TestTransitionStartDryRunBlockedTaskHasNoApplicableChanges(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "start", "O01-work/T002-blocked.md", "--dry-run", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "start", "O01-work/T002-blocked.md", "--dry-run", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -127,7 +127,7 @@ func TestTransitionStartDryRunBlockedTaskHasNoApplicableChanges(t *testing.T) {
 
 func TestTransitionSetStatusDryRunMapsRole(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "set-status", "O01-work/T001-ready.md", "--status", "completed", "--dry-run", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "set-status", "O01-work/T001-ready.md", "--status", "completed", "--dry-run", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -149,7 +149,7 @@ func TestTransitionSetStatusDryRunMapsRole(t *testing.T) {
 
 func TestTransitionDryRunFalseReturnsApplyUnsupported(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--dry-run=false", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--dry-run=false", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 2 {
 		t.Fatalf("transition exit = %d, want 2; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -168,7 +168,7 @@ func TestTransitionDryRunFalseReturnsApplyUnsupported(t *testing.T) {
 
 func TestTransitionSetStatusRequiresStatus(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "set-status", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "set-status", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 2 {
 		t.Fatalf("transition exit = %d, want 2; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -188,7 +188,7 @@ func TestTransitionSetStatusRequiresStatus(t *testing.T) {
 func TestTransitionApplyChangesStatusInTempFixture(t *testing.T) {
 	repo := copyFixture(t, "valid-next-with-blocked")
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--apply", "--repo", repo, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--apply", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -222,7 +222,7 @@ func TestTransitionApplyReportsPostcheckFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--apply", "--repo", repo, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--apply", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 1 {
 		t.Fatalf("transition exit = %d, want 1; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -253,7 +253,7 @@ func TestTransitionApplyReportsPostcheckFailure(t *testing.T) {
 
 func TestTransitionCanCompleteReadyTaskAllows(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "can-complete", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"transition", "can-complete", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}

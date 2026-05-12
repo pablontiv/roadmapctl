@@ -10,7 +10,7 @@ func TestContextWorkspaceJSONIncludesRepos(t *testing.T) {
 	workspace := doctorFixturePath("valid-workspace")
 
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"context", "--workspace", "--repo", workspace, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"context", "--workspace", "--repo", workspace, "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("context workspace exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -51,7 +51,7 @@ func TestContextWorkspaceAmbiguousRepoFails(t *testing.T) {
 	workspace := doctorFixturePath("invalid-workspace-ambiguous-repo")
 
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"context", "--workspace", "--repo", workspace, "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"context", "--workspace", "--repo", workspace, "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 1 {
 		t.Fatalf("context workspace ambiguous exit = %d, want 1; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -70,7 +70,7 @@ func TestContextWorkspaceAmbiguousRepoFails(t *testing.T) {
 
 func TestContextJSONIncludesEffectiveHelpersAndOperationalSettings(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"context", "--repo", doctorFixturePath("valid-roadmapctl-toml-default"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"context", "--repo", doctorFixturePath("valid-roadmapctl-toml-default"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("context exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}

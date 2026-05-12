@@ -8,7 +8,7 @@ import (
 
 func TestNextJSONSeparatesReadyAndBlockedTasks(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"next", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"next", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("next exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -45,7 +45,7 @@ func TestNextJSONSeparatesReadyAndBlockedTasks(t *testing.T) {
 
 func TestNextLimitRestrictsReadyTasks(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"next", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--limit", "1", "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"next", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--limit", "1", "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("next exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}

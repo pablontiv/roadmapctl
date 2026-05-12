@@ -8,7 +8,7 @@ import (
 
 func TestDecisionJSONIncludesDeterministicReasons(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"decision", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr)
+	code := Execute([]string{"decision", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("decision exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
