@@ -4,14 +4,24 @@ on:
   push:
     branches: [main, master]
   pull_request:
+    branches: [main, master]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Go ${{ matrix.os }}
+  ci:
+    uses: pablontiv/crossbeam/.github/workflows/go-ci.yml@v1
+    with:
+      go-version-file: go.mod
+      coverage-threshold: 85
+
+  gitleaks:
+    uses: pablontiv/crossbeam/.github/workflows/gitleaks.yml@v1
+
+  smoke:
+    name: Smoke tests on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -20,13 +30,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417
         with:
           go-version-file: go.mod
-          cache: true
 
       - name: Install Rootline
         shell: bash
@@ -38,15 +47,24 @@ jobs:
         shell: bash
         run: rootline --version
 
-      - name: Test and coverage
+      - name: Coverage gate
         shell: bash
         run: ./scripts/check-coverage.sh
 
-      - name: Build
-        run: go build ./cmd/roadmapctl
-
-      - name: Roadmapctl CI smoke
+      - name: Roadmapctl smoke
         shell: bash
         run: |
-          go run ./cmd/roadmapctl check --repo testdata/fixtures/valid-outcome-with-tasks --output json --strict > roadmapctl-check.json
-          go run ./cmd/roadmapctl lint --repo testdata/fixtures/lint-valid --output json --strict > roadmapctl-lint.json
+          go run ./cmd/roadmapctl check --repo testdata/fixtures/valid-outcome-with-tasks --output json --strict
+          go run ./cmd/roadmapctl lint --repo testdata/fixtures/lint-valid --output json --strict
+
+  release:
+    uses: pablontiv/crossbeam/.github/workflows/go-release.yml@v1
+    needs: [ci, gitleaks, smoke]
+    if: github.event_name == 'push'
+    with:
+      quality-gate-jobs: '["ci","gitleaks","smoke"]'
+      binary-name: roadmapctl
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
