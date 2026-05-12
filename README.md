@@ -63,7 +63,19 @@ The public CLI contract is documented in [docs/cli-contract.md](docs/cli-contrac
 
 ## Installation
 
-Until packaged releases are published, install from source:
+**Linux / macOS:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pablontiv/roadmapctl/master/install.sh | sh
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/pablontiv/roadmapctl/master/install.ps1 | iex
+```
+
+**From source (Go 1.21+):**
 
 ```bash
 go install github.com/pablontiv/roadmapctl/cmd/roadmapctl@latest
