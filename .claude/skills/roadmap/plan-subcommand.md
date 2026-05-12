@@ -82,13 +82,12 @@ Guardrail obligatorio antes de escribir:
 
 Determinar rutas canónicas para Outcomes y Tasks:
 
-1. Si existe comando `roadmapctl path-planning`, usarlo para proponer rutas:
+1. Usar `roadmapctl plan-paths` para proponer rutas canónicas:
    ```bash
-   roadmapctl path-planning --repo <repo-path> --roadmap-root <roadmap-root> --outcomes [...] --tasks [...] --output json
+   # input.json: {"version":1,"kind":"roadmapctl/path-plan","items":[{"type":"outcome","slug":"slug"},{"type":"task","slug":"slug","outcome_slug":"slug"}]}
+   roadmapctl plan-paths --input input.json --repo <repo-path> --roadmap-root <roadmap-root> --output json
    ```
    Revisar la propuesta: `summary.status == "ok"` y `paths[]` contiene rutas canónicas `OXX-slug/README.md` y `OXX-slug/TXXX-*.md` o `TXXX-*.md` directas.
-
-2. Si el comando no existe aún, usar `roadmapctl next` como referencia para numbering determinístico de Tasks/Outcomes y documentar que el path-planning guard está pendiente.
 
 Presentar la propuesta visual al usuario en formato legible:
 
