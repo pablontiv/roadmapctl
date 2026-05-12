@@ -83,3 +83,7 @@ Non-goals:
 - no roadmap decomposition intelligence;
 - no automatic fixing;
 - no roadmap subcommands inside `rootline`.
+
+## CI/CD
+
+CI/CD runs the `go-ci.yml` workflow on every push and pull request. Concurrency controls cancel redundant runs during commit bursts to reduce CI load.
