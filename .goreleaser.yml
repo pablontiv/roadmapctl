@@ -12,6 +12,10 @@ builds:
     binary: roadmapctl
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s
+      - -w
+      - -X main.version={{.Version}}
     goos:
       - linux
       - darwin
@@ -50,3 +54,7 @@ changelog:
     exclude:
       - "^docs?:"
       - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - "^style:"
+      - "^refactor:"
