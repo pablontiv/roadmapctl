@@ -12,6 +12,7 @@ Antes de escribir, mutar o ejecutar:
 
 ```bash
 command -v roadmapctl
+roadmapctl --version                                                                  # diagnóstico: version del binario instalado
 roadmapctl doctor --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
 roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
 ```
