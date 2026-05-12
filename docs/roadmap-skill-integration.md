@@ -2,7 +2,7 @@
 
 `roadmapctl` is mandatory from day 1 for every implemented `/roadmap` command that writes files, mutates roadmap state, executes tasks, or claims that a roadmap is valid.
 
-This document describes how the skill must use `roadmapctl doctor` and `roadmapctl check` as blocking guards while preserving Rootline as the generic filesystem database and constraint engine. The current product decision is to keep `roadmapctl materialize` as the deterministic writer for roadmap plan files; see `docs/decisions/materialize-writer-vs-guard-flow.md`.
+This document describes how the skill must use `roadmapctl doctor` and `roadmapctl check` as blocking guards while preserving Rootline as the generic filesystem database and constraint engine. The product decision is that the skill (Pi agent) owns file writes after human approval, while `roadmapctl` serves as guard, validator, policy layer, path planner, and state query engine; see `docs/decisions/materialize-writer-vs-guard-flow.md`.
 
 ## Applicability
 
@@ -151,24 +151,22 @@ Before creating or modifying any roadmap file:
      roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
   4. If either normal preflight command exits non-zero, stop. Do not write files and do not fall back to a summary markdown file.
 
-After approval, the skill serializes non-bootstrap plans to `roadmapctl/materialize-plan` JSON and delegates deterministic writes. The versioned schema source is `docs/materialize-plan-schema.md` in the `roadmapctl` repository; that path is not assumed to exist in consuming repos or inside the installed skill directory. Until a future `roadmapctl materialize schema --output json` command is explicitly approved, agents should use the skill's embedded minimal schema plus roadmapctl diagnostics outside this repo. Before serialization, it must classify dependencies strictly:
+After approval, the skill decomposes the roadmap conceptually, serializes the approved structured plan to JSON for validation, and then writes canonical roadmap files directly (Outcome READMEs and Task markdown files) using the approved human-reviewed content. Before serialization, the skill must classify dependencies strictly:
   - `blocked_by` is only for hard blockers: the task cannot execute or validate until the target is completed.
   - For every proposed `blocked_by`, the skill must be able to answer: “What would objectively fail if this task ran first?”
   - Sequencing preference, shared context, provenance, thematic grouping, or “use its output if available” must stay in task context/source-of-truth prose and must not be serialized as `blocked_by`.
 
-  1. Save the approved structured plan in a temp file and run:
-     roadmapctl materialize --plan <plan-json> --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json > <dry-run-json>
-  2. Save that dry-run JSON as the frozen change-set and verify it proposes only canonical allowlisted paths and no `*-tasks.md` fallback. Normal review shows only `summary`, `diagnostics`, and per-change `path`, `operation`, `applied`, `preconditions`; do not dump `changes[].content` or full diffs unless explicitly requested or troubleshooting.
-  3. After explicit human approval of the dry-run, prefer roadmapctl-owned batch apply for the approved change-set:
-     roadmapctl materialize --changes <dry-run-json> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
-     or equivalently:
-     roadmapctl materialize --plan <plan-json> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
-  4. Use target apply only for recovery, troubleshooting, or explicit one-file approval:
-     roadmapctl materialize --changes <dry-run-json> --target <target.path> --apply --repo <repo> --roadmap-root <roadmap-root> --output json
-  5. Never use prompt-side raw writes for dry-run `content`.
-  6. Run:
+  1. Serialize the approved structured plan as JSON following `docs/materialize-plan-schema.md` and save to a temp file.
+  2. Run roadmapctl plan-paths to get deterministic numbering and canonical paths for the planned items:
+     roadmapctl plan-paths --plan <plan-json> --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json > <paths-json>
+  3. Review the paths output to verify deterministic ID assignment and canonical layout.
+  4. After explicit human approval, the skill writes Outcome README files and Task markdown files directly. Write shape is canonical:
+     - Outcome: <roadmap-root>/OXX-slug/README.md containing only frontmatter + title + description/context
+     - Task: <roadmap-root>/OXX-slug/TXXX-task.md or <roadmap-root>/TXXX-task.md with full sections (Preserva, Contexto, Alcance, Estado inicial esperado, Criterios de Aceptación, Fuente de verdad)
+  5. Never write a single fallback file such as <roadmap-root>/feature-tasks.md for multiple tasks. Create canonical individual TXXX-*.md files.
+  6. After writing files, run:
      roadmapctl check --repo <repo> --roadmap-root <roadmap-root> --output json --strict
-  7. If any command exits non-zero, report diagnostics and stop before claiming success or committing. If files were already applied, report `changes[].path` where `applied=true`, run `rootline validate` on affected markdown or rerun `roadmapctl check --strict`, then explicitly repair or revert and rerun the postcheck before any commit.
+  7. If postcheck exits non-zero, report diagnostics and stop before claiming success or committing. If files were already written, report the written paths, run `rootline validate` on affected markdown or rerun `roadmapctl check --strict`, then explicitly repair or revert and rerun the postcheck before any commit.
 ```
 
 The materialized shape must remain canonical:
@@ -285,7 +283,7 @@ After the cutover, the `/roadmap` skill intentionally keeps only conversational 
 | Bootstrap | choose repo/workspace target, render checkpoint, stop on guard failure | `context` resolves config/schema/helpers |
 | Pending/decision | human presentation and routing | `pending`, `next`, `decision` compute state, blockers and scoring |
 | Loop | read task, implement code, run ACs, commit/push according to config | `transition` owns start/complete policy, status mutation and postcheck |
-| Plan/materialize | decompose conceptually, ask approval, serialize structured plan, review dry-run | `materialize` owns numbering, canonical paths, writes, README tables, dependency links and postcheck |
+| Plan | decompose conceptually, ask approval, serialize structured plan, **write approved Outcome/Task markdown**, review postcheck | `plan-paths` owns numbering and canonical paths; `check` owns pre/post validation and policy enforcement |
 
 Rootline commands may remain only as troubleshooting/reference or for loop graph/query discovery where no roadmapctl command owns that read yet. They must not be used as the primary writer/mutator when a roadmapctl command exists.
 

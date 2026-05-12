@@ -1,6 +1,8 @@
 # Materialize plan input schema
 
-`roadmapctl materialize` is planned as a deterministic writer for already-approved roadmap plans. It does **not** decompose free-form chat, ask an LLM for task boundaries, or infer missing requirements. The `/roadmap plan` skill remains responsible for AI-assisted decomposition and user approval, then passes structured JSON to roadmapctl. The keep-writer decision and revisit criteria are recorded in `docs/decisions/materialize-writer-vs-guard-flow.md`.
+**EVOLUTION NOTE** (2026-05-11): The skill now owns file writes directly after human approval. `roadmapctl materialize` remains available as a schema validator and path planner, but the skill writes Outcome/Task markdown directly rather than delegating to `materialize --apply`. This schema documents the JSON structure the skill uses internally for validation and path planning; see `docs/decisions/materialize-writer-vs-guard-flow.md` for architectural details.
+
+This schema was previously used as input to `roadmapctl materialize` as the deterministic writer. While the writer responsibility has shifted to the skill, the JSON structure and validation rules remain stable for use with `roadmapctl plan-paths` and internal skill serialization. The skill does **not** decompose free-form chat, ask an LLM for task boundaries, or infer missing requirements; it remains responsible for AI-assisted decomposition and user approval, then passes structured JSON to roadmapctl for validation and path planning.
 
 ## Versioning
 
@@ -79,7 +81,7 @@ Rules:
 | `slug` | yes | string | Human slug without numeric prefix. Lowercase kebab-case recommended. |
 | `title` | yes | string | Outcome title for README heading. |
 | `description` | yes | string | Context paragraph for README. |
-| `acceptance_criteria` | no | array(string) | Optional outcome-level context (not rendered; ACs live in child Tasks). |
+| `acceptance_criteria` | no | array(string) | **Historical field** (2026-05-11 evolution). Not written to Outcome README. ACs live exclusively in child Task files. Supplied for backward compatibility with older plans. |
 | `tasks` | yes | array(task) | One or more child tasks. |
 | `contributes_to` | no | array(string) | Outcome criterion labels if supplied by the plan. |
 
@@ -195,9 +197,10 @@ The `/roadmap plan` skill must:
 1. decompose and present the proposed tree to the user;
 2. stop for explicit approval;
 3. serialize the approved tree to this JSON shape in a temporary plan file rather than pasting large JSON into chat;
-4. pass the temp plan file to roadmapctl for dry-run materialization and save stdout to a temporary dry-run JSON file;
-5. review dry-run output normally by extracting only `summary`, `diagnostics`, `path`, `operation`, `applied`, and `preconditions`; inspect `changes[].content` or full diffs only on explicit user request or targeted troubleshooting;
-6. save the dry-run JSON when using a frozen change-set and apply approved files with roadmapctl-owned batch apply (`--plan ... --apply` or `--changes <dry-run-json> --apply`);
-7. avoid writing roadmap markdown directly once roadmapctl materialization exists. Granular `--target` apply is reserved for recovery/troubleshooting or explicit one-file approval.
+4. pass the temp plan file to `roadmapctl plan-paths --dry-run` to obtain deterministic numbering and canonical paths (numbering is computed once);
+5. review plan-paths output to verify ID assignment and paths; present the canonical structure to the human;
+6. after explicit human approval, **write canonical Outcome README and Task markdown files directly** using the approved content shown in the dry-run preview. Write exactly what the human approved, with no additional content generation;
+7. run `roadmapctl check --strict` as a postcheck after writing to validate structure, schema, and dependencies;
+8. avoid writing roadmap markdown for multiple tasks to a single file. Create canonical individual `TXXX-*.md` files.
 
 roadmapctl must reject free-form prose input. If the skill lacks enough information to populate required fields, the skill asks the user before calling roadmapctl.
