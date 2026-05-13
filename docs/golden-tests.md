@@ -38,3 +38,11 @@ Git does not track empty directories and refuses to track files inside a path
 component named `.git`, so `TestMain` in `internal/cli/golden_test.go` creates
 these directories at test startup via `os.MkdirAll`. Do not attempt to commit
 `.gitkeep` files inside those directories.
+
+## Fake rootline in CI
+
+`TestMain` detects whether `rootline` is available via `exec.LookPath`. If not
+found (e.g., in CI), it activates the built-in fake rootline by setting
+`ROADMAPCTL_FAKE_ROOTLINE=1` and `ROOTLINE_BIN=os.Args[0]`. The fake responds
+with stub JSON to `validate`, `describe`, `query`, `graph`, `tree`, `set`, and
+`new`. Tests that require the real rootline must be skipped or guarded externally.
