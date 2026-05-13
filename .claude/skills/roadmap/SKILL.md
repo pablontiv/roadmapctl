@@ -95,7 +95,7 @@ test -d .git
 
 ### Fuente primaria de contexto
 
-`roadmapctl context` resuelve configuración efectiva, schema, helpers y comportamiento operacional. `.roadmapctl.toml` dentro de `<roadmap-root>/` es la configuración canónica; cualquier config local legacy es solo input de migración gestionado opacamente por roadmapctl.
+`roadmapctl bootstrap` resuelve configuración efectiva, helpers y comportamiento operacional. `.roadmapctl.toml` dentro de `<roadmap-root>/` es la configuración canónica; cualquier config local legacy es solo input de migración gestionado opacamente por roadmapctl.
 
 Gate inicial para flujos implementados:
 
@@ -106,7 +106,7 @@ command -v roadmapctl
 Ejecutar para cada repo objetivo:
 
 ```bash
-roadmapctl context --repo <repo-path> --roadmap-root <roadmap-root-si-se-conoce> --output json
+roadmapctl bootstrap --repo <repo-path> --roadmap-root <roadmap-root-si-se-conoce> --output json
 ```
 
 Usar el JSON devuelto como fuente de verdad para:
@@ -117,11 +117,13 @@ Usar el JSON devuelto como fuente de verdad para:
 - `<where-leaf>` = `helpers.where_leaf`
 - `<where-not-done>` = `helpers.where_not_done`
 - `<where-active>` = `helpers.where_active`
-- schema/status/config operacional = campos `schema`, `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `pr_merge_strategy`, `commit_style`, `auto_push`, `required_code_coverage`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode` y cualquier campo adicional expuesto por `roadmapctl context`
+- status/config operacional = campos `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `pr_merge_strategy`, `commit_style`, `auto_push`, `required_code_coverage`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode` y cualquier campo adicional expuesto por `roadmapctl bootstrap`
+
+Para obtener el schema (valores de `estado`), llamar `rootline describe` directamente si se necesita.
 
 `roadmapctl doctor` y `roadmapctl check` no forman parte del bootstrap read-only. Ejecutarlos solo antes de escribir, mutar, ejecutar tasks o declarar validez del roadmap, y como postcheck después de materializar o mutar.
 
-Si `roadmapctl context` falla o `roadmapctl` no existe:
+Si `roadmapctl bootstrap` falla o `roadmapctl` no existe:
 
 - Para flujos implementados read-only, writes, mutaciones, ejecución o declaraciones de validez: detenerse; no fallback.
 - Para planificación conceptual sin writes/mutaciones/ejecución/validez: se permite usar defaults explícitos solo como ayuda conceptual, dejando claro que los guards faltan para materializar/ejecutar. El skill no migra ni parsea legacy para flujos implementados.
@@ -129,15 +131,15 @@ Si `roadmapctl context` falla o `roadmapctl` no existe:
 ### Workspace mode
 
 1. Escanear subdirectorios inmediatos con `.git` + config roadmap (`<roadmap-root>/.roadmapctl.toml`; señales legacy solo habilitan que roadmapctl migre, no que el skill las lea).
-2. Para cada repo, ejecutar `roadmapctl context` si está disponible y calcular helpers desde su JSON.
+2. Para cada repo, ejecutar `roadmapctl bootstrap` si está disponible y calcular helpers desde su JSON.
 3. Imprimir checkpoint con repos detectados.
 
 ### Single-repo mode
 
 1. Resolver repo actual.
-2. Ejecutar `roadmapctl context` si está disponible.
-3. Si context no está disponible y el flujo es conceptual/no-write, preguntar dónde vive el roadmap o usar defaults explícitos marcados como no verificados.
-4. Imprimir checkpoint desde JSON de `roadmapctl context` o desde defaults conceptuales explícitamente marcados.
+2. Ejecutar `roadmapctl bootstrap` si está disponible.
+3. Si bootstrap no está disponible y el flujo es conceptual/no-write, preguntar dónde vive el roadmap o usar defaults explícitos marcados como no verificados.
+4. Imprimir checkpoint desde JSON de `roadmapctl bootstrap` o desde defaults conceptuales explícitamente marcados.
 
 Template mínimo:
 
@@ -165,7 +167,7 @@ auto-push: true
 
 Fuente de configuración:
 
-1. `<roadmap-root>/.roadmapctl.toml` vía `roadmapctl context`.
+1. `<roadmap-root>/.roadmapctl.toml` vía `roadmapctl bootstrap`.
 2. La config local legacy es solo input de migración para roadmapctl, no fuente durable que el skill deba parsear en flujos implementados.
 3. defaults solo para modo conceptual/no-write.
 
@@ -209,17 +211,17 @@ Bootstrap:
 
 ## Validación de configuración
 
-`roadmapctl context`, `roadmapctl doctor` y `roadmapctl check` son los únicos validadores de configuración para flujos implementados. El skill no debe leer ni validar archivos de config legacy directamente.
+`roadmapctl bootstrap`, `roadmapctl doctor` y `roadmapctl check` son los únicos validadores de configuración para flujos implementados. El skill no debe leer ni validar archivos de config legacy directamente.
 
-No ejecutar `rootline describe` como paso normal de validación de configuración: el schema y los status efectivos vienen en el JSON de `roadmapctl context`, y `roadmapctl doctor/check` validan los flujos que escriben, mutan, ejecutan o declaran validez.
+Para obtener el schema (valores de `estado`), llamar `rootline describe` directamente si se necesita. Los status efectivos vienen en el JSON de `roadmapctl bootstrap`, y `roadmapctl doctor/check` validan los flujos que escriben, mutan, ejecutan o declaran validez.
 
 ## Dependencias CLI
 
 ### rootline
 
-Rootline es dependencia interna de `roadmapctl` para validar y consultar roadmaps. En flujos normales del skill, no hacer gate directo con `command -v rootline`; dejar que `roadmapctl context`, `roadmapctl doctor` o `roadmapctl check` reporten `RMC_ENV_ROOTLINE_MISSING` con diagnostics estables.
+Rootline es dependencia interna de `roadmapctl` para validar y consultar roadmaps. En flujos normales del skill, no hacer gate directo con `command -v rootline`; dejar que `roadmapctl bootstrap`, `roadmapctl doctor` o `roadmapctl check` reporten `RMC_ENV_ROOTLINE_MISSING` con diagnostics estables.
 
-Usar comandos `rootline` directos solo para troubleshooting explícito después de que el flujo principal de `roadmapctl` lo requiera o reporte diagnostics.
+Usar comandos `rootline` directos (como `rootline describe`) solo para troubleshooting explícito o cuando sea necesario obtener información que no viene en `roadmapctl bootstrap` (como el schema completo), después de que el flujo principal de `roadmapctl` lo requiera o reporte diagnostics.
 
 ### roadmapctl
 

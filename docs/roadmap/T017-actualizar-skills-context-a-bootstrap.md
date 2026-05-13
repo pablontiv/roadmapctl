@@ -1,8 +1,7 @@
 ---
+estado: Completed
+hard_blockers: '- T016-bootstrap-idempotente-eliminar-context.md'
 tipo: task
-estado: Specified
-hard_blockers:
-  - T016-bootstrap-idempotente-eliminar-context.md
 ---
 
 # T017 Actualizar skills: context → bootstrap + separar rootline describe

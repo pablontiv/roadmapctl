@@ -1,6 +1,6 @@
 # /roadmap loop [--filter PATTERN] [--max N]
 
-Ejecutar tasks pendientes usando la configuración efectiva devuelta por `roadmapctl context`. El loop acepta solo `--filter`, `--max` y el flag global `--repo` (workspace mode).
+Ejecutar tasks pendientes usando la configuración efectiva devuelta por `roadmapctl bootstrap`. El loop acepta solo `--filter`, `--max` y el flag global `--repo` (workspace mode).
 
 Ruta normal autosuficiente: este archivo contiene el procedimiento operativo completo. No leer `common-logic.md` ni documentación de integración para ejecutar el loop; esos documentos son referencia de mantenimiento/troubleshooting.
 
@@ -9,7 +9,7 @@ Ruta normal autosuficiente: este archivo contiene el procedimiento operativo com
 - `--filter PATTERN`: filtrar por path (`O01`, `T003`, slug, etc.).
 - `--max N`: límite de esta ejecución. Tiene precedencia sobre `loop_max_tasks`.
 
-Los flags de comportamiento históricos `--parallel`, `--worktree`, `--self-pace`, `--skip-reviews`, `--checkpoint-interval` y `--pr` están obsoletos; no documentarlos ni aceptarlos como comportamiento activo. Usar los campos de configuración `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode`, `pr_merge_strategy`, `commit_style`, `auto_push` y `outcome_close_verify` expuestos por `roadmapctl context`.
+Los flags de comportamiento históricos `--parallel`, `--worktree`, `--self-pace`, `--skip-reviews`, `--checkpoint-interval` y `--pr` están obsoletos; no documentarlos ni aceptarlos como comportamiento activo. Usar los campos de configuración `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode`, `pr_merge_strategy`, `commit_style`, `auto_push` y `outcome_close_verify` expuestos por `roadmapctl bootstrap`.
 
 ## Config efectiva
 

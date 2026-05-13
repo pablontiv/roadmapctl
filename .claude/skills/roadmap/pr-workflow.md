@@ -1,6 +1,6 @@
 # PR Workflow — Branch per Outcome
 
-Lógica de branching, PR creation y merge para `/roadmap loop` cuando `pr_mode == true` en `roadmapctl context`.
+Lógica de branching, PR creation y merge para `/roadmap loop` cuando `pr_mode == true` en `roadmapctl bootstrap`.
 
 > Workspace mode: usar `git -C <repo-path>`. `gh` se ejecuta desde `<repo-path>`.
 

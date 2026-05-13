@@ -2,7 +2,7 @@
 
 Generar un árbol de decisión que muestre recomendaciones ejecutables, quick wins, dependencias y bloqueos usando `roadmapctl` como fuente determinística.
 
-Ruta normal autosuficiente: usar el `roadmapctl context` ya obtenido en bootstrap y luego `roadmapctl decision` o `roadmapctl next`. No leer `common-logic.md`, documentación de integración ni archivos Rootline para este flujo. No ejecutar `roadmapctl doctor`/`check`: decision/next son read-only y sus comandos son la fuente canónica.
+Ruta normal autosuficiente: usar el `roadmapctl bootstrap` ya obtenido en bootstrap y luego `roadmapctl decision` o `roadmapctl next`. No leer `common-logic.md`, documentación de integración ni archivos Rootline para este flujo. No ejecutar `roadmapctl doctor`/`check`: decision/next son read-only y sus comandos son la fuente canónica.
 
 ## Workspace mode
 

@@ -4,7 +4,7 @@ Cuando `$ARGUMENTS` no empieza con `pending|loop|plan`, generar una propuesta de
 
 ## Paso 0: Bootstrap
 
-Ejecutar primero el bootstrap de `SKILL.md`. Usar el JSON de `roadmapctl context` como fuente de configuración antes de cualquier análisis. No leer ni crear archivos de config legacy.
+Ejecutar primero el bootstrap de `SKILL.md`. Usar el JSON de `roadmapctl bootstrap` como fuente de configuración antes de cualquier análisis. No leer ni crear archivos de config legacy.
 
 ## Paso 1: Resolver intención
 
@@ -23,7 +23,7 @@ En workspace mode, si el repo no es evidente, preguntar con opciones concretas.
 
 Discovery determinista:
 
-1. Reusar el JSON de `roadmapctl context` del repo target: `root`, `roadmap_root`, helpers, estados y opciones operacionales.
+1. Reusar el JSON de `roadmapctl bootstrap` del repo target: `root`, `roadmap_root`, helpers, estados y opciones operacionales.
 2. Leer `README*` de la raíz (máx. 3).
 3. Buscar docs por keywords de `$ARGUMENTS` (máx. 8, preferir `docs/`, `research/`, `intent/`).
 4. Leer Outcomes existentes relacionados bajo `<roadmap-root>/` (máx. 8) para evitar overlap.
