@@ -14,7 +14,6 @@ linters:
   settings:
     gosec:
       excludes:
-        - G122  # race-prone path in WalkDir callback — sequential CLI, not a real race
         - G204  # subprocess with variable — legitimate CLI pattern
         - G301  # directory permissions
         - G304  # file inclusion via variable

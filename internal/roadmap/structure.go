@@ -156,7 +156,7 @@ func checkRawBlockedByLinks(root string) ([]Diagnostic, error) {
 		if !strings.HasSuffix(entry.Name(), ".md") {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec
 		if err != nil {
 			return fmt.Errorf("read roadmap record %s: %w", relPath(root, path), err)
 		}

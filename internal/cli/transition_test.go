@@ -290,11 +290,11 @@ func copyFixture(t *testing.T, name string) string {
 		if entry.IsDir() {
 			return os.MkdirAll(target, 0o755)
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(target, data, 0o644)
+		return os.WriteFile(target, data, 0o644) //nolint:gosec
 	}); err != nil {
 		t.Fatal(err)
 	}
