@@ -25,27 +25,54 @@ Usar `<abs-roadmap-root>` y `git -C <repo-path>`.
 
 ## Fase 1: Descomposición
 
-1. Identificar el plan más reciente.
-2. Leer contexto existente relacionado bajo `<roadmap-root>/`.
-3. Aplicar [framework-reference.md](framework-reference.md): máximo Outcome + Tasks.
-4. Producir:
-   - tasks directas, o
-   - Outcome(s) + tasks.
-5. Cada task debe tener nombre, descripción, ACs principales y, solo si aplica, `hard_blockers` explícitos. Un hard blocker es una dependencia objetiva: si no está completada, la task actual no debe ejecutarse.
+1. Identificar el plan más reciente de la conversación.
+
+2. Consultar numeración actual:
+   ```bash
+   rootline describe <roadmap-root> --field schema.id.next_by_pattern --output json
+   ```
+   Retorna `{"O*": "O14", "T*": "T014"}`.
+   - Usar `O*` para el siguiente Outcome.
+   - Usar `T*` como referencia inicial para tasks en outcomes nuevos.
+
+   Para tasks en un **Outcome existente**:
+   ```bash
+   rootline describe <roadmap-root>/OXX-slug/ --field schema.id.next_by_pattern --output json
+   ```
+   Retorna `{"T*": "T009"}` — primer task disponible dentro de ese outcome.
+
+   Para tasks en un **Outcome nuevo** (directorio aún no existe): comenzar tasks desde T001.
+
+3. Aplicar `framework-reference.md`: máximo Outcome + Tasks por outcome.
+4. Asignar slugs (kebab-case, sin prefijos O/T, sin `/` ni `..`) y numerar con los valores obtenidos.
+5. Cada task: nombre, descripción, ACs principales, `hard_blockers` solo si hay dependencia objetiva real.
 
 ## Fase 2: Aprobación
 
-Presentar árbol completo y pedir aprobación con `AskUserQuestion`.
+Presentar árbol completo con números asignados + ACs:
 
-STOP hasta aprobación. No crear archivos antes.
+```
+O14-nombre-outcome/
+├── README.md
+├── T001-primera-task.md
+│   - AC1: ...
+└── T002-segunda-task.md
+    - AC1: ...
+```
+
+**STOP obligatorio** con `AskUserQuestion` hasta aprobación explícita. No crear archivos antes.
 
 ## Fase 3: Materialización
 
-**MATERIALIZAR ≠ IMPLEMENTAR.** Crear solo archivos `.md` y `.stem` dentro de `<roadmap-root>/`.
+**3.1 Re-confirmar numeración (antistaleness)**
 
-### Preflight obligatorio roadmapctl
+```bash
+rootline describe <roadmap-root> --field schema.id.next_by_pattern --output json
+```
 
-Antes de crear o modificar cualquier archivo del roadmap:
+Si aparecieron nuevos archivos que cambian los números propuestos, informar al usuario y recalcular antes de continuar.
+
+**3.2 Preflight obligatorio**
 
 ```bash
 command -v roadmapctl
@@ -53,93 +80,36 @@ roadmapctl doctor --repo <repo-path> --roadmap-root <roadmap-root> --output json
 roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
 ```
 
-Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de escribir. Reportar comando, exit code y diagnostic IDs si hubo JSON. No crear archivos, no usar fallback `*-tasks.md`, no auto-fix.
+Si cualquier comando sale non-zero: detenerse, reportar exit code y diagnostics. No crear archivos.
 
-#### Excepción explícita de bootstrap
+**3.3 Escritura en paralelo**
 
-La única excepción al `doctor`/`check` previo es un bootstrap pedido explícitamente para un `<roadmap-root>` inexistente. Flujo permitido:
+Crear directorios padre si aplican, luego escribir con Write tool en paralelo:
+
+- `OXX-slug/README.md`: frontmatter `tipo: outcome` + título + descripción/contexto (SIN `## Criterios de Aceptación` ni `## Tasks`). Ver template en `outcome-guide.md`.
+- `OXX-slug/TXXX-slug.md`: frontmatter `estado: Specified` + título + descripción + `## Criterios de Aceptación` + contexto + scope + hard blockers si aplican. Ver template en `task-guide.md`.
+
+**3.4 Validación por archivo**
 
 ```bash
-roadmapctl bootstrap inspect --repo <repo-path> --roadmap-root <roadmap-root> --output json
-roadmapctl bootstrap init --repo <repo-path> --roadmap-root <roadmap-root> --dry-run --output json
-# tras aprobación explícita del dry-run:
-roadmapctl bootstrap init --repo <repo-path> --roadmap-root <roadmap-root> --apply --output json
+rootline validate <path-creado>
+```
+
+Por cada archivo creado. Si falla: reportar y detener.
+
+**3.5 Postcheck obligatorio**
+
+```bash
 roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
 ```
 
-`bootstrap init --apply` también ejecuta postcheck internamente; el `check --strict` posterior sigue siendo obligatorio como evidencia externa antes de declarar éxito. Si el root ya existe y `doctor`/`check` falla, no usar bootstrap como reparación: detenerse y reportar diagnostics.
+Si falla: detenerse, reportar diagnostics. No commitear.
 
-Guardrail obligatorio antes de escribir:
+## Fase 4: Commit
 
-1. Confirmar que se va a crear una de estas formas:
-   - Outcome + tasks: `OXX-slug/README.md` + `OXX-slug/TXXX-*.md`
-   - Tasks directas: `TXXX-*.md` en la raíz del roadmap.
-2. Si el plan contiene varias tasks, no escribirlas en un archivo único.
-3. Si no hay información suficiente para nombrar/separar tasks, preguntar.
-4. Si falta `rootline` y no se puede crear estructura canónica, detenerse.
-
-### Paso 1: Path planning y propuesta visual
-
-Determinar rutas canónicas para Outcomes y Tasks:
-
-1. Usar `roadmapctl plan-paths` para proponer rutas canónicas:
-   ```bash
-   # input.json: {"version":1,"kind":"roadmapctl/path-plan","items":[{"type":"outcome","slug":"slug"},{"type":"task","slug":"slug","outcome_slug":"slug"}]}
-   roadmapctl plan-paths --input input.json --repo <repo-path> --roadmap-root <roadmap-root> --output json
-   ```
-   Revisar la propuesta: `summary.status == "ok"` y `paths[]` contiene rutas canónicas `OXX-slug/README.md` y `OXX-slug/TXXX-*.md` o `TXXX-*.md` directas.
-
-Presentar la propuesta visual al usuario en formato legible:
-
-```
-Propuesta aprobada:
-
-O01-nombre-del-objetivo/
-├── README.md
-└── T001-task-corta.md
-    - AC1: ...
-    - AC2: ...
-└── T002-task-larga.md
-    - AC1: ...
+```bash
+git -C <repo-path> add <archivos .md creados>
+git -C <repo-path> commit -m "chore(roadmap): create planning docs"
 ```
 
-**STOP obligatorio hasta aprobación explícita del usuario.** Solo si el usuario aprueba el árbol exacto propuesto, pasar a Paso 2.
-
-### Paso 2: Re-pregunta y divergencia
-
-Re-preguntar **solo si**:
-
-- Hay divergencia entre las rutas propuestas en Paso 1 y lo que el usuario aprobó (ej: cambió cantidad de tasks, destino, o slugs).
-- El usuario pide cambios estructura respecto a la propuesta visual presentada.
-
-Si el usuario aprueba explícitamente el árbol visual propuesto (rutas, slugs, tasks, ACs), no re-preguntar; pasar directo a Paso 3.
-
-### Paso 3: Escritura directa de archivos aprobados
-
-Después del `preflight` y **aprobación explícita** del árbol visual propuesto en Paso 1:
-
-1. **Crear directorios padre**: si una task pertenece a un Outcome (ej: `OXX-slug/TXXX-task.md`), crear el directorio `OXX-slug/` si no existe.
-
-2. **Escribir archivos en paralelo** usando Write tool:
-   - Outcome `README.md` con template `outcome-guide.md`: frontmatter `tipo: outcome`, título, descripción/contexto (SIN `## Criterios de Aceptación` persistidos, SIN `## Tasks` persistida — son vistas calculadas).
-   - Task `TXXX-*.md` con template `task-guide.md`: frontmatter `estado: Specified`, título, descripción, ACs en `## Criterios de Aceptación`, contexto, scope, hard blockers si aplican.
-
-3. **Validación local post-write**:
-   ```bash
-   rootline validate <path-creado>
-   ```
-   Ejecutar después de escribir cada archivo crítico; si `rootline validate` falla, reportar error antes de continuar.
-
-4. **Postcheck obligatorio**: tras escribir todos los archivos,
-   ```bash
-   roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
-   ```
-   Si falla, detener y reportar diagnostics. No declarar éxito ni commitear hasta resolverlo.
-
-### Paso 4: Commit + push
-
-- `git add` solo archivos `.md` y `.stem` creados/modificados del roadmap.
-- `git commit -m "chore(roadmap): create planning docs"`
-- `git push` si `<auto-push>` es true.
-
-STOP obligatorio. Informar: "Archivos de planificación creados. Ejecutar `/roadmap loop` cuando esté listo para implementar."
+STOP. Informar: "Archivos de planificación creados. Ejecutar `/roadmap loop` cuando esté listo para implementar."
