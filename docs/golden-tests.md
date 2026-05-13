@@ -39,6 +39,12 @@ component named `.git`, so `TestMain` in `internal/cli/golden_test.go` creates
 these directories at test startup via `os.MkdirAll`. Do not attempt to commit
 `.gitkeep` files inside those directories.
 
+## Coverage gate
+
+The CI coverage gate requires `./scripts/check-coverage.sh` to report ≥ 85.0%.
+The threshold is read from `docs/roadmap/.roadmapctl.toml` (`required_code_coverage`).
+Run the script locally before pushing to verify coverage is met.
+
 ## Fake rootline in CI
 
 `TestMain` detects whether `rootline` is available via `exec.LookPath`. If not
