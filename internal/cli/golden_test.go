@@ -15,6 +15,16 @@ func TestMain(m *testing.M) {
 	if os.Getenv("ROADMAPCTL_FAKE_ROOTLINE") == "1" {
 		os.Exit(fakeRootline(os.Args[1:], os.Stdout, os.Stderr))
 	}
+	// git does not track empty dirs; create workspace fixture .git dirs at test time
+	for _, dir := range []string{
+		"../../testdata/fixtures/valid-workspace/alpha/.git",
+		"../../testdata/fixtures/valid-workspace/beta/.git",
+		"../../testdata/fixtures/invalid-workspace-ambiguous-repo/dup/.git",
+		"../../testdata/fixtures/invalid-workspace-ambiguous-repo/nested/dup/.git",
+		"../../testdata/fixtures/invalid-workspace-missing-config/orphan/.git",
+	} {
+		_ = os.MkdirAll(dir, 0o755)
+	}
 	os.Exit(m.Run())
 }
 
