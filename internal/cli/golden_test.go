@@ -205,7 +205,7 @@ func fakeRootline(args []string, stdout *os.File, stderr *os.File) int {
 		fmt.Fprintln(stdout, `{"version":1,"kind":"rootline/validate-batch","summary":{"total":0,"valid":0,"invalid":0,"errors_count":0,"warnings_count":0}}`)
 		return 0
 	case "describe":
-		fmt.Fprintln(stdout, `{"type":"enum","values":["Pending","Specified","In Progress","Completed","Blocked","On Hold","Obsolete"]}`)
+		fmt.Fprintln(stdout, `{"version":1,"kind":"rootline/describe","schema":{"estado":{"type":"enum","required":false,"values":["Pending","Specified","In Progress","Completed","Blocked","On Hold","Obsolete"]},"tipo":{"type":"enum","required":false,"values":["outcome","task"]}},"links":{"rules":{"blocked_by":{"target":"outcome"}}},"validate":[]}`)
 		return 0
 	case "query":
 		fmt.Fprintln(stdout, `{"version":1,"kind":"rootline/query","meta":{"count":0},"rows":[]}`)
@@ -227,7 +227,7 @@ func fakeRootline(args []string, stdout *os.File, stderr *os.File) int {
 		fmt.Fprintln(stdout, `created docs/roadmap/T001-task.md`)
 		return 0
 	default:
-		fmt.Fprintf(stderr, "unknown fake rootline command %q\n", args[0])
+		fmt.Fprintf(stderr, "unknown fake rootline command %q\n", args[0]) //nolint:gosec
 		return 2
 	}
 }

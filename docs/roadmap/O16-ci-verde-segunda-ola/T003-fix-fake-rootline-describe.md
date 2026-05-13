@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T003: Fix fake rootline describe — retornar formato rootline/describe completo

@@ -101,6 +101,9 @@ type Diagnostic struct {
 func NewReport(kind string, root string, roadmapRoot string, diagnostics []Diagnostic) Report {
 	copied := make([]Diagnostic, len(diagnostics))
 	copy(copied, diagnostics)
+	for i := range copied {
+		copied[i].Path = filepath.ToSlash(copied[i].Path)
+	}
 	return Report{
 		Version:     1,
 		Kind:        kind,
