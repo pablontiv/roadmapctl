@@ -88,6 +88,7 @@ go install github.com/pablontiv/roadmapctl/cmd/roadmapctl@latest
 ```bash
 go test ./...
 go build ./cmd/roadmapctl
+golangci-lint run ./...   # CI lint gate (golangci-lint v2 required)
 ```
 
 Non-goals:
