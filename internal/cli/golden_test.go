@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -24,6 +25,10 @@ func TestMain(m *testing.M) {
 		"../../testdata/fixtures/invalid-workspace-missing-config/orphan/.git",
 	} {
 		_ = os.MkdirAll(dir, 0o755)
+	}
+	if _, err := exec.LookPath("rootline"); err != nil {
+		_ = os.Setenv("ROADMAPCTL_FAKE_ROOTLINE", "1")
+		_ = os.Setenv("ROOTLINE_BIN", os.Args[0])
 	}
 	os.Exit(m.Run())
 }

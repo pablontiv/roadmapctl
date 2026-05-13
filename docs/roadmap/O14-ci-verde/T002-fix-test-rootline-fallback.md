@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T002: Activar fake rootline en TestMain cuando rootline no está en PATH
