@@ -13,7 +13,7 @@ Si el trabajo cabe en 1–5 tasks auto-contenidas, crear tasks directas bajo `<r
 
 ## Auto-numbering
 
-El skill no calcula `OXX`. `roadmapctl path-planning` (cuando esté disponible) asigna el siguiente Outcome determinísticamente y muestra la ruta propuesta. Mientras tanto, usar `roadmapctl next` como referencia para numbering determinístico.
+El skill no calcula `OXX` manualmente. Usar `rootline describe <roadmap-root> --field schema.id.next_by_pattern --output json` para obtener el siguiente O y T determinísticamente.
 
 ## Estructura
 
@@ -39,7 +39,7 @@ tipo: outcome
 
 ## Reglas
 
-- El title del README usa el título del plan (`# [Nombre del objetivo]`); el identificador `OXX` vive en la ruta asignada por path-planning.
+- El title del README usa el título del plan (`# [Nombre del objetivo]`); el identificador `OXX` viene del valor `O*` retornado por `rootline describe --field schema.id.next_by_pattern`.
 - El cuerpo materializado contiene descripción y contexto; no incluye `## Criterios de Aceptación` ni `## Tasks` (son vistas calculadas derivadas de los archivos `TXXX-*.md` hijas).
 - El estado de `README.md` (outcome/index) no debe escribirse manualmente: se deriva desde las `TXXX-*` hijas y/o el estado del índice jerárquico.
 - No crear subniveles bajo Outcome.
