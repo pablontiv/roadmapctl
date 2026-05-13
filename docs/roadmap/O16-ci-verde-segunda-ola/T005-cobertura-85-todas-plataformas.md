@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T005: Llevar cobertura a ≥ 85% en Ubuntu y macOS

@@ -129,3 +129,105 @@ func TestBootstrapInitRequiresExplicitMode(t *testing.T) {
 		t.Fatalf("init without mode exit = %d, want 2", code)
 	}
 }
+
+func TestBootstrapInspectOutputFormatValidation(t *testing.T) {
+	repo := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "inspect", "--repo", repo, "--output", "xml"}, &stdout, &stderr, "dev")
+	if code != 2 {
+		t.Fatalf("bootstrap inspect with invalid output exit = %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "unsupported output format") {
+		t.Fatalf("stderr missing format error: %s", stderr.String())
+	}
+}
+
+func TestBootstrapInitTextOutput(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "text"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap init exit = %d, want 0; stderr=%q", code, stderr.String())
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "status:") {
+		t.Fatalf("text output missing status: %s", output)
+	}
+	if !strings.Contains(output, "missing:") {
+		t.Fatalf("text output missing missing count: %s", output)
+	}
+}
+
+func TestBootstrapInitTextOutputInvalidFormat(t *testing.T) {
+	repo := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--dry-run", "--output", "yaml"}, &stdout, &stderr, "dev")
+	if code != 2 {
+		t.Fatalf("bootstrap init with invalid output exit = %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "unsupported output format") {
+		t.Fatalf("stderr missing format error: %s", stderr.String())
+	}
+}
+
+func TestBootstrapInspectTextOutput(t *testing.T) {
+	repo := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "inspect", "--repo", repo, "--output", "text"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap inspect exit = %d, want 0; stderr=%q", code, stderr.String())
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "status:") {
+		t.Fatalf("text output missing status: %s", output)
+	}
+	if !strings.Contains(output, "changes:") {
+		t.Fatalf("text output missing changes count: %s", output)
+	}
+}
+
+func TestBootstrapInitApplyReportsDiagnosticsOnFileError(t *testing.T) {
+	// Create a repo with a directory where a file should be written
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+
+	// Create a file where we try to write a directory (will cause mkdir to fail)
+	// Actually, this is hard to trigger. Let's just verify the init behavior with read-only permissions
+	roadmapPath := filepath.Join(repo, "docs")
+	if err := os.MkdirAll(roadmapPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make it read-only so we can't create subdirs
+	if err := os.Chmod(roadmapPath, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(roadmapPath, 0o755) // restore for cleanup
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+	// Should report diagnostics about the permission error
+	if code == 0 {
+		t.Fatalf("bootstrap init with permission error should fail, got exit = 0")
+	}
+
+	var report struct {
+		Diagnostics []struct {
+			ID string `json:"id"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	found := false
+	for _, diag := range report.Diagnostics {
+		if diag.ID == "RMC_BOOTSTRAP_APPLY_FAILED" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected RMC_BOOTSTRAP_APPLY_FAILED diagnostic, got %#v", report.Diagnostics)
+	}
+}
