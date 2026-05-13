@@ -14,8 +14,6 @@ Implemented commands:
 - `roadmapctl decision`
 - `roadmapctl lint`
 - `roadmapctl transition`
-- `roadmapctl materialize`
-- `roadmapctl plan-paths`
 - `roadmapctl bootstrap`
 
 `roadmapctl` does not decompose roadmap plans with AI, auto-fix invalid roadmap data, or add roadmap-specific subcommands to `rootline`.
@@ -44,8 +42,6 @@ Commands:
   decision     Provide deterministic prioritization recommendations.
   lint         Validate deterministic semantic roadmap conventions.
   transition   Evaluate and apply policy-checked status transitions.
-  materialize  Validate and write approved structured roadmap plans.
-  plan-paths   Plan canonical paths for outcomes and tasks without writing content.
   bootstrap    Inspect or initialize missing bootstrap files.
 ```
 
@@ -181,7 +177,7 @@ It checks:
 9. operational status roles from config (`status-values`, `done-statuses`, `active-statuses`) refer to statuses present in the effective Rootline schema;
 10. outcome schema compatibility: Outcome README files must be able to omit `estado`, so stale `.stem` rules that require `estado` for `O*` or add global `validate estado non_empty` are errors.
 
-`check` must not write, materialize, fix, or normalize roadmap files.
+`check` must not write, fix, or normalize roadmap files.
 
 Example:
 
@@ -204,7 +200,7 @@ These commands must not write files or update statuses. They are the supported a
 
 ## `lint` contract
 
-`lint` is the deterministic semantic check layer. It runs after `doctor`/`check` prerequisites are satisfied and remains read-only: it must not materialize, normalize, auto-fix, or judge subjective writing quality.
+`lint` is the deterministic semantic check layer. It runs after `doctor`/`check` prerequisites are satisfied and remains read-only: it must not normalize, auto-fix, or judge subjective writing quality.
 
 Boundary:
 
@@ -389,8 +385,8 @@ Rootline operation diagnostics use `details.kind` to distinguish `missing_binary
 | `RMC_LINT_FILENAME_RESERVED` | error | `lint` | Roadmap entry name is reserved or problematic on supported platforms. |
 | `RMC_LINT_SCHEMA_FIELD_MISSING` | error | `lint` | Effective schema lacks a required field such as `estado` or `tipo`. |
 | `RMC_LINT_SCHEMA_LINK_MISSING` | error | `lint` | Effective schema lacks a required link relation such as `blocked_by`. |
-| `RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED` | error | `check`, `doctor`, `lint`, `bootstrap`, `materialize` | Effective schema requires `estado` for `O*`/outcome README records. |
-| `RMC_LINT_SCHEMA_OUTCOME_ESTADO_NON_EMPTY` | error | `check`, `doctor`, `lint`, `bootstrap`, `materialize` | Effective schema has global `validate estado non_empty`, which forces outcome README records to carry manual status. |
+| `RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED` | error | `check`, `doctor`, `lint`, `bootstrap` | Effective schema requires `estado` for `O*`/outcome README records. |
+| `RMC_LINT_SCHEMA_OUTCOME_ESTADO_NON_EMPTY` | error | `check`, `doctor`, `lint`, `bootstrap` | Effective schema has global `validate estado non_empty`, which forces outcome README records to carry manual status. |
 
 Severity policy:
 
@@ -398,77 +394,7 @@ Severity policy:
 - `error`: deterministic portability or schema problem that can break roadmapctl operation or supported filesystems.
 - `lint` must not reclassify MVP `RMC_STRUCTURE_*`, `RMC_GRAPH_*`, `RMC_ROOTLINE_*`, or `RMC_STATUS_*` diagnostics without compatibility notes.
 
-## `plan-paths` command
-
-`plan-paths` proposes canonical filesystem paths for outcomes and tasks without rendering content. It is used by the skill layer to validate that paths will be correct before asking Pi write to create files. The command validates slugs, detects collisions with existing roadmap items, and returns a compact JSON result describing what paths would be created or updated.
-
-This command is the guard/path planner layer that the skill uses to show the user what files will be created and detect problems before writing content.
-
-Input format: compact JSON with item slugs and type information.
-
-```bash
-roadmapctl plan-paths --input plan.json --repo <repo> --roadmap-root <roadmap-root> --output json
-```
-
-Example input:
-
-```json
-{
-  "version": 1,
-  "kind": "roadmapctl/path-plan",
-  "items": [
-    {"type": "outcome", "slug": "rebuild-api"},
-    {"type": "task", "slug": "add-endpoint"}
-  ]
-}
-```
-
-Example output:
-
-```json
-{
-  "version": 1,
-  "kind": "roadmapctl/path-plan-result",
-  "summary": {"status": "ok", "errors": 0, "warnings": 0, "infos": 0},
-  "root": "/abs/path/to/repo",
-  "roadmap_root": "/abs/path/to/repo/docs/roadmap",
-  "result": {
-    "paths": [
-      {"path": "O14-rebuild-api/README.md", "operation": "create", "type": "outcome"},
-      {"path": "O14-rebuild-api/T001-add-endpoint.md", "operation": "create", "type": "task"}
-    ],
-    "collisions": [],
-    "diagnostics": []
-  },
-  "diagnostics": []
-}
-```
-
-The skill layer uses the `result.paths` to:
-1. Show the user what paths will be created.
-2. Ask for approval before calling Pi write.
-3. Validate that the written files match the planned paths (no divergence).
-
-The skill layer does not use `plan-paths` to render markdown content; that remains in the skill layer.
-
-## Materialize plan input contract
-
-`roadmapctl materialize` accepts only structured, approved JSON input. It does not parse free-form chat or call an LLM. The versioned input schema, examples, validation rules, dependency representation, and `RMC_MATERIALIZE_*` diagnostics are specified in [materialize-plan-schema.md](materialize-plan-schema.md), which is a roadmapctl-repo-relative documentation path.
-
-CLI schema exposure is deferred: there is currently no `roadmapctl materialize schema --output json` subcommand. If consumers need machine-readable schema discovery later, add that as a new explicitly versioned command instead of implying that consuming repos contain `docs/materialize-plan-schema.md`.
-
-Implemented modes:
-
-```bash
-roadmapctl materialize --plan plan.json --dry-run --repo <repo> --roadmap-root <roadmap-root> --output json
-roadmapctl materialize --plan plan.json --apply --repo <repo> --roadmap-root <roadmap-root> --output json
-roadmapctl materialize --changes dry-run.json --apply --repo <repo> --roadmap-root <roadmap-root> --output json
-roadmapctl materialize --changes dry-run.json --target O02-new-outcome/README.md --apply --repo <repo> --roadmap-root <roadmap-root> --output json
-```
-
-JSON adds `applied` and `changes[]`. Each change has `path`, `operation`, `applied`, optional `content`, optional `previous_content` for guarded updates, optional `diff`, and `preconditions[]`. Dry-run must not write. Batch `--plan ... --apply` remains backward-compatible: it writes only allowlisted bootstrap/config/schema files, canonical roadmap markdown creates, and guarded `OXX-*/README.md` updates generated by existing-outcome append; it validates affected markdown through Rootline and runs a postcheck before reporting success.
-
-Frozen change-set apply uses a previously saved dry-run JSON report. `--changes <dry-run-json> --apply` applies the whole allowlisted change-set in one roadmapctl-owned batch, validates affected markdown through Rootline, and runs a postcheck before success. Optional granular target apply (`--changes <dry-run-json> --target <path> --apply`) applies exactly one matching canonical roadmap markdown `create` change for recovery/troubleshooting or explicit one-file approval. Empty, unknown, duplicate, non-create, or non-canonical targets fail before writing. Neither mode recomputes numbering from the plan.
+## Transition controller contract
 
 ## Transition controller contract
 
