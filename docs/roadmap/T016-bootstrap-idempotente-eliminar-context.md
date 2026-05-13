@@ -1,6 +1,6 @@
 ---
+estado: Completed
 tipo: task
-estado: Specified
 ---
 
 # T016 Bootstrap idempotente: eliminar context

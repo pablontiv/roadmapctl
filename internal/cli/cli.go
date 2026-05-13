@@ -66,7 +66,6 @@ func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int, version s
 
 	cmd.AddCommand(newLeafCommand("doctor", "Diagnose repo, roadmap configuration and Rootline availability.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newLeafCommand("check", "Validate canonical roadmap structure, metadata and dependency graph.", &options, stdout, stderr, exitCode))
-	cmd.AddCommand(newLeafCommand("context", "Show effective roadmapctl context for skill bootstrap.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newLeafCommand("pending", "List active roadmap tasks that are not done.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newLeafCommand("lint", "Run deterministic semantic roadmap lints.", &options, stdout, stderr, exitCode))
 	cmd.AddCommand(newNextCommand(&options, stdout, stderr, exitCode))
@@ -122,22 +121,6 @@ func executeLeafCommand(ctx context.Context, name string, options Options, stdou
 			return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
 		}
 		if err := renderPendingText(stdout, report); err != nil {
-			fmt.Fprintf(stderr, "%s: render text report: %v\n", name, err)
-			return ExitInternal
-		}
-		return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
-	}
-
-	if name == "context" {
-		report := runContext(ctx, options)
-		if options.Output == "json" {
-			if err := renderContextJSON(stdout, report); err != nil {
-				fmt.Fprintf(stderr, "%s: render JSON report: %v\n", name, err)
-				return ExitInternal
-			}
-			return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
-		}
-		if err := renderContextText(stdout, report); err != nil {
 			fmt.Fprintf(stderr, "%s: render text report: %v\n", name, err)
 			return ExitInternal
 		}

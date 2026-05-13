@@ -7,7 +7,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
 	"github.com/pablontiv/roadmapctl/internal/fsx"
 	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
@@ -34,8 +36,52 @@ type bootstrapChange struct {
 	Content   string `json:"content,omitempty"`
 }
 
+type contextHelpers struct {
+	WhereLeaf    string `json:"where_leaf"`
+	WhereNotDone string `json:"where_not_done"`
+	WhereActive  string `json:"where_active"`
+}
+
+type bootstrapConfigReport struct {
+	Version                int                      `json:"version"`
+	Kind                   string                   `json:"kind"`
+	Summary                diagnostics.Summary      `json:"summary"`
+	Root                   string                   `json:"root"`
+	RoadmapRoot            string                   `json:"roadmap_root"`
+	ConfigPath             string                   `json:"config_path"`
+	ConfigSource           string                   `json:"config_source"`
+	RootlineVersion        string                   `json:"rootline_version"`
+	StatusValues           config.StatusValues      `json:"status_values"`
+	DoneStatuses           []string                 `json:"done_statuses"`
+	ActiveStatuses         []string                 `json:"active_statuses"`
+	OutcomeCloseVerify     []string                 `json:"outcome_close_verify"`
+	PRMergeStrategy        string                   `json:"pr_merge_strategy"`
+	CommitStyle            string                   `json:"commit_style"`
+	AutoPush               bool                     `json:"auto_push"`
+	RequiredCodeCoverage   float64                  `json:"required_code_coverage"`
+	LoopMaxTasks           int                      `json:"loop_max_tasks"`
+	Parallel               bool                     `json:"parallel"`
+	Autonomy               string                   `json:"autonomy"`
+	CompactAfterTaskCommit bool                     `json:"compact_after_task_commit"`
+	PRMode                 bool                     `json:"pr_mode"`
+	Helpers                contextHelpers           `json:"helpers"`
+	Diagnostics            []diagnostics.Diagnostic `json:"diagnostics"`
+}
+
 func newBootstrapCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
-	cmd := &cobra.Command{Use: "bootstrap", Short: "Inspect or initialize roadmap bootstrap files.", SilenceUsage: true, SilenceErrors: true}
+	cmd := &cobra.Command{
+		Use:           "bootstrap",
+		Short:         "Inspect or initialize roadmap bootstrap files, or show effective bootstrap context configuration.",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          cobra.MaximumNArgs(0),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// When called without subcommand, perform idempotent bootstrap and return config
+			report := buildBootstrapConfig(context.Background(), *options)
+			*exitCode = renderBootstrapConfig(report, options.Output, stdout, stderr)
+			return nil
+		},
+	}
 	cmd.AddCommand(newBootstrapInspectCommand(options, stdout, stderr, exitCode))
 	cmd.AddCommand(newBootstrapInitCommand(options, stdout, stderr, exitCode))
 	return cmd
@@ -178,6 +224,97 @@ func bootstrapSchemaCompatibilityDiagnostics(ctx context.Context, options Option
 	return roadmaplint.CheckOutcomeSchemaCompatibility(describe.Decoded)
 }
 
+func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigReport {
+	root := absoluteClean(options.Repo)
+	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	if err != nil {
+		diagnostic := configDiagnostic(root, err)
+		return newBootstrapConfigReport(root, "", "", "", "", nil, []diagnostics.Diagnostic{diagnostic})
+	}
+
+	found := configWarnings(cfg)
+	client := rootlinecli.New(rootlinecli.Options{Binary: options.Rootline, Dir: cfg.RepoRoot, Timeout: options.Timeout})
+	rootlineVersion := ""
+	if version, err := client.Version(ctx); err != nil {
+		found = append(found, rootlineDiagnostic(err))
+	} else {
+		rootlineVersion = strings.TrimSpace(string(version.Stdout))
+	}
+
+	// Check bootstrap files exist or need to be created
+	if len(found) == 0 {
+		changes := proposedBootstrapChanges(cfg.RepoRoot, cfg.RoadmapRoot, false)
+		if len(changes) > 0 {
+			// Apply bootstrap changes to ensure config and .stem exist
+			applyErrs := applyBootstrapChanges(cfg.RepoRoot, changes)
+			found = append(found, applyErrs...)
+			if len(applyErrs) == 0 {
+				// Reload config after bootstrap apply
+				cfg, err = config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+				if err != nil {
+					diagnostic := configDiagnostic(root, err)
+					return newBootstrapConfigReport(root, "", "", "", "", nil, []diagnostics.Diagnostic{diagnostic})
+				}
+			}
+		}
+	}
+
+	return newBootstrapConfigReport(cfg.RepoRoot, cfg.RoadmapRoot, relToRoot(cfg.RepoRoot, cfg.ConfigPath), configSource(cfg), rootlineVersion, cfg, found)
+}
+
+func newBootstrapConfigReport(root string, roadmapRoot string, configPath string, configSource string, rootlineVersion string, cfg *config.Config, found []diagnostics.Diagnostic) bootstrapConfigReport {
+	report := diagnostics.NewReport("roadmapctl/bootstrap", root, roadmapRoot, found)
+	result := bootstrapConfigReport{
+		Version:         report.Version,
+		Kind:            report.Kind,
+		Summary:         report.Summary,
+		Root:            report.Root,
+		RoadmapRoot:     report.RoadmapRoot,
+		ConfigPath:      configPath,
+		ConfigSource:    configSource,
+		RootlineVersion: rootlineVersion,
+		Diagnostics:     report.Diagnostics,
+	}
+	if cfg != nil {
+		result.StatusValues = cfg.StatusValues
+		result.DoneStatuses = append([]string(nil), cfg.DoneStatuses...)
+		result.ActiveStatuses = append([]string(nil), cfg.ActiveStatuses...)
+		result.OutcomeCloseVerify = append([]string{}, cfg.OutcomeCloseVerify...)
+		result.PRMergeStrategy = cfg.PRMergeStrategy
+		result.CommitStyle = cfg.CommitStyle
+		result.AutoPush = cfg.AutoPush
+		result.RequiredCodeCoverage = cfg.RequiredCodeCoverage
+		result.LoopMaxTasks = cfg.LoopMaxTasks
+		result.Parallel = cfg.Parallel
+		result.Autonomy = cfg.Autonomy
+		result.CompactAfterTaskCommit = cfg.CompactAfterTaskCommit
+		result.PRMode = cfg.PRMode
+		result.Helpers = contextHelpers{
+			WhereLeaf:    cfg.LeafFilter,
+			WhereNotDone: statusWhere("not", cfg.DoneStatuses),
+			WhereActive:  statusWhere("", cfg.ActiveStatuses),
+		}
+	}
+	return result
+}
+
+func renderBootstrapConfig(report bootstrapConfigReport, output string, stdout io.Writer, stderr io.Writer) int {
+	if output != "text" && output != "json" {
+		fmt.Fprintf(stderr, "bootstrap: unsupported output format %q\n", output)
+		return ExitUsage
+	}
+	if output == "json" {
+		if err := json.NewEncoder(stdout).Encode(report); err != nil {
+			fmt.Fprintf(stderr, "bootstrap: render JSON report: %v\n", err)
+			return ExitInternal
+		}
+	} else {
+		fmt.Fprintf(stdout, "%s\nstatus: %s\nconfig: %s (%s)\nwhere_leaf: %s\nwhere_not_done: %s\nwhere_active: %s\n",
+			report.Kind, report.Summary.Status, report.ConfigPath, report.ConfigSource, report.Helpers.WhereLeaf, report.Helpers.WhereNotDone, report.Helpers.WhereActive)
+	}
+	return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), false)
+}
+
 func renderBootstrap(report bootstrapReport, output string, stdout io.Writer, stderr io.Writer) int {
 	if output != "text" && output != "json" {
 		fmt.Fprintf(stderr, "bootstrap: unsupported output format %q\n", output)
@@ -192,4 +329,48 @@ func renderBootstrap(report bootstrapReport, output string, stdout io.Writer, st
 		fmt.Fprintf(stdout, "%s\nstatus: %s\nmissing: %d\nchanges: %d\n", report.Kind, report.Summary.Status, len(report.Missing), len(report.Changes))
 	}
 	return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), false)
+}
+
+// Helper functions (previously in context.go)
+
+func statusWhere(prefix string, values []string) string {
+	encoded := make([]string, len(values))
+	for i, value := range values {
+		encoded[i] = fmt.Sprintf("%q", value)
+	}
+	inner := "estado in [" + strings.Join(encoded, ", ") + "]"
+	if prefix == "not" {
+		return "not (" + inner + ")"
+	}
+	return inner
+}
+
+func configSource(cfg *config.Config) string {
+	if filepath.Base(cfg.ConfigPath) == "roadmap.local.md" {
+		return "legacy"
+	}
+	if _, err := os.Stat(cfg.ConfigPath); err == nil {
+		return "toml"
+	}
+	return "defaults"
+}
+
+func contextSchemaValues(decoded map[string]any, field string) []string {
+	if values := contextStringsFromArray(decoded["values"]); len(values) > 0 && field == "estado" {
+		return values
+	}
+	schema, _ := decoded["schema"].(map[string]any)
+	fieldSchema, _ := schema[field].(map[string]any)
+	return contextStringsFromArray(fieldSchema["values"])
+}
+
+func contextStringsFromArray(value any) []string {
+	items, _ := value.([]any)
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		if s, ok := item.(string); ok {
+			result = append(result, s)
+		}
+	}
+	return result
 }

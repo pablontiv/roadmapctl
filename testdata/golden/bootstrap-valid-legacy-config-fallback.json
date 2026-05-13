@@ -1,0 +1,48 @@
+{
+  "active_statuses": [
+    "Pending",
+    "Specified",
+    "In Progress"
+  ],
+  "auto_push": true,
+  "autonomy": "until_done",
+  "commit_style": "conventional",
+  "compact_after_task_commit": true,
+  "config_path": "docs/roadmap/.roadmapctl.toml",
+  "config_source": "toml",
+  "diagnostics": [],
+  "done_statuses": [
+    "Completed",
+    "Obsolete"
+  ],
+  "helpers": {
+    "where_active": "estado in [\"Pending\", \"Specified\", \"In Progress\"]",
+    "where_leaf": "isIndex == false",
+    "where_not_done": "not (estado in [\"Completed\", \"Obsolete\"])"
+  },
+  "kind": "roadmapctl/bootstrap",
+  "loop_max_tasks": 0,
+  "outcome_close_verify": [],
+  "parallel": true,
+  "pr_merge_strategy": "squash",
+  "pr_mode": false,
+  "required_code_coverage": 85,
+  "roadmap_root": "<fixture:valid-legacy-config-fallback>/docs/roadmap",
+  "root": "<fixture:valid-legacy-config-fallback>",
+  "rootline_version": "<rootline-version>",
+  "status_values": {
+    "blocked": "Blocked",
+    "completed": "Completed",
+    "in_progress": "In Progress",
+    "obsolete": "Obsolete",
+    "pending": "Pending",
+    "specified": "Specified"
+  },
+  "summary": {
+    "errors": 0,
+    "infos": 0,
+    "status": "ok",
+    "warnings": 0
+  },
+  "version": 1
+}
