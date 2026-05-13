@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T001: Remover G122 de gosec excludes y añadir nolint en sitios
