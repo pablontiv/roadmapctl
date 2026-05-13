@@ -122,7 +122,7 @@ func inlineText(node gast.Node, source []byte) string {
 		}
 		switch typed := child.(type) {
 		case *gast.Text:
-			parts = append(parts, string(typed.Text(source)))
+			parts = append(parts, string(typed.Value(source)))
 		case *gast.String:
 			parts = append(parts, string(typed.Value))
 		}

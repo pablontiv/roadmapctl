@@ -31,9 +31,6 @@ func runDoctor(ctx context.Context, options Options) diagnostics.Report {
 		return diagnostics.NewReport("roadmapctl/doctor", repoRoot, roadmapRoot, found)
 	}
 
-	repoRoot = cfg.RepoRoot
-	roadmapRoot = cfg.RoadmapRoot
-
 	found = append(found, configWarnings(cfg)...)
 	found = append(found, inspectRoadmapPaths(cfg)...)
 

@@ -104,7 +104,8 @@ func Load(repo string, opts Options) (*Config, error) {
 
 	tomlRoadmapRoot := roadmapRoot
 	tomlPath := filepath.Join(absRepo, filepath.FromSlash(normalizeSeparators(tomlRoadmapRoot)), ".roadmapctl.toml")
-	if fileExists(tomlPath) {
+	switch {
+	case fileExists(tomlPath):
 		cfg.ConfigPath = tomlPath
 		if err := loadTOMLConfig(cfg, tomlPath); err != nil {
 			return nil, err
@@ -115,7 +116,7 @@ func Load(repo string, opts Options) (*Config, error) {
 				return nil, &Error{Code: ErrConfigParse, Message: "remove legacy roadmap config after TOML load", Path: legacyPath, ExitCode: 2, Cause: err}
 			}
 		}
-	} else if fileExists(legacyPath) {
+	case fileExists(legacyPath):
 		fields, err := loadLegacyFields(legacyPath)
 		if err != nil {
 			return nil, err
@@ -151,13 +152,13 @@ func Load(repo string, opts Options) (*Config, error) {
 		}
 		cfg = migratedCfg
 		roadmapRoot = filepath.ToSlash(filepath.Dir(strings.TrimPrefix(migratedPath, absRepo+string(filepath.Separator))))
-	} else if !roadmapRootExists(absRepo, roadmapRoot) {
+	case !roadmapRootExists(absRepo, roadmapRoot):
 		missingPath := tomlPath
 		if strings.TrimSpace(opts.RoadmapRoot) == "" {
 			missingPath = legacyPath
 		}
 		return nil, &Error{Code: ErrConfigMissing, Message: "roadmap config not found", Path: missingPath, ExitCode: 2, Cause: os.ErrNotExist}
-	} else {
+	default:
 		cfg.ConfigPath = tomlPath
 	}
 

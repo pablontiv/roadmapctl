@@ -196,7 +196,7 @@ func invalidBlockedByDiagnostic(root string, sourcePath string, target string) (
 }
 
 func isExplicitBlockedByTarget(target string) bool {
-	if !(strings.HasPrefix(target, "./") || strings.HasPrefix(target, "../") || strings.Contains(target, "/")) {
+	if !strings.HasPrefix(target, "./") && !strings.HasPrefix(target, "../") && !strings.Contains(target, "/") {
 		return false
 	}
 	return strings.HasPrefix(filepath.Base(target), "T") && strings.HasSuffix(target, ".md")

@@ -3,7 +3,6 @@ package lint
 import (
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
@@ -173,13 +172,4 @@ func lintNameDiagnostic(id string, root string, path string, message string, tar
 
 func lintSchemaDiagnostic(id string, message string, target string) diagnostics.Diagnostic {
 	return diagnostics.Diagnostic{ID: id, Severity: diagnostics.SeverityError, Message: message, Path: ".stem", Details: map[string]any{"target": target, "schema_key": target}}
-}
-
-func sortedKeys(values map[string]bool) []string {
-	keys := make([]string, 0, len(values))
-	for key := range values {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
 }

@@ -14,9 +14,16 @@ linters:
   settings:
     gosec:
       excludes:
+        - G122  # race-prone path in WalkDir callback — sequential CLI, not a real race
+        - G204  # subprocess with variable — legitimate CLI pattern
         - G301  # directory permissions
         - G304  # file inclusion via variable
         - G306  # file write permissions
+        - G703  # path traversal in test helpers — controlled input
+  exclusions:
+    rules:
+      - linters: [errcheck]
+        source: "fmt\\.(Fprintf|Fprintln|Fprint)"
 issues:
   max-issues-per-linter: 50
   max-same-issues: 5
