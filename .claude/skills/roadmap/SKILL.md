@@ -69,15 +69,16 @@ fallback a markdown libre.
 
 ## Invariante de escritura segura
 
-Además del criterio canónico, el skill no puede crear/reescribir archivos roadmap manualmente ni hacer dumps multi-file fuera de `roadmapctl`.
+El skill es el único writer de archivos roadmap, vía Write tool, después de aprobación explícita del usuario y preflight pasado.
 
 Prohibido:
 
-- `bash` con múltiples heredocs/cats dirigidos a archivos distintos.
-- loops de shell que llamen `rootline new` o escritura en varios paths.
-- `write`/`edit` directo para crear o reescribir archivos canónicos del roadmap.
+- `bash`/`sh` con múltiples heredocs, `cat >`, o loops que escriban varios archivos en una sola llamada.
+- loops de shell que llamen `rootline new` para múltiples paths.
+- Escribir archivos roadmap sin que el usuario haya aprobado el árbol propuesto.
+- Escribir archivos roadmap si `roadmapctl doctor` o `roadmapctl check --strict` retornan non-zero.
 
-Permitido: `roadmapctl materialize --plan <plan-json> --apply` o `roadmapctl materialize --changes <dry-run-json> --apply` puede aplicar múltiples archivos en una ejecución, porque roadmapctl owns canonical writes, per-file diagnostics, validation, ordering and postcheck.
+Permitido: Write tool para cada archivo canónico (`OXX-slug/README.md`, `OXX-slug/TXXX-slug.md`) después de aprobación y preflight exitoso.
 
 ## Bootstrap mínimo y autosuficiente
 
