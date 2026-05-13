@@ -53,6 +53,9 @@ found (e.g., in CI), it activates the built-in fake rootline by setting
 with stub JSON to `validate`, `describe`, `query`, `graph`, `tree`, `set`, and
 `new`. Tests that require the real rootline must call `requiresRealRootline(t)`
 at the start of the test or subtest to skip automatically when the fake is active.
+Tests guarded this way include: cycle detection, broken `blocked_by`, status
+mismatch, golden subtests relying on `query`/`graph`/`tree` output,
+`can-start`/`can-complete` transition tests, and decision scoring.
 
 The fake `describe` command returns the complete `rootline/describe` envelope
 (version 1, schema with `estado` and `tipo` fields, `links.rules.blocked_by`,
