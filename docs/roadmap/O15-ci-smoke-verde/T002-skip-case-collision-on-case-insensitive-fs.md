@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T002: Skip tests de colisión de case en FS case-insensitive

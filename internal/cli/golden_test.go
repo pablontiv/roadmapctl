@@ -12,6 +12,21 @@ import (
 	"github.com/pablontiv/roadmapctl/internal/testutil"
 )
 
+func isCaseInsensitiveFS(t *testing.T) bool {
+	t.Helper()
+	dir := t.TempDir()
+	f1 := filepath.Join(dir, "CaseTest.txt")
+	f2 := filepath.Join(dir, "casetest.txt")
+	if err := os.WriteFile(f1, nil, 0600); err != nil {
+		return false
+	}
+	if err := os.WriteFile(f2, nil, 0600); err != nil {
+		return false
+	}
+	entries, _ := os.ReadDir(dir)
+	return len(entries) == 1
+}
+
 func TestMain(m *testing.M) {
 	if os.Getenv("ROADMAPCTL_FAKE_ROOTLINE") == "1" {
 		os.Exit(fakeRootline(os.Args[1:], os.Stdout, os.Stderr))
@@ -67,6 +82,9 @@ func TestCheckGoldenJSONFixtures(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.fixture == "lint-case-collision" && isCaseInsensitiveFS(t) {
+				t.Skip("skipping case collision test on case-insensitive filesystem")
+			}
 			fixture := testutil.FixturePath(t, tt.fixture)
 			var stdout, stderr bytes.Buffer
 			args := []string{tt.command, "--repo", fixture, "--output", "json"}

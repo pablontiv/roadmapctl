@@ -8,7 +8,25 @@ import (
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
 )
 
+func isCaseInsensitiveFS(t *testing.T) bool {
+	t.Helper()
+	dir := t.TempDir()
+	f1 := filepath.Join(dir, "CaseTest.txt")
+	f2 := filepath.Join(dir, "casetest.txt")
+	if err := os.WriteFile(f1, nil, 0600); err != nil {
+		return false
+	}
+	if err := os.WriteFile(f2, nil, 0600); err != nil {
+		return false
+	}
+	entries, _ := os.ReadDir(dir)
+	return len(entries) == 1
+}
+
 func TestCheckFilenamePortabilityReportsCaseCollisionAndReservedName(t *testing.T) {
+	if isCaseInsensitiveFS(t) {
+		t.Skip("skipping case collision test on case-insensitive filesystem")
+	}
 	root := t.TempDir()
 	for _, name := range []string{"T001-task.md", "t001-task.md", "CON.md"} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(""), 0o644); err != nil {
