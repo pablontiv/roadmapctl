@@ -53,8 +53,8 @@ func newTransitionActionCommand(options *Options, stdout io.Writer, stderr io.Wr
 			flagStatus, _ := cmd.Flags().GetString("status")
 			status = flagStatus
 		}
-		if !dryRun && !apply {
-			report := newTransitionReport(absoluteClean(options.Repo), "", action, normalizeTransitionPath("", args[0]), roadmap.TransitionResult{Diagnostics: []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticTransitionApplyFailed, Severity: diagnostics.SeverityError, Message: "transition apply is not implemented; use --apply", Path: normalizeTransitionPath("", args[0]), ExitCode: diagnostics.ExitUsage}}})
+		if !apply && (action == "start" || action == "complete") {
+			report := newTransitionReport(absoluteClean(options.Repo), "", action, normalizeTransitionPath("", args[0]), roadmap.TransitionResult{Diagnostics: []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticTransitionApplyFailed, Severity: diagnostics.SeverityError, Message: "transition start and complete require --apply flag", Path: normalizeTransitionPath("", args[0]), ExitCode: diagnostics.ExitUsage}}})
 			if options.Output == "json" {
 				_ = json.NewEncoder(stdout).Encode(report)
 			} else {

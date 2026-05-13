@@ -1,32 +1,29 @@
 {
   "action": "start",
-  "allowed": true,
+  "allowed": false,
   "blocking_dependencies": null,
-  "changes": [
+  "changes": null,
+  "current_status": "",
+  "diagnostics": [
     {
-      "after": "In Progress",
-      "applied": false,
-      "before": "Pending",
-      "field": "estado",
-      "path": "O01-work/T001-ready.md"
+      "id": "RMC_TRANSITION_APPLY_FAILED",
+      "message": "transition start and complete require --apply flag",
+      "path": "O01-work/T001-ready.md",
+      "severity": "error"
     }
   ],
-  "current_status": "Pending",
-  "diagnostics": [],
   "kind": "roadmapctl/transition",
   "path": "O01-work/T001-ready.md",
-  "reasons": [
-    "all dependencies are done"
-  ],
-  "roadmap_root": "<fixture:valid-next-with-blocked>/docs/roadmap",
-  "role": "in_progress",
+  "reasons": null,
+  "roadmap_root": "",
+  "role": "",
   "root": "<fixture:valid-next-with-blocked>",
   "summary": {
-    "errors": 0,
+    "errors": 1,
     "infos": 0,
-    "status": "ok",
+    "status": "error",
     "warnings": 0
   },
-  "target_status": "In Progress",
+  "target_status": "",
   "version": 1
 }

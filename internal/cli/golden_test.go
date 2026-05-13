@@ -109,12 +109,13 @@ func TestTransitionJSONGoldens(t *testing.T) {
 		name       string
 		fixture    string
 		args       []string
+		wantExit   int
 		goldenName string
 	}{
-		{name: "can start ready", fixture: "valid-next-with-blocked", args: []string{"transition", "can-start", "O01-work/T001-ready.md"}, goldenName: "transition-can-start-ready.json"},
-		{name: "can start blocked", fixture: "valid-next-with-blocked", args: []string{"transition", "can-start", "O01-work/T002-blocked.md"}, goldenName: "transition-can-start-blocked.json"},
-		{name: "dry run start", fixture: "valid-next-with-blocked", args: []string{"transition", "start", "O01-work/T001-ready.md", "--dry-run"}, goldenName: "transition-start-dry-run.json"},
-		{name: "custom labels", fixture: "transition-custom-status", args: []string{"transition", "start", "O01-work/T001-ready.md", "--dry-run"}, goldenName: "transition-custom-status-start-dry-run.json"},
+		{name: "can start ready", fixture: "valid-next-with-blocked", args: []string{"transition", "can-start", "O01-work/T001-ready.md"}, wantExit: 0, goldenName: "transition-can-start-ready.json"},
+		{name: "can start blocked", fixture: "valid-next-with-blocked", args: []string{"transition", "can-start", "O01-work/T002-blocked.md"}, wantExit: 0, goldenName: "transition-can-start-blocked.json"},
+		{name: "dry run start", fixture: "valid-next-with-blocked", args: []string{"transition", "start", "O01-work/T001-ready.md", "--dry-run"}, wantExit: 2, goldenName: "transition-start-dry-run.json"},
+		{name: "custom labels", fixture: "transition-custom-status", args: []string{"transition", "start", "O01-work/T001-ready.md", "--dry-run"}, wantExit: 2, goldenName: "transition-custom-status-start-dry-run.json"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -123,7 +124,7 @@ func TestTransitionJSONGoldens(t *testing.T) {
 			args = append(args, "--repo", fixture, "--output", "json")
 			var stdout, stderr bytes.Buffer
 			code := Execute(args, &stdout, &stderr, "dev")
-			testutil.AssertExit(t, code, 0, &stdout, &stderr)
+			testutil.AssertExit(t, code, tt.wantExit, &stdout, &stderr)
 			report := testutil.DecodeJSON(t, stdout.Bytes())
 			testutil.AssertNoBackslashes(t, report)
 			testutil.AssertGoldenJSON(t, testutil.GoldenPath(tt.goldenName), stdout.Bytes(), map[string]string{

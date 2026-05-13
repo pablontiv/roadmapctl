@@ -1,6 +1,6 @@
 ---
+estado: Completed
 tipo: task
-estado: Specified
 ---
 
 # T015 Fix transition start/complete: requerir --apply explícito

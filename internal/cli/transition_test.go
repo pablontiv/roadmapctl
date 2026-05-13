@@ -69,24 +69,31 @@ func TestTransitionCanStartBlockedTaskExplainsDependency(t *testing.T) {
 	}
 }
 
-func TestTransitionStartDryRunReadyTaskShowsExactUnappliedChange(t *testing.T) {
-	fixture := doctorFixturePath("valid-next-with-blocked")
-	trackedFile := filepath.Join(fixture, "docs", "roadmap", "O01-work", "T001-ready.md")
-	before, err := os.ReadFile(trackedFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestTransitionStartDryRunRequiresApply(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--dry-run", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--dry-run", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 2 {
+		t.Fatalf("transition exit = %d, want 2; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		Diagnostics []struct {
+			ID string `json:"id"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if len(report.Diagnostics) != 1 || report.Diagnostics[0].ID != "RMC_TRANSITION_APPLY_FAILED" {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
+func TestTransitionStartWithDryRunAndApplyAppliesChange(t *testing.T) {
+	repo := copyFixture(t, "valid-next-with-blocked")
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--dry-run", "--apply", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
-	}
-	after, err := os.ReadFile(trackedFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(before, after) {
-		t.Fatalf("dry-run modified fixture")
 	}
 	var report struct {
 		Allowed bool `json:"allowed"`
@@ -101,14 +108,14 @@ func TestTransitionStartDryRunReadyTaskShowsExactUnappliedChange(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
 		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
 	}
-	if !report.Allowed || len(report.Changes) != 1 || report.Changes[0].Before != "Pending" || report.Changes[0].After != "In Progress" || report.Changes[0].Applied {
+	if !report.Allowed || len(report.Changes) != 1 || report.Changes[0].Before != "Pending" || report.Changes[0].After != "In Progress" || !report.Changes[0].Applied {
 		t.Fatalf("report = %#v", report)
 	}
 }
 
 func TestTransitionStartDryRunBlockedTaskHasNoApplicableChanges(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"transition", "start", "O01-work/T002-blocked.md", "--dry-run", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"transition", "start", "O01-work/T002-blocked.md", "--dry-run", "--apply", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -265,6 +272,78 @@ func TestTransitionCanCompleteReadyTaskAllows(t *testing.T) {
 		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
 	}
 	if !report.Allowed || report.TargetStatus != "Completed" {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
+func TestTransitionStartRequiresApply(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 2 {
+		t.Fatalf("transition exit = %d, want 2; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		Diagnostics []struct {
+			ID string `json:"id"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if len(report.Diagnostics) != 1 || report.Diagnostics[0].ID != "RMC_TRANSITION_APPLY_FAILED" {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
+func TestTransitionCompleteRequiresApply(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"transition", "complete", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 2 {
+		t.Fatalf("transition exit = %d, want 2; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		Diagnostics []struct {
+			ID string `json:"id"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if len(report.Diagnostics) != 1 || report.Diagnostics[0].ID != "RMC_TRANSITION_APPLY_FAILED" {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
+func TestTransitionCanStartStillWorksWithoutApply(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"transition", "can-start", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		Allowed bool `json:"allowed"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if !report.Allowed {
+		t.Fatalf("report = %#v", report)
+	}
+}
+
+func TestTransitionCanCompleteStillWorksWithoutApply(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"transition", "can-complete", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("transition exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		Allowed bool `json:"allowed"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if !report.Allowed {
 		t.Fatalf("report = %#v", report)
 	}
 }
