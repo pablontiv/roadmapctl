@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -233,5 +234,15 @@ func TestBootstrapInitApplyReportsDiagnosticsOnFileError(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected RMC_BOOTSTRAP_APPLY_FAILED diagnostic, got %#v", report.Diagnostics)
+	}
+}
+
+func TestBootstrapApplyDiagnosticFormat(t *testing.T) {
+	diag := bootstrapApplyDiagnostic("/some/path", errors.New("permission denied"))
+	if diag.ID != "RMC_BOOTSTRAP_APPLY_FAILED" {
+		t.Fatalf("bootstrapApplyDiagnostic ID = %q, want RMC_BOOTSTRAP_APPLY_FAILED", diag.ID)
+	}
+	if diag.Path != "/some/path" {
+		t.Fatalf("bootstrapApplyDiagnostic Path = %q, want /some/path", diag.Path)
 	}
 }

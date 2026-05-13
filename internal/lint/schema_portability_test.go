@@ -143,3 +143,22 @@ func TestCheckFilenamePortabilityDetectsReservedName(t *testing.T) {
 	}
 	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintFilenameReserved, "CON.md", "CON")
 }
+
+func TestLintNameDiagnosticFormat(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "sub", "file.md")
+	diag := lintNameDiagnostic(diagnostics.DiagnosticLintFilenameReserved, root, path, "test message", "CON")
+	if diag.ID != diagnostics.DiagnosticLintFilenameReserved {
+		t.Fatalf("lintNameDiagnostic ID = %q, want %s", diag.ID, diagnostics.DiagnosticLintFilenameReserved)
+	}
+}
+
+func TestArrayValueStringSliceAndDefault(t *testing.T) {
+	got := arrayValue([]string{"a", "b"})
+	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Fatalf("arrayValue([]string) = %v, want [a b]", got)
+	}
+	if got := arrayValue(42); got != nil {
+		t.Fatalf("arrayValue(int) = %v, want nil", got)
+	}
+}
