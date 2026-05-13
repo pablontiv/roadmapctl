@@ -60,50 +60,21 @@ Si falta schema, `.stem`, `rootline`, permisos o estructura para crear archivos
 canónicos, detenerse. No usar `Write` directo para inventar una estructura
 alternativa.
 
-## Invariante de escritura segura
-
-Materializar implica delegar las escrituras canónicas a `roadmapctl`; el skill no escribe markdown del roadmap directamente ni arma dumps multi-file manuales.
-
-**Prohibido en una misma tool call del skill:**
-
-- `bash`/`sh` con múltiples `cat >`, heredocs multi-file o loops de escritura.
-- una sola llamada que genere `rootline new` para múltiples rutas.
-- `write`/`edit` directo para crear o reescribir archivos canónicos del roadmap.
-- cualquier escritura manual que cree/reescriba más de un archivo canónico del roadmap.
-
-Permitido: un único comando `roadmapctl materialize --plan <plan-json> --apply` o `roadmapctl materialize --changes <dry-run-json> --apply` puede aplicar múltiples archivos, porque `roadmapctl` valida el plan/change-set, ordena padres antes de hijos, reporta diagnostics por path, ejecuta validaciones y corre postcheck antes de éxito.
-
-En `/roadmap plan`:
-
-1. Guardar el plan aprobado en un archivo temporal (`plan_json`); no pegar JSON grande en el prompt o respuesta.
-2. Revisar siempre un dry-run determinístico guardado en archivo temporal (`dry_run_json`).
-3. Para la revisión normal, mostrar solo `summary`, `diagnostics`, y por cambio `path`, `operation`, `applied`, `preconditions`; no volcar `changes[].content` ni diffs completos salvo pedido explícito o troubleshooting puntual.
-4. Guardar el dry-run JSON como change-set congelado cuando se use `--changes`.
-5. Preferir batch apply owned by roadmapctl cuando `parallel = true`; usar `--target` granular solo para recuperación puntual, selección humana de un único archivo, o troubleshooting.
-6. Bootstrap explícito (`.` / `.stem` / `.roadmapctl.toml`) conserva su flujo canónico propio.
-
-## Materialización determinística
-
-La ruta primaria para crear archivos del roadmap es:
-
-```bash
-roadmapctl materialize --plan <plan-json> --dry-run --repo <repo-path> --roadmap-root <roadmap-root> --output json
-roadmapctl materialize --plan <plan-json> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
-```
-
-El skill no debe duplicar numbering, `rootline new`, writes, actualización de tablas ni escritura final de `blocked_by`; debe producir plan estructurado, revisar dry-run y delegar en `roadmapctl materialize`. El skill sí debe decidir si una relación es un hard blocker antes de serializarla como `blocked_by`.
-
 ## Auto-numbering
 
-El skill no calcula números `OXX`/`TXXX`. `roadmapctl materialize` asigna numbering determinístico y reporta las rutas propuestas en `changes[]` durante dry-run. Si el dry-run no produce rutas canónicas, detenerse y reportar diagnostics.
+El skill usa `rootline describe` para obtener numeración determinística:
 
-## Verificación de padre
+```bash
+# Retorna el siguiente O y T simultáneamente
+rootline describe <roadmap-root> --field schema.id.next_by_pattern --output json
+# → {"O*": "O14", "T*": "T014"}
 
-La verificación normal de padres, rutas, allowlist y orden de creación pertenece a `roadmapctl materialize --dry-run` y `--apply`. No ejecutar `rootline describe` como paso primario antes de crear archivos.
+# Retorna solo el siguiente T dentro de un outcome existente
+rootline describe <roadmap-root>/OXX-slug/ --field schema.id.next_by_pattern --output json
+# → {"T*": "T009"}
+```
 
-Si `roadmapctl materialize` reporta que falta un padre, schema, `.stem`, permisos o estructura, informar al usuario y no crear archivos fuera del roadmap.
-
-Excepción permitida: `plan-subcommand.md` puede crear `<roadmap-root>/` y `<roadmap-root>/.stem` solo mediante el bootstrap explícito gobernado por `roadmapctl bootstrap init`. Fuera de ese flujo, no crear directorios ad-hoc.
+Preferir `next_by_pattern` (mapa) sobre `next` (string) en schemas con múltiples patrones de secuencia. `next` es determinístico post-fix pero retorna solo el primer patrón alfabético que coincide con entries existentes.
 
 ## Cascading links
 
