@@ -105,7 +105,10 @@ Si `parallel == true`, formar waves oportunistas desde `ready[]` usando solo la 
 
 - Tasks en una misma wave no tienen dependencia explícita entre sí según `roadmapctl next`.
 - No inferir dependencias por heurísticas de paths, nombres o secciones; si aparece un conflicto real durante integración, tratarlo como dependencia faltante.
-- La ejecución paralela debe usar worktrees aislados o una ruta de integración equivalente con control de conflictos. Si no hay aislamiento/control seguro, ejecutar secuencialmente aunque `parallel == true`.
+
+Si `parallel == true`, ejecutar cada wave despachando llamadas paralelas al tool `Agent` — una por task de la wave. Las tasks de una wave son independientes por definición (`roadmapctl next` garantiza ausencia de `blocked_by` entre ellas), por lo que Agent calls paralelas sobre archivos distintos son la ruta correcta sin necesidad de worktrees.
+
+Si dos tasks de la misma wave producen conflicto al integrar, tratar como dependencia faltante según el modo de autonomía — no usar worktrees para forzar el merge.
 
 Conflictos por dependencia faltante:
 

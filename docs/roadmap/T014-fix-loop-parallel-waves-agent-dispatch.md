@@ -1,6 +1,6 @@
 ---
+estado: Completed
 tipo: task
-estado: Specified
 ---
 
 # T014 Fix loop parallel waves: Agent calls explícitas
