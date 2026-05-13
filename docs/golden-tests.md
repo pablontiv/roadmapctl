@@ -45,6 +45,11 @@ The CI coverage gate requires `./scripts/check-coverage.sh` to report ≥ 85.0%.
 The threshold is read from `docs/roadmap/.roadmapctl.toml` (`required_code_coverage`).
 Run the script locally before pushing to verify coverage is met.
 
+New tests for low-coverage areas live alongside the code they cover:
+`internal/cli/bootstrap_test.go` covers `bootstrapApplyDiagnostic`,
+`applyBootstrapChanges`, and `renderBootstrap`; `internal/fsx/path_test.go`
+covers symlink containment and prefix evaluation edge cases.
+
 ## Fake rootline in CI
 
 `TestMain` detects whether `rootline` is available via `exec.LookPath`. If not
