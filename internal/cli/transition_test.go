@@ -11,6 +11,7 @@ import (
 )
 
 func TestTransitionCanStartReadyTaskAllows(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "can-start", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
@@ -31,6 +32,7 @@ func TestTransitionCanStartReadyTaskAllows(t *testing.T) {
 }
 
 func TestTransitionCanStartAcceptsRepoRelativeTaskPath(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "can-start", "docs/roadmap/O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
@@ -49,6 +51,7 @@ func TestTransitionCanStartAcceptsRepoRelativeTaskPath(t *testing.T) {
 }
 
 func TestTransitionCanStartBlockedTaskExplainsDependency(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "can-start", "O01-work/T002-blocked.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
@@ -89,6 +92,7 @@ func TestTransitionStartDryRunRequiresApply(t *testing.T) {
 }
 
 func TestTransitionStartWithDryRunAndApplyAppliesChange(t *testing.T) {
+	requiresRealRootline(t)
 	repo := copyFixture(t, "valid-next-with-blocked")
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--dry-run", "--apply", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
@@ -114,6 +118,7 @@ func TestTransitionStartWithDryRunAndApplyAppliesChange(t *testing.T) {
 }
 
 func TestTransitionStartDryRunBlockedTaskHasNoApplicableChanges(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "start", "O01-work/T002-blocked.md", "--dry-run", "--apply", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
@@ -133,6 +138,7 @@ func TestTransitionStartDryRunBlockedTaskHasNoApplicableChanges(t *testing.T) {
 }
 
 func TestTransitionSetStatusDryRunMapsRole(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "set-status", "O01-work/T001-ready.md", "--status", "completed", "--dry-run", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
@@ -193,6 +199,7 @@ func TestTransitionSetStatusRequiresStatus(t *testing.T) {
 }
 
 func TestTransitionApplyChangesStatusInTempFixture(t *testing.T) {
+	requiresRealRootline(t)
 	repo := copyFixture(t, "valid-next-with-blocked")
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "start", "O01-work/T001-ready.md", "--apply", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
@@ -224,6 +231,7 @@ func TestTransitionApplyChangesStatusInTempFixture(t *testing.T) {
 }
 
 func TestTransitionApplyReportsPostcheckFailure(t *testing.T) {
+	requiresRealRootline(t)
 	repo := copyFixture(t, "valid-next-with-blocked")
 	if err := os.WriteFile(filepath.Join(repo, "docs", "roadmap", "bad-tasks.md"), []byte("# fallback tasks\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -259,6 +267,7 @@ func TestTransitionApplyReportsPostcheckFailure(t *testing.T) {
 }
 
 func TestTransitionCanCompleteReadyTaskAllows(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "can-complete", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
@@ -315,6 +324,7 @@ func TestTransitionCompleteRequiresApply(t *testing.T) {
 }
 
 func TestTransitionCanStartStillWorksWithoutApply(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "can-start", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
@@ -332,6 +342,7 @@ func TestTransitionCanStartStillWorksWithoutApply(t *testing.T) {
 }
 
 func TestTransitionCanCompleteStillWorksWithoutApply(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"transition", "can-complete", "O01-work/T001-ready.md", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {

@@ -7,6 +7,7 @@ import (
 )
 
 func TestDecisionJSONIncludesDeterministicReasons(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"decision", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {

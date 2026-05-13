@@ -12,6 +12,13 @@ import (
 	"github.com/pablontiv/roadmapctl/internal/testutil"
 )
 
+func requiresRealRootline(t *testing.T) {
+	t.Helper()
+	if os.Getenv("ROADMAPCTL_FAKE_ROOTLINE") == "1" {
+		t.Skip("skipping: requires real rootline")
+	}
+}
+
 func isCaseInsensitiveFS(t *testing.T) bool {
 	t.Helper()
 	dir := t.TempDir()
@@ -81,6 +88,13 @@ func TestCheckGoldenJSONFixtures(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Skip tests that require real rootline validation
+			switch tt.name {
+			case "invalid status bogus", "invalid stale outcome stem", "bare blocked_by",
+				"pending direct tasks", "pending outcome tasks", "next ready blocked",
+				"decision reverse dependencies", "can start ready", "can start blocked":
+				requiresRealRootline(t)
+			}
 			if tt.fixture == "lint-case-collision" && isCaseInsensitiveFS(t) {
 				t.Skip("skipping case collision test on case-insensitive filesystem")
 			}
@@ -119,6 +133,10 @@ func TestTransitionJSONGoldens(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// can start ready and can start blocked require real rootline validation
+			if tt.name == "can start ready" || tt.name == "can start blocked" {
+				requiresRealRootline(t)
+			}
 			fixture := testutil.FixturePath(t, tt.fixture)
 			args := append([]string{}, tt.args...)
 			args = append(args, "--repo", fixture, "--output", "json")
@@ -153,6 +171,8 @@ func TestReadOnlyTextGoldens(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// pending, next, decision commands require real rootline validation
+			requiresRealRootline(t)
 			var stdout, stderr bytes.Buffer
 			code := Execute([]string{tt.command, "--repo", testutil.FixturePath(t, tt.fixture), "--output", "text"}, &stdout, &stderr, "dev")
 			testutil.AssertExit(t, code, 0, &stdout, &stderr)

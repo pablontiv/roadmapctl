@@ -7,6 +7,7 @@ import (
 )
 
 func TestPendingJSONListsOnlyNotDoneTasks(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"pending", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
@@ -49,6 +50,7 @@ func TestPendingJSONListsOnlyNotDoneTasks(t *testing.T) {
 }
 
 func TestPendingWorkspaceGroupsByRepo(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"pending", "--workspace", "--repo", doctorFixturePath("valid-workspace"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {

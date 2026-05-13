@@ -7,6 +7,7 @@ import (
 )
 
 func TestCheckInvalidCycleExitsValidation(t *testing.T) {
+	requiresRealRootline(t)
 	code, report, stderr := runCheckJSON(t, "invalid-cycle")
 	if code != 1 {
 		t.Fatalf("check exit = %d, want 1; stderr=%q report=%#v", code, stderr, report)
@@ -15,6 +16,7 @@ func TestCheckInvalidCycleExitsValidation(t *testing.T) {
 }
 
 func TestCheckBrokenBlockedByExitsValidation(t *testing.T) {
+	requiresRealRootline(t)
 	code, report, stderr := runCheckJSON(t, "invalid-broken-blocked-by")
 	if code != 1 {
 		t.Fatalf("check exit = %d, want 1; stderr=%q report=%#v", code, stderr, report)
@@ -23,6 +25,7 @@ func TestCheckBrokenBlockedByExitsValidation(t *testing.T) {
 }
 
 func TestCheckStatusMismatchExitsValidation(t *testing.T) {
+	requiresRealRootline(t)
 	code, report, stderr := runCheckJSON(t, "invalid-status-mismatch")
 	if code != 1 {
 		t.Fatalf("check exit = %d, want 1; stderr=%q report=%#v", code, stderr, report)

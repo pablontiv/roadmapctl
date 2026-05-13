@@ -12,6 +12,7 @@ import (
 func TestCheckAndLintReportStaleOutcomeEstadoStem(t *testing.T) {
 	for _, command := range []string{"check", "lint"} {
 		t.Run(command, func(t *testing.T) {
+			requiresRealRootline(t)
 			fixture := copyFixture(t, "valid-outcome-with-tasks")
 			writeStaleOutcomeEstadoStem(t, fixture)
 
@@ -26,6 +27,7 @@ func TestCheckAndLintReportStaleOutcomeEstadoStem(t *testing.T) {
 }
 
 func TestDoctorReportsStaleOutcomeEstadoStem(t *testing.T) {
+	requiresRealRootline(t)
 	fixture := copyFixture(t, "valid-outcome-with-tasks")
 	writeStaleOutcomeEstadoStem(t, fixture)
 
@@ -37,6 +39,7 @@ func TestDoctorReportsStaleOutcomeEstadoStem(t *testing.T) {
 }
 
 func TestBootstrapInitApplyBlocksStaleStemBeforeWritingAdjacentFiles(t *testing.T) {
+	requiresRealRootline(t)
 	repo := t.TempDir()
 	initGitRepo(t, repo)
 	roadmapRoot := filepath.Join(repo, "docs", "roadmap")

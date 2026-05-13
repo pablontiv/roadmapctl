@@ -7,6 +7,7 @@ import (
 )
 
 func TestNextJSONSeparatesReadyAndBlockedTasks(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"next", "--repo", doctorFixturePath("valid-next-with-blocked"), "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
@@ -44,6 +45,7 @@ func TestNextJSONSeparatesReadyAndBlockedTasks(t *testing.T) {
 }
 
 func TestNextLimitRestrictsReadyTasks(t *testing.T) {
+	requiresRealRootline(t)
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"next", "--repo", doctorFixturePath("valid-outcome-with-tasks"), "--limit", "1", "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
