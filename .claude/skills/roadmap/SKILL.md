@@ -260,6 +260,8 @@ PI_SKIP_VERSION_CHECK=1 pi --no-extensions --skill .claude/skills/roadmap/SKILL.
 
 La evidencia debe mostrar que `roadmapctl doctor` y `roadmapctl check` fueron requeridos y pasaron antes de loop/materialización, sin modificar archivos.
 
+Antes de hacer push, `golangci-lint run ./...` debe reportar 0 issues (CI lint gate).
+
 ## Routing por subcomando
 
 Después del bootstrap:
