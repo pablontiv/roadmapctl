@@ -30,12 +30,10 @@ func ResolveInside(root string, candidate string) (string, string, error) {
 		return "", "", fmt.Errorf("%w: %s", ErrAbsolutePath, candidate)
 	}
 
-	var target string
 	if strings.HasPrefix(normalized, "/") {
-		target = filepath.Clean(filepath.FromSlash(normalized))
-	} else {
-		target = filepath.Join(absRoot, filepath.FromSlash(normalized))
+		return "", "", fmt.Errorf("%w: %s", ErrPathEscape, candidate)
 	}
+	target := filepath.Join(absRoot, filepath.FromSlash(normalized))
 
 	rel, err := containedRel(absRoot, target)
 	if err != nil {

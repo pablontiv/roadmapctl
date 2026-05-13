@@ -3,6 +3,7 @@ package lint
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
@@ -96,4 +97,49 @@ func TestCheckOutcomeSchemaCompatibilityReportsGlobalEstadoNonEmptyValidate(t *t
 	}
 	found := CheckOutcomeSchemaCompatibility(describe)
 	assertLintDiagnostic(t, found, "RMC_LINT_SCHEMA_OUTCOME_ESTADO_NON_EMPTY", ".stem", "validate.estado.non_empty")
+}
+
+func TestCheckFilenamePortabilityNoIssuesOnCleanDir(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"T001-task.md", "T002-feature.md"} {
+		if err := os.WriteFile(filepath.Join(root, name), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	found, err := CheckFilenamePortability(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found) != 0 {
+		t.Fatalf("expected no diagnostics, got %v", found)
+	}
+}
+
+func TestReservedWindowsNameDetectsAndIgnores(t *testing.T) {
+	if got := reservedWindowsName("CON.md"); got != "CON" {
+		t.Fatalf("reservedWindowsName(CON.md) = %q, want CON", got)
+	}
+	if got := reservedWindowsName("T001-task.md"); got != "" {
+		t.Fatalf("reservedWindowsName(T001-task.md) = %q, want empty", got)
+	}
+	if got := reservedWindowsName("NUL"); got != "NUL" {
+		t.Fatalf("reservedWindowsName(NUL) = %q, want NUL", got)
+	}
+}
+
+func TestCheckFilenamePortabilityDetectsReservedName(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("cannot create files named CON on Windows")
+	}
+	root := t.TempDir()
+	for _, name := range []string{"CON.md", "T001-task.md"} {
+		if err := os.WriteFile(filepath.Join(root, name), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	found, err := CheckFilenamePortability(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintFilenameReserved, "CON.md", "CON")
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -188,6 +189,9 @@ func TestBootstrapInspectTextOutput(t *testing.T) {
 }
 
 func TestBootstrapInitApplyReportsDiagnosticsOnFileError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0o555 does not prevent directory creation on Windows")
+	}
 	// Create a repo with a directory where a file should be written
 	repo := t.TempDir()
 	initGitRepo(t, repo)
@@ -200,10 +204,10 @@ func TestBootstrapInitApplyReportsDiagnosticsOnFileError(t *testing.T) {
 	}
 
 	// Make it read-only so we can't create subdirs
-	if err := os.Chmod(roadmapPath, 0o555); err != nil {
+	if err := os.Chmod(roadmapPath, 0o555); err != nil { //nolint:gosec
 		t.Fatal(err)
 	}
-	defer os.Chmod(roadmapPath, 0o755) // restore for cleanup
+	defer func() { _ = os.Chmod(roadmapPath, 0o755) }() //nolint:gosec // restore for cleanup
 
 	var stdout, stderr bytes.Buffer
 	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
