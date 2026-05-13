@@ -139,3 +139,7 @@ Estos comandos son solo para inspección de bajo nivel, troubleshooting o repara
 | `rootline graph <path> --where "expr" --check` | Inspección legacy de dependencias, no readiness/blockers del skill |
 
 No usar `rootline stats`; `tree` ya incluye conteos. No postprocesar JSON crudo de Rootline para reconstruir lógica que pertenece a `roadmapctl`.
+
+## Workspace context — fixture .git dirs
+
+Los tests de workspace context requieren directorios `.git` en los fixtures. Git no rastrea directorios vacíos ni archivos dentro de un path component llamado `.git`. `TestMain` en `internal/cli/golden_test.go` los crea con `os.MkdirAll` al arrancar los tests. No agregar `.gitkeep` dentro de esos directorios.

@@ -29,3 +29,12 @@ materialize/fix roadmap files during tests.
 reports should remain identical; `--strict` changes only the process exit code.
 Lint fixtures under `testdata/fixtures/lint-*` are read-only and cover valid,
 warning, and error severities.
+
+## Workspace fixtures
+
+Workspace context tests require `.git` directories inside
+`testdata/fixtures/valid-workspace/` and `testdata/fixtures/invalid-workspace-*/`.
+Git does not track empty directories and refuses to track files inside a path
+component named `.git`, so `TestMain` in `internal/cli/golden_test.go` creates
+these directories at test startup via `os.MkdirAll`. Do not attempt to commit
+`.gitkeep` files inside those directories.
