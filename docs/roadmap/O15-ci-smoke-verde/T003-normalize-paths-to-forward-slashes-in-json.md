@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T003: Normalizar Root y RoadmapRoot a forward slashes en JSON

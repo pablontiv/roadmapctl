@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
 )
 
 const (
@@ -104,8 +105,8 @@ func NewReport(kind string, root string, roadmapRoot string, diagnostics []Diagn
 		Version:     1,
 		Kind:        kind,
 		Summary:     summarize(copied),
-		Root:        root,
-		RoadmapRoot: roadmapRoot,
+		Root:        filepath.ToSlash(root),
+		RoadmapRoot: filepath.ToSlash(roadmapRoot),
 		Diagnostics: copied,
 	}
 }
