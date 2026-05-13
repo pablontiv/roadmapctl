@@ -72,7 +72,6 @@ func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int, version s
 	cmd.AddCommand(newNextCommand(&options, stdout, stderr, exitCode))
 	cmd.AddCommand(newDecisionCommand(&options, stdout, stderr, exitCode))
 	cmd.AddCommand(newTransitionCommand(&options, stdout, stderr, exitCode))
-	cmd.AddCommand(newMaterializeCommand(&options, stdout, stderr, exitCode))
 	cmd.AddCommand(newBootstrapCommand(&options, stdout, stderr, exitCode))
 	return cmd
 }

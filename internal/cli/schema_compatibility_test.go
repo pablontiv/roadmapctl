@@ -55,23 +55,6 @@ func TestBootstrapInitApplyBlocksStaleStemBeforeWritingAdjacentFiles(t *testing.
 	}
 }
 
-func TestMaterializeApplyBlocksStaleStemBeforeWritingPlannedFiles(t *testing.T) {
-	fixture := copyFixture(t, "valid-outcome-with-tasks")
-	writeStaleOutcomeEstadoStem(t, fixture)
-	before := listRoadmapFiles(t, fixture)
-	plan := filepath.Join("..", "..", "testdata", "plans", "outcome-and-direct.json")
-
-	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"materialize", "--plan", plan, "--apply", "--repo", fixture, "--output", "json"}, &stdout, &stderr, "dev")
-	testutil.AssertExit(t, code, 1, &stdout, &stderr)
-	report := testutil.DecodeJSON(t, stdout.Bytes())
-	testutil.RequireDiagnosticID(t, report, "RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED")
-	after := listRoadmapFiles(t, fixture)
-	if before != after {
-		t.Fatalf("materialize wrote files despite stale stem\nbefore:\n%s\nafter:\n%s", before, after)
-	}
-}
-
 func writeStaleOutcomeEstadoStem(t *testing.T, repo string) {
 	t.Helper()
 	writeStaleStemFile(t, filepath.Join(repo, "docs", "roadmap", ".stem"))

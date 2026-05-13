@@ -21,7 +21,11 @@ const (
 
 type Diagnostic = diagnostics.Diagnostic
 
-var blockedByLinkPattern = regexp.MustCompile(`\[\[blocked_by:([^\]]+)\]\]`)
+var (
+	blockedByLinkPattern = regexp.MustCompile(`\[\[blocked_by:([^\]]+)\]\]`)
+	outcomeNamePattern   = regexp.MustCompile(`^(O[0-9]{2})-.+`)
+	taskNamePattern      = regexp.MustCompile(`^(T[0-9]{3})-.+\.md$`)
+)
 
 func CheckStructure(roadmapRoot string) ([]Diagnostic, error) {
 	root := filepath.Clean(roadmapRoot)
@@ -239,4 +243,22 @@ func relPath(root string, path string) string {
 		return filepath.ToSlash(filepath.Clean(path))
 	}
 	return filepath.ToSlash(rel)
+}
+
+// OutcomeID extracts the numeric ID from an outcome directory name (e.g., "O01-slug" -> "O01").
+func OutcomeID(name string) (string, bool) {
+	matches := outcomeNamePattern.FindStringSubmatch(name)
+	if len(matches) != 2 {
+		return "", false
+	}
+	return matches[1], true
+}
+
+// TaskID extracts the numeric ID from a task filename (e.g., "T001-slug.md" -> "T001").
+func TaskID(name string) (string, bool) {
+	matches := taskNamePattern.FindStringSubmatch(name)
+	if len(matches) != 2 {
+		return "", false
+	}
+	return matches[1], true
 }

@@ -15,7 +15,7 @@ func TestHelpListsImplementedCommands(t *testing.T) {
 		t.Fatalf("Execute(--help) exit = %d, want 0; stderr=%q", code, stderr.String())
 	}
 	out := stdout.String()
-	for _, want := range []string{"roadmapctl", "doctor", "check", "materialize", "--output", "--repo"} {
+	for _, want := range []string{"roadmapctl", "doctor", "check", "--output", "--repo"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("help output missing %q:\n%s", want, out)
 		}
