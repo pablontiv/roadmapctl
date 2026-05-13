@@ -55,7 +55,7 @@ roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json 
 
 Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de seleccionar o ejecutar tasks. Reportar comando, exit code y diagnostic IDs si hubo JSON. No ejecutar tasks ni mutar estados.
 
-Nota CI: `go test ./...` funciona sin rootline instalado — `TestMain` activa el fake rootline automáticamente cuando `exec.LookPath("rootline")` falla. La cobertura se verifica con `./scripts/check-coverage.sh` (umbral: 85.0%).
+Nota CI: `go test ./...` funciona sin rootline instalado — `TestMain` activa el fake rootline automáticamente cuando `exec.LookPath("rootline")` falla (`ROADMAPCTL_FAKE_ROOTLINE=1`). El fake `describe` retorna el envelope completo `rootline/describe` (versión 1, schema, links, validate[]). Tests que requieren rootline real deben llamar `requiresRealRootline(t)` para saltearse automáticamente. La cobertura se verifica con `./scripts/check-coverage.sh` (umbral: 85.0%).
 
 1. Obtener estado determinístico de ejecución:
    ```bash

@@ -51,4 +51,13 @@ Run the script locally before pushing to verify coverage is met.
 found (e.g., in CI), it activates the built-in fake rootline by setting
 `ROADMAPCTL_FAKE_ROOTLINE=1` and `ROOTLINE_BIN=os.Args[0]`. The fake responds
 with stub JSON to `validate`, `describe`, `query`, `graph`, `tree`, `set`, and
-`new`. Tests that require the real rootline must be skipped or guarded externally.
+`new`. Tests that require the real rootline must call `requiresRealRootline(t)`
+at the start of the test or subtest to skip automatically when the fake is active.
+
+The fake `describe` command returns the complete `rootline/describe` envelope
+(version 1, schema with `estado` and `tipo` fields, `links.rules.blocked_by`,
+and `validate: []`) so that `CheckSchemaCompatibility` and
+`CheckOutcomeSchemaCompatibility` work correctly without a real rootline binary.
+
+`Diagnostic.Path` values are normalized to forward slashes in `NewReport()` so
+golden JSON files remain platform-independent across Linux, macOS, and Windows.
