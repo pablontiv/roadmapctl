@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
@@ -29,8 +30,12 @@ type Options struct {
 }
 
 func Execute(args []string, stdout io.Writer, stderr io.Writer, version string) int {
+	return ExecuteWithStdin(args, os.Stdin, stdout, stderr, version)
+}
+
+func ExecuteWithStdin(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, version string) int {
 	exitCode := ExitOK
-	cmd := newRootCommand(stdout, stderr, &exitCode, version)
+	cmd := newRootCommand(stdin, stdout, stderr, &exitCode, version)
 	cmd.SetArgs(args)
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintln(stderr, err)
@@ -39,7 +44,7 @@ func Execute(args []string, stdout io.Writer, stderr io.Writer, version string) 
 	return exitCode
 }
 
-func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int, version string) *cobra.Command {
+func newRootCommand(stdin io.Reader, stdout io.Writer, stderr io.Writer, exitCode *int, version string) *cobra.Command {
 	options := Options{Repo: ".", Output: "text", Timeout: 10 * time.Second}
 	cmd := &cobra.Command{
 		Use:           "roadmapctl",
@@ -71,7 +76,7 @@ func newRootCommand(stdout io.Writer, stderr io.Writer, exitCode *int, version s
 	cmd.AddCommand(newNextCommand(&options, stdout, stderr, exitCode))
 	cmd.AddCommand(newDecisionCommand(&options, stdout, stderr, exitCode))
 	cmd.AddCommand(newTransitionCommand(&options, stdout, stderr, exitCode))
-	cmd.AddCommand(newBootstrapCommand(&options, stdout, stderr, exitCode))
+	cmd.AddCommand(newBootstrapCommand(&options, stdin, stdout, stderr, exitCode))
 	return cmd
 }
 

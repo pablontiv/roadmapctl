@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -68,7 +69,8 @@ type bootstrapConfigReport struct {
 	Diagnostics            []diagnostics.Diagnostic `json:"diagnostics"`
 }
 
-func newBootstrapCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
+func newBootstrapCommand(options *Options, stdin io.Reader, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
+	var yes bool
 	cmd := &cobra.Command{
 		Use:           "bootstrap",
 		Short:         "Inspect or initialize roadmap bootstrap files, or show effective bootstrap context configuration.",
@@ -76,12 +78,25 @@ func newBootstrapCommand(options *Options, stdout io.Writer, stderr io.Writer, e
 		SilenceErrors: true,
 		Args:          cobra.MaximumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// When called without subcommand, perform idempotent bootstrap and return config
-			report := buildBootstrapConfig(context.Background(), *options)
+			ctx := context.Background()
+			report := buildBootstrapConfig(ctx, *options)
+			if hasRepairTriggerDiagnostics(report.Diagnostics) {
+				root, roadmapRoot, _ := bootstrapRoots(*options)
+				if root != "" && roadmapRoot != "" {
+					applied, extraDiags := repairStemIfNeeded(ctx, *options, root, roadmapRoot, yes, stdin, stderr)
+					if applied {
+						report = buildBootstrapConfig(ctx, *options)
+					} else {
+						report.Diagnostics = append(report.Diagnostics, extraDiags...)
+						report.Summary = diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics).Summary
+					}
+				}
+			}
 			*exitCode = renderBootstrapConfig(report, options.Output, stdout, stderr)
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&yes, "yes", false, "apply .stem repair without interactive prompt")
 	cmd.AddCommand(newBootstrapInspectCommand(options, stdout, stderr, exitCode))
 	cmd.AddCommand(newBootstrapInitCommand(options, stdout, stderr, exitCode))
 	return cmd
@@ -259,6 +274,7 @@ func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigR
 		}
 	}
 
+	found = append(found, bootstrapSchemaCompatibilityDiagnostics(ctx, options, cfg.RepoRoot, cfg.RoadmapRoot)...)
 	return newBootstrapConfigReport(cfg.RepoRoot, cfg.RoadmapRoot, relToRoot(cfg.RepoRoot, cfg.ConfigPath), configSource(cfg), rootlineVersion, cfg, found)
 }
 
@@ -329,6 +345,97 @@ func renderBootstrap(report bootstrapReport, output string, stdout io.Writer, st
 		fmt.Fprintf(stdout, "%s\nstatus: %s\nmissing: %d\nchanges: %d\n", report.Kind, report.Summary.Status, len(report.Missing), len(report.Changes))
 	}
 	return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), false)
+}
+
+func hasRepairTriggerDiagnostics(diags []diagnostics.Diagnostic) bool {
+	for _, d := range diags {
+		if d.ID == diagnostics.DiagnosticLintSchemaOutcomeEstadoRequired ||
+			d.ID == diagnostics.DiagnosticLintSchemaOutcomeEstadoNonEmpty {
+			return true
+		}
+	}
+	return false
+}
+
+func repairStemIfNeeded(ctx context.Context, options Options, root string, roadmapRoot string, yes bool, stdin io.Reader, stderr io.Writer) (applied bool, extraDiags []diagnostics.Diagnostic) {
+	stemPath := filepath.Join(roadmapRoot, ".stem")
+	content, err := os.ReadFile(stemPath)
+	if err != nil {
+		return false, nil
+	}
+
+	if !isStemRecognizedLegacy(string(content)) {
+		return false, []diagnostics.Diagnostic{{
+			ID:       diagnostics.DiagnosticBootstrapRepairUnsupportedStem,
+			Severity: diagnostics.SeverityError,
+			Message:  ".stem has unrecognized custom fields; automatic repair is not supported",
+			Path:     ".stem",
+			ExitCode: diagnostics.ExitValidation,
+		}}
+	}
+
+	fmt.Fprintf(stderr, "\nBootstrap: .stem schema is incompatible (estado required for outcomes).\n\n")
+	fmt.Fprintf(stderr, "--- current .stem\n%s\n+++ canonical .stem\n%s\n", string(content), templates.BaseStemContent)
+
+	if !yes {
+		fmt.Fprintf(stderr, "Update .stem to canonical schema? [y/N]: ")
+		reader := bufio.NewReader(stdin)
+		answer, _ := reader.ReadString('\n')
+		if !strings.EqualFold(strings.TrimSpace(answer), "y") {
+			return false, nil
+		}
+	}
+
+	if err := os.WriteFile(stemPath, []byte(templates.BaseStemContent), 0o644); err != nil {
+		return false, []diagnostics.Diagnostic{bootstrapApplyDiagnostic(relToRoot(root, stemPath), err)}
+	}
+
+	postOptions := options
+	postOptions.Repo = root
+	postOptions.RoadmapRoot = relToRoot(root, roadmapRoot)
+	postcheck := runCheck(ctx, postOptions)
+	if len(postcheck.Diagnostics) > 0 {
+		return true, postcheck.Diagnostics
+	}
+	return true, nil
+}
+
+// isStemRecognizedLegacy returns true if the stem content only contains the known
+// top-level keys and known schema fields, so automatic repair is safe.
+func isStemRecognizedLegacy(content string) bool {
+	knownTopLevel := map[string]bool{"version": true, "scope": true, "schema": true, "links": true, "validate": true}
+	knownSchemaFields := map[string]bool{"estado": true, "tipo": true, "id": true}
+	inSchema := false
+
+	for _, rawLine := range strings.Split(content, "\n") {
+		line := strings.TrimRight(rawLine, "\r")
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		// Top-level key (no leading whitespace)
+		if len(line) > 0 && line[0] != ' ' && line[0] != '\t' {
+			inSchema = false
+			parts := strings.SplitN(trimmed, ":", 2)
+			key := parts[0]
+			if !knownTopLevel[key] {
+				return false
+			}
+			if key == "schema" {
+				inSchema = true
+			}
+			continue
+		}
+		// Inside schema: check for field names at exactly one level of indentation (2 spaces)
+		if inSchema && strings.HasPrefix(line, "  ") && !strings.HasPrefix(line, "   ") {
+			parts := strings.SplitN(trimmed, ":", 2)
+			key := parts[0]
+			if key != "" && !knownSchemaFields[key] {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // Helper functions (previously in context.go)

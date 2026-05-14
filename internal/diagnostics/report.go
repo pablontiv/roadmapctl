@@ -61,6 +61,10 @@ const (
 )
 
 const (
+	DiagnosticBootstrapRepairUnsupportedStem = "RMC_BOOTSTRAP_REPAIR_UNSUPPORTED_STEM"
+)
+
+const (
 	DiagnosticMaterializeInputVersionUnsupported   = "RMC_MATERIALIZE_INPUT_VERSION_UNSUPPORTED"
 	DiagnosticMaterializeInputKindInvalid          = "RMC_MATERIALIZE_INPUT_KIND_INVALID"
 	DiagnosticMaterializeInputEmpty                = "RMC_MATERIALIZE_INPUT_EMPTY"
