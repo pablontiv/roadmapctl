@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: task
 ---
 # T010: Create CHANGELOG.md

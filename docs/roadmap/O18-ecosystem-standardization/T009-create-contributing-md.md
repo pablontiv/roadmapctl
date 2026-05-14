@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: task
 ---
 # T009: Create CONTRIBUTING.md

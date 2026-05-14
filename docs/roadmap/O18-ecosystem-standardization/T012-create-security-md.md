@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: task
 ---
 # T012: Create SECURITY.md

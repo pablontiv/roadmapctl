@@ -1,5 +1,5 @@
 ---
-estado: Pending
+estado: Completed
 tipo: task
 ---
 # T014: Add GitHub PR template and issue templates

@@ -1,10 +1,28 @@
 # roadmapctl
 
+[![CI](https://github.com/pablontiv/roadmapctl/actions/workflows/ci.yml/badge.svg)](https://github.com/pablontiv/roadmapctl/actions/workflows/ci.yml)
+[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![License: PolyForm NC](https://img.shields.io/badge/License-PolyForm%20NC-blue.svg)](LICENSE)
+
 Companion CLI for Rootline-governed roadmaps.
 
 `roadmapctl` owns roadmap-specific guardrails and workflows while `rootline` remains the generic file-based database and constraint engine.
 
-## Layer responsibilities
+---
+
+## Table of Contents
+
+- [Layer Responsibilities](#layer-responsibilities)
+- [Installation](#installation)
+- [Commands](#commands)
+- [Skill Source](#skill-source)
+- [Development](#development)
+- [Documentation](#documentation)
+- [License](#license)
+
+---
+
+## Layer Responsibilities
 
 `roadmapctl` is intentionally a deterministic governance layer for roadmaps that are stored as Rootline-governed Markdown. Each layer has a separate responsibility:
 
@@ -26,40 +44,7 @@ User / agent
   -> Markdown + .stem + links + filesystem
 ```
 
-## Skill source
-
-This repository is the canonical home for the `/roadmap` skill:
-
-```text
-.claude/skills/roadmap/
-```
-
-The git hooks in `.githooks/pre-push` and `.githooks/post-merge` keep the
-user-scope tools current:
-
-```text
-~/.claude/skills/roadmap
-/usr/local/bin/roadmapctl   # override with ROADMAPCTL_BIN
-```
-
-The hooks delegate to explicit install/sync scripts. Skill sync only replaces the
-`roadmap` skill folder and does not touch any other user-scope skills:
-
-```bash
-git config core.hooksPath .githooks
-scripts/install-user.sh
-scripts/sync-roadmap-skill.sh --check
-```
-
-## Commands
-
-Implemented command families:
-
-- Guards: `doctor`, `check`, `lint`
-- Read-only state: `context`, `pending`, `next`, `decision`
-- Controlled mutation: `transition`, `materialize`, `bootstrap`
-
-The public CLI contract is documented in [docs/cli-contract.md](docs/cli-contract.md). Implemented `/roadmap` commands that write, mutate, execute tasks, or claim roadmap validity must use `roadmapctl` as a blocking guard. Skill integration details live in [docs/roadmap-skill-integration.md](docs/roadmap-skill-integration.md).
+---
 
 ## Installation
 
@@ -81,7 +66,68 @@ irm https://raw.githubusercontent.com/pablontiv/roadmapctl/master/install.ps1 | 
 go install github.com/pablontiv/roadmapctl/cmd/roadmapctl@latest
 ```
 
-`roadmapctl` expects a compatible `rootline` binary via `--rootline`, `ROOTLINE_BIN`, or `PATH`. See [docs/release.md](docs/release.md) for the release outline and compatibility notes.
+`roadmapctl` expects a compatible `rootline` binary via `--rootline`, `ROOTLINE_BIN`, or `PATH`. See [docs/release.md](docs/release.md) for compatibility notes.
+
+---
+
+## Commands
+
+Implemented command families:
+
+| Family | Commands | Purpose |
+|--------|----------|---------|
+| Guards | `doctor`, `check`, `lint` | Validate environment and roadmap before writes |
+| Read-only state | `context`, `pending`, `next`, `decision` | Query roadmap state without mutation |
+| Controlled mutation | `transition`, `materialize`, `bootstrap` | Safe, guarded roadmap state transitions |
+
+### Quick Reference
+
+```bash
+# Check environment and config
+roadmapctl doctor --repo <path>
+
+# Validate roadmap against schema
+roadmapctl check --repo <path> --strict
+
+# List pending tasks
+roadmapctl pending --repo <path>
+
+# Start a task (In Progress)
+roadmapctl transition start <task.md> --repo <path> --apply
+
+# Complete a task
+roadmapctl transition complete <task.md> --repo <path> --apply
+
+# Bootstrap config for a new repo
+roadmapctl bootstrap --repo <path> --output json
+```
+
+The public CLI contract is documented in [docs/cli-contract.md](docs/cli-contract.md). Skill integration details live in [docs/roadmap-skill-integration.md](docs/roadmap-skill-integration.md).
+
+---
+
+## Skill Source
+
+This repository is the canonical home for the `/roadmap` Claude Code skill:
+
+```text
+.claude/skills/roadmap/
+```
+
+The git hooks in `.githooks/pre-push` and `.githooks/post-merge` keep the user-scope tools current:
+
+```text
+~/.claude/skills/roadmap
+/usr/local/bin/roadmapctl   # override with ROADMAPCTL_BIN
+```
+
+```bash
+git config core.hooksPath .githooks
+scripts/install-user.sh
+scripts/sync-roadmap-skill.sh --check
+```
+
+---
 
 ## Development
 
@@ -93,6 +139,23 @@ golangci-lint run ./...   # CI lint gate (golangci-lint v2 required)
 
 Non-goals:
 
-- no roadmap decomposition intelligence;
-- no automatic fixing;
-- no roadmap subcommands inside `rootline`.
+- no roadmap decomposition intelligence
+- no automatic fixing
+- no roadmap subcommands inside `rootline`
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
+
+---
+
+## Documentation
+
+- [docs/cli-contract.md](docs/cli-contract.md) — Public CLI contract (commands, flags, exit codes)
+- [docs/roadmap-skill-integration.md](docs/roadmap-skill-integration.md) — Skill integration guide
+- [docs/release.md](docs/release.md) — Release outline and compatibility notes
+- [docs/roadmap/](docs/roadmap/) — Project roadmap
+
+---
+
+## License
+
+[PolyForm Noncommercial License 1.0.0](LICENSE) — free for personal and noncommercial use.
