@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T018: Merge del bump setup-go 6.3→6.4 (PR #1)
