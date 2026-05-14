@@ -394,6 +394,46 @@ Severity policy:
 - `error`: deterministic portability or schema problem that can break roadmapctl operation or supported filesystems.
 - `lint` must not reclassify MVP `RMC_STRUCTURE_*`, `RMC_GRAPH_*`, `RMC_ROOTLINE_*`, or `RMC_STATUS_*` diagnostics without compatibility notes.
 
+## `bootstrap` repair path
+
+When `roadmapctl bootstrap` is invoked as the default command (not `inspect` or `init`), it detects schema compatibility issues and offers to repair them interactively.
+
+### Trigger diagnostics
+
+If the effective schema produces any of the following diagnostics, the repair path activates:
+
+| Diagnostic ID | Meaning |
+|---------------|---------|
+| `RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED` | `.stem` requires `estado` for `O*` records; outcome README files must be able to omit it. |
+| `RMC_LINT_SCHEMA_OUTCOME_ESTADO_NON_EMPTY` | `.stem` has a global `validate estado non_empty` rule; outcome README files must be able to omit `estado`. |
+
+### Repair behavior
+
+1. `bootstrap` reads the current `.stem` and verifies it matches the known legacy template (only `estado`, `tipo`, `id` schema fields and standard top-level keys). If unrecognized custom fields are present, it emits `RMC_BOOTSTRAP_REPAIR_UNSUPPORTED_STEM` and exits without modifying anything.
+2. If recognized, it shows a before/after diff on `stderr` and prompts: `Update .stem to canonical schema? [y/N]`.
+3. On confirmation, it writes the canonical `.stem` (equivalent to `templates.BaseStemContent`) and runs `check --strict` internally to verify the repair.
+4. On rejection, the blocking diagnostics remain and the exit code is non-zero.
+
+### `--yes` flag
+
+```bash
+roadmapctl bootstrap --repo <path> --roadmap-root <root> --yes
+```
+
+Skips the interactive prompt and applies the repair directly. Use this in autonomous agents and CI scripts.
+
+### Repair diagnostics
+
+| Diagnostic ID | Severity | Meaning |
+|---------------|----------|---------|
+| `RMC_BOOTSTRAP_REPAIR_UNSUPPORTED_STEM` | error | `.stem` has unrecognized custom fields; automatic repair is not supported. |
+
+### Invariants
+
+- `roadmapctl doctor` and `roadmapctl check` remain strictly read-only; they never trigger the repair.
+- The repair only writes `<roadmap-root>/.stem`; it never touches outcomes, tasks, or `.roadmapctl.toml`.
+- After repair, `check --strict` must pass before `bootstrap` reports success.
+
 ## Transition controller contract
 
 ## Transition controller contract

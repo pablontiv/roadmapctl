@@ -82,6 +82,15 @@ roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json 
 
 Si cualquier comando sale non-zero: detenerse, reportar exit code y diagnostics. No crear archivos.
 
+> **Stem legacy:** Si `doctor`/`check` falla con `RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED` o
+> `RMC_LINT_SCHEMA_OUTCOME_ESTADO_NON_EMPTY`, ejecutar:
+> ```bash
+> roadmapctl bootstrap --repo <repo-path> --roadmap-root <roadmap-root> --yes
+> ```
+> y reintentar el preflight. En modo autónomo (`--yes`) la reparación aplica sin prompt.
+> Si el `.stem` tiene campos custom no reconocidos, bootstrap emite `RMC_BOOTSTRAP_REPAIR_UNSUPPORTED_STEM`
+> y no modifica nada — escalar al usuario en ese caso.
+
 **3.3 Escritura en paralelo**
 
 Crear directorios padre si aplican, luego escribir con Write tool en paralelo:
