@@ -86,6 +86,10 @@ func newBootstrapCommand(options *Options, stdin io.Reader, stdout io.Writer, st
 					applied, extraDiags := repairStemIfNeeded(ctx, *options, root, roadmapRoot, yes, stdin, stderr)
 					if applied {
 						report = buildBootstrapConfig(ctx, *options)
+						if len(extraDiags) > 0 {
+							report.Diagnostics = append(report.Diagnostics, extraDiags...)
+							report.Summary = diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics).Summary
+						}
 					} else {
 						report.Diagnostics = append(report.Diagnostics, extraDiags...)
 						report.Summary = diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics).Summary
