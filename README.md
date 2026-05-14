@@ -15,8 +15,6 @@ Companion CLI for Rootline-governed roadmaps.
 | Intent decomposition, agent orchestration, user dialogue | `/roadmap` skill |
 | Code/docs changes, acceptance checks | Implementing agent |
 
-> **Status**: Core command families functional — guards, read-only state, and controlled mutation.
-
 ---
 
 ## Table of Contents
