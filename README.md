@@ -8,17 +8,66 @@ Companion CLI for Rootline-governed roadmaps.
 
 `roadmapctl` owns roadmap-specific guardrails and workflows while `rootline` remains the generic file-based database and constraint engine.
 
+| Concern | Owner |
+|---------|-------|
+| Filesystem database, `.stem` schema, frontmatter, validation | `rootline` |
+| Status policy, transition guards, pending/next/decision, materialize | `roadmapctl` |
+| Intent decomposition, agent orchestration, user dialogue | `/roadmap` skill |
+| Code/docs changes, acceptance checks | Implementing agent |
+
+> **Status**: Core command families functional — guards, read-only state, and controlled mutation.
+
 ---
 
 ## Table of Contents
 
+- [Quick Start](#quick-start)
+- [Core Idea](#core-idea)
 - [Layer Responsibilities](#layer-responsibilities)
 - [Installation](#installation)
 - [Commands](#commands)
+- [AI-Native](#ai-native)
 - [Skill Source](#skill-source)
 - [Development](#development)
 - [Documentation](#documentation)
 - [License](#license)
+
+---
+
+## Quick Start
+
+```bash
+# 1. Check environment — rootline binary found, config valid
+roadmapctl doctor --repo .
+
+# 2. Validate roadmap against schema (strict mode required before any writes)
+roadmapctl check --repo . --strict
+
+# 3. List all pending tasks
+roadmapctl pending --repo .
+
+# 4. See what to work on next
+roadmapctl next --repo .
+
+# 5. Start a task — transitions estado Pending → In Progress
+roadmapctl transition start docs/roadmap/T001-my-task.md --repo . --apply
+
+# 6. Complete a task — transitions estado In Progress → Completed
+roadmapctl transition complete docs/roadmap/T001-my-task.md --repo . --apply
+```
+
+---
+
+## Core Idea
+
+Roadmaps are Markdown files. Rootline governs their structure via `.stem` schemas. roadmapctl adds the **governance layer** that makes those files an operational system.
+
+- Status transitions are explicit and guarded — `transition` commands validate preconditions before writing
+- `doctor` and `check` are blocking guards — agents cannot write without a clean preflight
+- `pending` and `next` give agents a deterministic queue without requiring product judgment
+- All output is stable JSON with versioned contracts — safe for automated pipelines
+
+roadmapctl does not plan, decompose, or generate content. It **enforces the invariants**.
 
 ---
 
@@ -72,37 +121,43 @@ go install github.com/pablontiv/roadmapctl/cmd/roadmapctl@latest
 
 ## Commands
 
-Implemented command families:
-
-| Family | Commands | Purpose |
-|--------|----------|---------|
-| Guards | `doctor`, `check`, `lint` | Validate environment and roadmap before writes |
-| Read-only state | `context`, `pending`, `next`, `decision` | Query roadmap state without mutation |
-| Controlled mutation | `transition`, `materialize`, `bootstrap` | Safe, guarded roadmap state transitions |
-
-### Quick Reference
-
 ```bash
-# Check environment and config
-roadmapctl doctor --repo <path>
+# Guards (blocking — run before any write or mutation)
+roadmapctl doctor --repo <path>                       # Verify environment: rootline binary, config, schema
+roadmapctl check --repo <path> [--strict] [--output json]  # Validate roadmap against .stem schema
+roadmapctl lint --repo <path>                         # Check format conventions
 
-# Validate roadmap against schema
-roadmapctl check --repo <path> --strict
+# Read-only state (safe to call at any time)
+roadmapctl bootstrap --repo <path> --output json      # Effective config for agents — helpers, thresholds, flags
+roadmapctl pending --repo <path>                      # All tasks not in a done status
+roadmapctl next --repo <path>                         # Suggested next task based on priority/order
+roadmapctl decision <query> --repo <path>             # Query indexed decisions
 
-# List pending tasks
-roadmapctl pending --repo <path>
-
-# Start a task (In Progress)
+# Controlled mutation (require --apply; blocked if preflight fails)
 roadmapctl transition start <task.md> --repo <path> --apply
-
-# Complete a task
 roadmapctl transition complete <task.md> --repo <path> --apply
-
-# Bootstrap config for a new repo
-roadmapctl bootstrap --repo <path> --output json
+roadmapctl materialize <spec> --repo <path> --apply
 ```
 
 The public CLI contract is documented in [docs/cli-contract.md](docs/cli-contract.md). Skill integration details live in [docs/roadmap-skill-integration.md](docs/roadmap-skill-integration.md).
+
+---
+
+## AI-Native
+
+roadmapctl is designed to be invoked by AI agents without human supervision.
+
+- `--output json` on all guards produces stable versioned contracts (`"version": 1, "kind": "roadmapctl/..."`)
+- `roadmapctl bootstrap` is the configuration API for agents — resolves helpers, thresholds, and flags from a single call
+- `roadmapctl check --strict` returns a non-zero exit code when the roadmap is invalid — agents can gate on this
+- The `/roadmap` skill delegates every status decision to roadmapctl — no policy is reimplemented in the skill
+
+```bash
+# Agent bootstrap pattern
+config=$(roadmapctl bootstrap --repo . --output json)
+pending=$(roadmapctl pending --repo . --output json)
+next=$(roadmapctl next --repo . --output json)
+```
 
 ---
 
@@ -149,13 +204,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 
 ## Documentation
 
-- [docs/cli-contract.md](docs/cli-contract.md) — Public CLI contract (commands, flags, exit codes)
-- [docs/roadmap-skill-integration.md](docs/roadmap-skill-integration.md) — Skill integration guide
-- [docs/release.md](docs/release.md) — Release outline and compatibility notes
-- [docs/roadmap/](docs/roadmap/) — Project roadmap
+| Topic | Description |
+|-------|-------------|
+| [CLI Contract](docs/cli-contract.md) | Commands, flags, exit codes, JSON output shapes |
+| [Skill Integration](docs/roadmap-skill-integration.md) | How the `/roadmap` skill delegates to roadmapctl |
+| [Release](docs/release.md) | Release outline and rootline compatibility notes |
+| [Roadmap](docs/roadmap/) | Project roadmap (governed by rootline + roadmapctl) |
 
 ---
 
 ## License
 
-[PolyForm Noncommercial License 1.0.0](LICENSE) — free for personal and noncommercial use.
+[PolyForm Noncommercial 1.0.0](LICENSE) — free for non-commercial use.
