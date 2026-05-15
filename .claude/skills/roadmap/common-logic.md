@@ -86,7 +86,9 @@ El skill no edita manualmente la tabla `## Tasks`. `roadmapctl materialize` actu
 
 ## Dependencias duras
 
-`blocked_by` es una dependencia dura, no una sugerencia de orden. Declararlo en la task bloqueada solo cuando la task actual no pueda ejecutarse o validarse si el target no está completado.
+`blocked_by` es el nombre de link de dependencia dura por defecto. Se puede cambiar via `[fields].dependency_link` en `.roadmapctl.toml`. Las instrucciones a continuación usan el nombre por defecto.
+
+Una dependencia dura no es una sugerencia de orden. Declarar `blocked_by` en la task bloqueada solo cuando la task actual no pueda ejecutarse o validarse si el target no está completado.
 
 Guardrail obligatorio antes de serializar `blocked_by`:
 
