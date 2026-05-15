@@ -50,6 +50,7 @@ type Config struct {
 	DoneStatuses   []string
 	ActiveStatuses []string
 	StatusValues   StatusValues
+	Fields         FieldsConfig
 	LeafFilter     string
 
 	OutcomeCloseVerify   []string
@@ -86,6 +87,15 @@ type StatusValues struct {
 	Completed  string `json:"completed"`
 	Blocked    string `json:"blocked"`
 	Obsolete   string `json:"obsolete"`
+}
+
+type FieldsConfig struct {
+	Lifecycle      string `json:"lifecycle"`
+	RecordType     string `json:"record_type"`
+	TaskValue      string `json:"task_value"`
+	OutcomeValue   string `json:"outcome_value"`
+	DisplayName    string `json:"display_name"`
+	DependencyLink string `json:"dependency_link"`
 }
 
 func Load(repo string, opts Options) (*Config, error) {
@@ -191,6 +201,16 @@ type tomlConfig struct {
 	CompactAfterTaskCommit *bool            `toml:"compact_after_task_commit"`
 	PRMode                 *bool            `toml:"pr_mode"`
 	StatusValues           tomlStatusValues `toml:"status_values"`
+	Fields                 tomlFieldsConfig `toml:"fields"`
+}
+
+type tomlFieldsConfig struct {
+	Lifecycle      string `toml:"lifecycle"`
+	RecordType     string `toml:"record_type"`
+	TaskValue      string `toml:"task_value"`
+	OutcomeValue   string `toml:"outcome_value"`
+	DisplayName    string `toml:"display_name"`
+	DependencyLink string `toml:"dependency_link"`
 }
 
 type tomlStatusValues struct {
@@ -319,6 +339,24 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig) {
 	if decoded.StatusValues.Obsolete != "" {
 		cfg.StatusValues.Obsolete = decoded.StatusValues.Obsolete
 	}
+	if decoded.Fields.Lifecycle != "" {
+		cfg.Fields.Lifecycle = decoded.Fields.Lifecycle
+	}
+	if decoded.Fields.RecordType != "" {
+		cfg.Fields.RecordType = decoded.Fields.RecordType
+	}
+	if decoded.Fields.TaskValue != "" {
+		cfg.Fields.TaskValue = decoded.Fields.TaskValue
+	}
+	if decoded.Fields.OutcomeValue != "" {
+		cfg.Fields.OutcomeValue = decoded.Fields.OutcomeValue
+	}
+	if decoded.Fields.DisplayName != "" {
+		cfg.Fields.DisplayName = decoded.Fields.DisplayName
+	}
+	if decoded.Fields.DependencyLink != "" {
+		cfg.Fields.DependencyLink = decoded.Fields.DependencyLink
+	}
 }
 
 func renderTOMLConfig(cfg *Config) string {
@@ -416,6 +454,14 @@ func defaultConfig(repo string) *Config {
 			Completed:  "Completed",
 			Blocked:    "Blocked",
 			Obsolete:   "Obsolete",
+		},
+		Fields: FieldsConfig{
+			Lifecycle:      "estado",
+			RecordType:     "tipo",
+			TaskValue:      "task",
+			OutcomeValue:   "outcome",
+			DisplayName:    "titulo",
+			DependencyLink: "blocked_by",
 		},
 		LeafFilter:             "isIndex == false",
 		OutcomeCloseVerify:     []string{},

@@ -445,3 +445,92 @@ func writeRoadmapctlTOML(t *testing.T, repo string, roadmapRoot string, body str
 		t.Fatal(err)
 	}
 }
+
+func TestFieldsConfigDefaults(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, "docs", "roadmap"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := Load(repo, Options{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if loaded.Fields.Lifecycle != "estado" {
+		t.Fatalf("Fields.Lifecycle = %q, want estado", loaded.Fields.Lifecycle)
+	}
+	if loaded.Fields.RecordType != "tipo" {
+		t.Fatalf("Fields.RecordType = %q, want tipo", loaded.Fields.RecordType)
+	}
+	if loaded.Fields.TaskValue != "task" {
+		t.Fatalf("Fields.TaskValue = %q, want task", loaded.Fields.TaskValue)
+	}
+	if loaded.Fields.OutcomeValue != "outcome" {
+		t.Fatalf("Fields.OutcomeValue = %q, want outcome", loaded.Fields.OutcomeValue)
+	}
+	if loaded.Fields.DisplayName != "titulo" {
+		t.Fatalf("Fields.DisplayName = %q, want titulo", loaded.Fields.DisplayName)
+	}
+	if loaded.Fields.DependencyLink != "blocked_by" {
+		t.Fatalf("Fields.DependencyLink = %q, want blocked_by", loaded.Fields.DependencyLink)
+	}
+}
+
+func TestFieldsConfigOverride(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `[fields]
+lifecycle = "status"
+record_type = "kind"
+task_value = "tarea"
+outcome_value = "resultado"
+display_name = "nombre"
+dependency_link = "depends_on"
+`)
+
+	loaded, err := Load(repo, Options{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if loaded.Fields.Lifecycle != "status" {
+		t.Fatalf("Fields.Lifecycle = %q, want status", loaded.Fields.Lifecycle)
+	}
+	if loaded.Fields.RecordType != "kind" {
+		t.Fatalf("Fields.RecordType = %q, want kind", loaded.Fields.RecordType)
+	}
+	if loaded.Fields.TaskValue != "tarea" {
+		t.Fatalf("Fields.TaskValue = %q, want tarea", loaded.Fields.TaskValue)
+	}
+	if loaded.Fields.OutcomeValue != "resultado" {
+		t.Fatalf("Fields.OutcomeValue = %q, want resultado", loaded.Fields.OutcomeValue)
+	}
+	if loaded.Fields.DisplayName != "nombre" {
+		t.Fatalf("Fields.DisplayName = %q, want nombre", loaded.Fields.DisplayName)
+	}
+	if loaded.Fields.DependencyLink != "depends_on" {
+		t.Fatalf("Fields.DependencyLink = %q, want depends_on", loaded.Fields.DependencyLink)
+	}
+}
+
+func TestFieldsConfigPartialOverride(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `[fields]
+lifecycle = "custom_status"
+`)
+
+	loaded, err := Load(repo, Options{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if loaded.Fields.Lifecycle != "custom_status" {
+		t.Fatalf("Fields.Lifecycle = %q, want custom_status", loaded.Fields.Lifecycle)
+	}
+	if loaded.Fields.RecordType != "tipo" {
+		t.Fatalf("Fields.RecordType = %q, want default tipo", loaded.Fields.RecordType)
+	}
+	if loaded.Fields.DependencyLink != "blocked_by" {
+		t.Fatalf("Fields.DependencyLink = %q, want default blocked_by", loaded.Fields.DependencyLink)
+	}
+}

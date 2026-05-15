@@ -2,6 +2,10 @@
 
 Referencia de mantenimiento/troubleshooting para el skill. Los subcomandos implementados deben ser autosuficientes en su ruta normal y no depender de leer este archivo para operaciones simples.
 
+## Configuración de Campos
+
+El vocabulario de campos del roadmap es configurable sin recompilar. Ver `.roadmapctl.toml` sección `[fields]` para `lifecycle`, `record_type`, `task_value`, `outcome_value`, `display_name`, `dependency_link`. Defaults retrocompatibles preservan comportamiento actual.
+
 > En workspace mode, `<roadmap-root>` se reemplaza por `<abs-roadmap-root>` y los comandos git usan `git -C <repo-path>`.
 
 ## Guard obligatorio: roadmapctl
