@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T019: Document `derived` vs `frontmatter` in roadmapctl CLAUDE.md
