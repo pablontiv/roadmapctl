@@ -37,6 +37,7 @@ type Task struct {
 	OutcomePath  string
 	Status       string
 	Type         string
+	Title        string
 	Completed    int
 	Total        int
 	Done         bool
@@ -104,15 +105,17 @@ func ReadModelFromRootline(tree map[string]any, query map[string]any, graph map[
 	model := ReadModel{Outcomes: ctx.Outcomes, Tasks: ctx.Tasks, TaskByPath: map[string]*Task{}}
 	statusByPath := map[string]string{}
 	typeByPath := map[string]string{}
+	titleByPath := map[string]string{}
 	for _, rowValue := range arrayValue(query["rows"]) {
 		row, ok := rowValue.(map[string]any)
 		if !ok {
 			continue
 		}
 		path := cleanSlashPath(stringField(row, "path"))
-		frontmatter, _ := row["frontmatter"].(map[string]any)
-		statusByPath[path] = stringField(frontmatter, cfg.Fields.Lifecycle)
-		typeByPath[path] = stringField(frontmatter, cfg.Fields.RecordType)
+		fields := effectiveFields(row)
+		statusByPath[path] = stringField(fields, cfg.Fields.Lifecycle)
+		typeByPath[path] = stringField(fields, cfg.Fields.RecordType)
+		titleByPath[path] = stringField(fields, cfg.Fields.DisplayName)
 	}
 	if len(model.Tasks) == 0 {
 		model.Tasks = tasksFromQueryRows(query, cfg)
@@ -125,6 +128,7 @@ func ReadModelFromRootline(tree map[string]any, query map[string]any, graph map[
 			model.Tasks[i].Status = status
 		}
 		model.Tasks[i].Type = typeByPath[path]
+		model.Tasks[i].Title = titleByPath[path]
 		model.Tasks[i].Done = doneSet[model.Tasks[i].Status]
 		model.Tasks[i].Active = activeSet[model.Tasks[i].Status]
 		model.TaskByPath[path] = &model.Tasks[i]
@@ -154,11 +158,11 @@ func tasksFromQueryRows(query map[string]any, cfg *config.Config) []Task {
 			continue
 		}
 		path := cleanSlashPath(stringField(row, "path"))
-		frontmatter, _ := row["frontmatter"].(map[string]any)
-		if stringField(frontmatter, cfg.Fields.RecordType) != cfg.Fields.TaskValue {
+		fields := effectiveFields(row)
+		if stringField(fields, cfg.Fields.RecordType) != cfg.Fields.TaskValue {
 			continue
 		}
-		tasks = append(tasks, Task{Name: filepath.Base(path), Path: path, OutcomePath: outcomePathForTask(path), Status: stringField(frontmatter, cfg.Fields.Lifecycle), Type: cfg.Fields.TaskValue})
+		tasks = append(tasks, Task{Name: filepath.Base(path), Path: path, OutcomePath: outcomePathForTask(path), Status: stringField(fields, cfg.Fields.Lifecycle), Type: cfg.Fields.TaskValue, Title: stringField(fields, cfg.Fields.DisplayName)})
 	}
 	return tasks
 }
@@ -181,6 +185,23 @@ func taskFromTreeNode(node map[string]any, outcomePath string) Task {
 		Completed:   numberField(node, "completed"),
 		Total:       numberField(node, "total"),
 	}
+}
+
+// effectiveFields merges frontmatter and derived fields from a query row,
+// with derived taking priority (mirrors rootline --select resolution order).
+func effectiveFields(row map[string]any) map[string]any {
+	result := map[string]any{}
+	if fm, ok := row["frontmatter"].(map[string]any); ok {
+		for k, v := range fm {
+			result[k] = v
+		}
+	}
+	if derived, ok := row["derived"].(map[string]any); ok {
+		for k, v := range derived {
+			result[k] = v
+		}
+	}
+	return result
 }
 
 func boolField(fields map[string]any, key string) bool {

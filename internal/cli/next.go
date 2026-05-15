@@ -27,6 +27,7 @@ type nextReport struct {
 type nextTask struct {
 	Path     string   `json:"path"`
 	Status   string   `json:"status"`
+	Title    string   `json:"title,omitempty"`
 	Blockers []string `json:"blockers,omitempty"`
 }
 
@@ -65,9 +66,9 @@ func runNext(ctx context.Context, options Options, limit int) nextReport {
 		}
 		blockers := incompleteBlockers(model, task)
 		if len(blockers) == 0 {
-			ready = append(ready, nextTask{Path: task.Path, Status: task.Status})
+			ready = append(ready, nextTask{Path: task.Path, Status: task.Status, Title: task.Title})
 		} else {
-			blocked = append(blocked, nextTask{Path: task.Path, Status: task.Status, Blockers: blockers})
+			blocked = append(blocked, nextTask{Path: task.Path, Status: task.Status, Title: task.Title, Blockers: blockers})
 		}
 	}
 	sort.Slice(ready, func(i int, j int) bool { return ready[i].Path < ready[j].Path })

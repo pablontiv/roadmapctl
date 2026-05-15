@@ -6,6 +6,14 @@ Referencia de mantenimiento/troubleshooting para el skill. Los subcomandos imple
 
 El vocabulario de campos del roadmap es configurable sin recompilar. Ver `.roadmapctl.toml` sección `[fields]` para `lifecycle`, `record_type`, `task_value`, `outcome_value`, `display_name`, `dependency_link`. Defaults retrocompatibles preservan comportamiento actual.
 
+## Extracción de campos de bootstrap
+
+`roadmapctl bootstrap --field <dot-path>` extrae un valor escalar del JSON de bootstrap sin necesitar jq o python3. Soporta paths simples (`roadmap_root`) y anidados (`helpers.where_leaf`). Exit 1 si el campo no existe o es un objeto/array. Compatible con y sin `--output json`.
+
+## Título de tasks en next output
+
+`roadmapctl next --output json` incluye el campo `title` en cada task (cuando disponible). El título se extrae del campo derivado configurado en `[fields].display_name` (default: `titulo`), que viene del H1 del documento vía `source: body.h1` en el `.stem`.
+
 > En workspace mode, `<roadmap-root>` se reemplaza por `<abs-roadmap-root>` y los comandos git usan `git -C <repo-path>`.
 
 ## Guard obligatorio: roadmapctl

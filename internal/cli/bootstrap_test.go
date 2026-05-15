@@ -246,3 +246,113 @@ func TestBootstrapApplyDiagnosticFormat(t *testing.T) {
 		t.Fatalf("bootstrapApplyDiagnostic Path = %q, want /some/path", diag.Path)
 	}
 }
+
+func TestBootstrapFieldExtractionScalarValue(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	// Initialize bootstrap files so we have a valid config
+	var stdout, stderr bytes.Buffer
+	Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+
+	stdout.Reset()
+	stderr.Reset()
+	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json", "--field", "roadmap_root"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap --field exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	output := stdout.String()
+	expected := filepath.Join(repo, "docs", "roadmap")
+	if !strings.Contains(output, expected) {
+		t.Fatalf("output should contain %q, got: %s", expected, output)
+	}
+	// Verify raw string output (no JSON quotes)
+	if strings.HasPrefix(strings.TrimSpace(output), `"`) {
+		t.Fatalf("output should be raw string (no JSON quotes), got: %s", output)
+	}
+}
+
+func TestBootstrapFieldExtractionNestedValue(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	// Initialize bootstrap files so we have a valid config
+	var stdout, stderr bytes.Buffer
+	Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+
+	stdout.Reset()
+	stderr.Reset()
+	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json", "--field", "helpers.where_leaf"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap --field nested exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	output := stdout.String()
+	// where_leaf should be a string like "isIndex == false"
+	if !strings.Contains(output, "isIndex") {
+		t.Fatalf("output should contain 'isIndex', got: %s", output)
+	}
+}
+
+func TestBootstrapFieldExtractionNonexistentField(t *testing.T) {
+	repo := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json", "--field", "nonexistent"}, &stdout, &stderr, "dev")
+	if code == 0 {
+		t.Fatalf("bootstrap --field nonexistent exit = 0, want non-zero")
+	}
+	errMsg := stderr.String()
+	if !strings.Contains(errMsg, "key") && !strings.Contains(errMsg, "not found") {
+		t.Fatalf("stderr should indicate missing field, got: %s", errMsg)
+	}
+}
+
+func TestBootstrapFieldExtractionObjectNotAllowed(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json", "--field", "helpers"}, &stdout, &stderr, "dev")
+	if code == 0 {
+		t.Fatalf("bootstrap --field object exit = 0, want non-zero")
+	}
+	errMsg := stderr.String()
+	if !strings.Contains(errMsg, "object") && !strings.Contains(errMsg, "scalar") {
+		t.Fatalf("stderr should indicate object extraction not allowed, got: %s", errMsg)
+	}
+}
+
+func TestBootstrapFieldExtractionArrayNotAllowed(t *testing.T) {
+	repo := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json", "--field", "diagnostics"}, &stdout, &stderr, "dev")
+	if code == 0 {
+		t.Fatalf("bootstrap --field array exit = 0, want non-zero")
+	}
+	errMsg := stderr.String()
+	if !strings.Contains(errMsg, "array") && !strings.Contains(errMsg, "scalar") {
+		t.Fatalf("stderr should indicate array extraction not allowed, got: %s", errMsg)
+	}
+}
+
+func TestBootstrapWithoutFieldStillReturnsFullJSON(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	// Initialize bootstrap files so we have a valid config
+	var stdout, stderr bytes.Buffer
+	Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+
+	stdout.Reset()
+	stderr.Reset()
+	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap without --field exit = %d, want 0; stderr=%q", code, stderr.String())
+	}
+	var report map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	// Verify full object is returned
+	if _, ok := report["roadmap_root"]; !ok {
+		t.Fatalf("full JSON should contain roadmap_root field")
+	}
+	if _, ok := report["helpers"]; !ok {
+		t.Fatalf("full JSON should contain helpers field")
+	}
+}

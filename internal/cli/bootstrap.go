@@ -71,6 +71,7 @@ type bootstrapConfigReport struct {
 
 func newBootstrapCommand(options *Options, stdin io.Reader, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
 	var yes bool
+	var field string
 	cmd := &cobra.Command{
 		Use:           "bootstrap",
 		Short:         "Inspect or initialize roadmap bootstrap files, or show effective bootstrap context configuration.",
@@ -96,11 +97,12 @@ func newBootstrapCommand(options *Options, stdin io.Reader, stdout io.Writer, st
 					}
 				}
 			}
-			*exitCode = renderBootstrapConfig(report, options.Output, stdout, stderr)
+			*exitCode = renderBootstrapConfig(report, options.Output, stdout, stderr, field)
 			return nil
 		},
 	}
 	cmd.Flags().BoolVar(&yes, "yes", false, "apply .stem repair without interactive prompt")
+	cmd.Flags().StringVar(&field, "field", "", "dot-path field extraction from bootstrap JSON output")
 	cmd.AddCommand(newBootstrapInspectCommand(options, stdout, stderr, exitCode))
 	cmd.AddCommand(newBootstrapInitCommand(options, stdout, stderr, exitCode))
 	return cmd
@@ -319,16 +321,33 @@ func newBootstrapConfigReport(root string, roadmapRoot string, configPath string
 	return result
 }
 
-func renderBootstrapConfig(report bootstrapConfigReport, output string, stdout io.Writer, stderr io.Writer) int {
+func renderBootstrapConfig(report bootstrapConfigReport, output string, stdout io.Writer, stderr io.Writer, field string) int {
 	if output != "text" && output != "json" {
 		fmt.Fprintf(stderr, "bootstrap: unsupported output format %q\n", output)
 		return ExitUsage
 	}
-	if output == "json" {
-		if err := json.NewEncoder(stdout).Encode(report); err != nil {
+	// --field always requires JSON marshaling regardless of --output
+	if field != "" {
+		data, err := json.Marshal(report)
+		if err != nil {
 			fmt.Fprintf(stderr, "bootstrap: render JSON report: %v\n", err)
 			return ExitInternal
 		}
+		extracted, err := extractBootstrapField(data, field)
+		if err != nil {
+			fmt.Fprintf(stderr, "bootstrap: field extraction: %v\n", err)
+			return ExitUsage
+		}
+		fmt.Fprint(stdout, string(extracted))
+		return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), false)
+	}
+	if output == "json" {
+		data, err := json.Marshal(report)
+		if err != nil {
+			fmt.Fprintf(stderr, "bootstrap: render JSON report: %v\n", err)
+			return ExitInternal
+		}
+		fmt.Fprint(stdout, string(data))
 	} else {
 		fmt.Fprintf(stdout, "%s\nstatus: %s\nconfig: %s (%s)\nwhere_leaf: %s\nwhere_not_done: %s\nwhere_active: %s\n",
 			report.Kind, report.Summary.Status, report.ConfigPath, report.ConfigSource, report.Helpers.WhereLeaf, report.Helpers.WhereNotDone, report.Helpers.WhereActive)
@@ -496,4 +515,57 @@ func defaultDependencyLink(options Options) string {
 		return cfg.Fields.DependencyLink
 	}
 	return config.DefaultDependencyLink
+}
+
+// extractBootstrapField navigates a JSON structure by dot-separated path and
+// extracts a scalar value. Returns the value as JSON or an error if the value
+// is not a scalar (object or array) or the path doesn't exist.
+func extractBootstrapField(data []byte, path string) ([]byte, error) {
+	var obj any
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return nil, fmt.Errorf("parsing JSON for field extraction: %w", err)
+	}
+
+	current, err := extractBootstrapFieldPath(obj, splitBootstrapDotPath(path), path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate that the extracted value is a scalar (not object or array)
+	switch current.(type) {
+	case map[string]any:
+		return nil, fmt.Errorf("field %q resolves to an object, not a scalar", path)
+	case []any:
+		return nil, fmt.Errorf("field %q resolves to an array, not a scalar", path)
+	}
+
+	// Return raw scalar value: strings unquoted, numbers/bools as-is
+	if s, ok := current.(string); ok {
+		return []byte(s), nil
+	}
+	return json.Marshal(current)
+}
+
+func extractBootstrapFieldPath(current any, parts []string, fullPath string) (any, error) {
+	if len(parts) == 0 {
+		return current, nil
+	}
+
+	part := parts[0]
+	m, ok := current.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("field %q: not an object at %q", fullPath, part)
+	}
+	val, exists := m[part]
+	if !exists {
+		return nil, fmt.Errorf("field %q: key %q not found", fullPath, part)
+	}
+	return extractBootstrapFieldPath(val, parts[1:], fullPath)
+}
+
+// splitBootstrapDotPath splits a dot-separated path into parts.
+func splitBootstrapDotPath(path string) []string {
+	return strings.FieldsFunc(path, func(r rune) bool {
+		return r == '.'
+	})
 }

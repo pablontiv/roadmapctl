@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T005: Add `--field` scalar extraction to `roadmapctl bootstrap`
