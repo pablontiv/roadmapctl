@@ -121,3 +121,18 @@ Antes de finalizar una task, verificar:
 5. ¿Los links `blocked_by` son paths relativos explícitos y no orden/contexto blando?
 6. ¿Lista fuentes de verdad?
 7. ¿Preserva invariantes relevantes?
+
+## Contratos para flags CLI de extracción
+
+Al especificar un flag de extracción (e.g. `--field <key>`, `--select <key>`), la spec de la task debe cubrir explícitamente:
+
+1. **Independencia de otros flags**: el flag debe funcionar sin `--output json` u otros modificadores, salvo que la spec diga lo contrario. Especificar: ¿funciona solo? ¿requiere otro flag?
+
+2. **Formato de salida por tipo de dato**:
+   - string → raw string sin comillas JSON (e.g. `docs/roadmap`, no `"docs/roadmap"`)
+   - boolean → `true` o `false` literal
+   - number → literal numérico
+
+3. **No-escalares**: si el campo es array u object, especificar comportamiento: serializado JSON, error, o separador. No dejar ambiguo.
+
+Si la spec omite estos puntos, la implementación producirá contratos implícitos que requieren corrección post-entrega.

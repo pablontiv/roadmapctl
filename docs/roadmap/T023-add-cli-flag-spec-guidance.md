@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T023: Add CLI flag spec guidance to task-guide.md
