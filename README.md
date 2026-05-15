@@ -161,16 +161,18 @@ next=$(roadmapctl next --repo . --output json)
 
 ## Skill Source
 
-This repository is the canonical home for the `/roadmap` Claude Code skill:
+This repository is the canonical home for the `/roadmap` and `/retrospective` Claude Code skills:
 
 ```text
 .claude/skills/roadmap/
+.claude/skills/retrospective/
 ```
 
 The git hooks in `.githooks/pre-push` and `.githooks/post-merge` keep the user-scope tools current:
 
 ```text
 ~/.claude/skills/roadmap
+~/.claude/skills/retrospective
 /usr/local/bin/roadmapctl   # override with ROADMAPCTL_BIN
 ```
 
@@ -178,7 +180,11 @@ The git hooks in `.githooks/pre-push` and `.githooks/post-merge` keep the user-s
 git config core.hooksPath .githooks
 scripts/install-user.sh
 scripts/sync-roadmap-skill.sh --check
+scripts/sync-roadmap-skill.sh --check --skill retrospective
 ```
+
+`scripts/sync-roadmap-skill.sh` accepts `--skill NAME` to sync any skill under `.claude/skills/`
+(default: `roadmap`). `install-user.sh` syncs all registered skills automatically.
 
 ---
 
