@@ -157,6 +157,8 @@ Para cada task o wave ordenada:
 5. **Implementar**
    Ejecutar exactamente el alcance de la task. Si hay una sección `## Especificación Técnica`, seguirla.
 
+   Prohibido añadir trabajo fuera del spec de la task activa, aunque sea relacionado, conveniente o evidente. Si durante la implementación se detecta trabajo útil fuera del spec: anotarlo en el contexto de la sesión como candidata a nueva task, no implementarlo.
+
 6. **Verificar ACs e invariantes**
    - Ejecutar cada AC.
    - Ejecutar cada verificación en `## Preserva` si existe.
