@@ -25,6 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 "$REPO_ROOT/scripts/sync-roadmap-skill.sh" --install
+"$REPO_ROOT/scripts/sync-roadmap-skill.sh" --install --skill retrospective
 
 resolve_roadmapctl_bin() {
   if [ -n "${ROADMAPCTL_BIN:-}" ]; then

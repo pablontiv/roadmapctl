@@ -55,6 +55,19 @@ roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json 
 
 Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de seleccionar o ejecutar tasks. Reportar comando, exit code y diagnostic IDs si hubo JSON. No ejecutar tasks ni mutar estados.
 
+**Rootline binary staleness** — Cuando el loop ejecuta tasks en el repo `rootline` (o en repos que modifican `cmd/rootline/` o `internal/`), verificar que el binario instalado refleja los cambios recientes. Si el binario es stale, `roadmapctl next` puede devolver JSON formato v1 (sin `frontmatter` map) produciendo títulos vacíos y otros fallos silenciosos.
+
+```bash
+rootline --version                              # versión del binario instalado
+git -C /home/shared/rootline log --oneline -1  # último commit de fuente
+```
+
+Si la fuente es más nueva que el binario, reconstruir antes de continuar:
+
+```bash
+go build -o $(which rootline) /home/shared/rootline/cmd/rootline
+```
+
 Nota CI: `go test ./...` funciona sin rootline instalado — `TestMain` activa el fake rootline automáticamente cuando `exec.LookPath("rootline")` falla (`ROADMAPCTL_FAKE_ROOTLINE=1`). El fake `describe` retorna el envelope completo `rootline/describe` (versión 1, schema, links, validate[]). Tests que requieren rootline real deben llamar `requiresRealRootline(t)` para saltearse automáticamente (ciclos, broken blocked_by, query/graph/tree, can-start/can-complete, decision scoring). La cobertura se verifica con `./scripts/check-coverage.sh` (umbral: 85.0%) en el job `smoke` (Ubuntu, macOS, Windows); el job `ci/Test` de crossbeam corre `go test ./... -race` sin gate de cobertura (instala fake rootline, no el real). Áreas de cobertura reciente: `bootstrap.go` (bootstrapApplyDiagnostic, renderBootstrap), `fsx/path.go` (symlink containment, prefix eval, ErrPathEscape para paths `/`-prefixed en Windows), `lint/schema_portability.go` (CheckFilenamePortability, reservedWindowsName, lintNameDiagnostic, arrayValue — cobertura cross-platform con tests que no dependen de filesystem case-sensitive ni chmod). Regla invariante: todo test que skippea con `runtime.GOOS` o filesystem case-insensitivo debe tener un gemelo cross-platform que cubra el mismo código desde otro ángulo.
 
 1. Obtener estado determinístico de ejecución:
@@ -206,3 +219,7 @@ RESUMEN LOOP
 ├─ Commits: ...
 └─ Tasks restantes: ...
 ```
+
+→ Invocar skill `/retrospective` pasando en contexto:
+  - `checkpoint_commit` (capturado al inicio de Fase 3)
+  - Tasks completadas, saltadas y ACs del resumen anterior
