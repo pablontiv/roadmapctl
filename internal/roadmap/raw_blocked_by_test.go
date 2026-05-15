@@ -37,7 +37,7 @@ func TestInvalidBlockedByDiagnosticCoversRawTargetCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			diagnostic, invalid := invalidBlockedByDiagnostic(root, source, tt.target)
+			diagnostic, invalid := invalidBlockedByDiagnostic(root, source, tt.target, "blocked_by")
 			if invalid != tt.wantInvalid {
 				t.Fatalf("invalid = %v, want %v; diagnostic=%#v", invalid, tt.wantInvalid, diagnostic)
 			}

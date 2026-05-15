@@ -1,6 +1,10 @@
 package templates
 
-const BaseStemContent = `version: 2
+import "fmt"
+
+// GenerateStemContent returns the canonical .stem template using the given dependency link field name.
+func GenerateStemContent(dependencyLink string) string {
+	return fmt.Sprintf(`version: 2
 scope:
   match: "*.md"
 
@@ -26,7 +30,7 @@ schema:
       "T*": { prefix: T, digits: 3 }
 
 links:
-  blocked_by:
+  %s:
     target: '^(\./|\.\./|.*/)T[0-9]{3}-[^/]+\.md$'
   reference:
     target: ".*"
@@ -34,7 +38,8 @@ links:
 validate:
   - field: tipo
     rule: non_empty
-`
+`, dependencyLink)
+}
 
 const DefaultRoadmapctlTOML = `done_statuses = ["Completed", "Obsolete"]
 active_statuses = ["Pending", "Specified", "In Progress"]

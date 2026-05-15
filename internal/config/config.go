@@ -15,6 +15,8 @@ const (
 	ErrConfigParse        = "RMC_CONFIG_PARSE"
 	ErrRoadmapRootMissing = "RMC_CONFIG_ROADMAP_ROOT_MISSING"
 	ErrRoadmapRootEscape  = "RMC_CONFIG_ROADMAP_ROOT_ESCAPE"
+
+	DefaultDependencyLink = "blocked_by"
 )
 
 type Error struct {

@@ -148,7 +148,8 @@ func buildBootstrapInit(ctx context.Context, options Options, apply bool) bootst
 		report.Diagnostics = append(report.Diagnostics, bootstrapSchemaCompatibilityDiagnostics(ctx, options, root, roadmapRoot)...)
 	}
 	if len(report.Diagnostics) == 0 {
-		report.Changes = proposedBootstrapChanges(root, roadmapRoot, apply)
+		depLink := defaultDependencyLink(options)
+		report.Changes = proposedBootstrapChanges(root, roadmapRoot, apply, depLink)
 		if apply {
 			report.Diagnostics = append(report.Diagnostics, applyBootstrapChanges(root, report.Changes)...)
 			if len(report.Diagnostics) == 0 {
@@ -188,14 +189,14 @@ func missingBootstrapPaths(root string, roadmapRoot string) []string {
 	return missing
 }
 
-func proposedBootstrapChanges(root string, roadmapRoot string, apply bool) []bootstrapChange {
+func proposedBootstrapChanges(root string, roadmapRoot string, apply bool, dependencyLink string) []bootstrapChange {
 	changes := []bootstrapChange{}
 	if _, err := os.Stat(roadmapRoot); os.IsNotExist(err) {
 		changes = append(changes, bootstrapChange{Path: relToRoot(root, roadmapRoot), Operation: "mkdir", Applied: apply})
 	}
 	stemPath := filepath.Join(roadmapRoot, ".stem")
 	if _, err := os.Stat(stemPath); os.IsNotExist(err) {
-		changes = append(changes, bootstrapChange{Path: relToRoot(root, stemPath), Operation: "create", Applied: apply, Content: templates.BaseStemContent})
+		changes = append(changes, bootstrapChange{Path: relToRoot(root, stemPath), Operation: "create", Applied: apply, Content: templates.GenerateStemContent(dependencyLink)})
 	}
 	configPath := filepath.Join(roadmapRoot, ".roadmapctl.toml")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
@@ -262,7 +263,7 @@ func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigR
 
 	// Check bootstrap files exist or need to be created
 	if len(found) == 0 {
-		changes := proposedBootstrapChanges(cfg.RepoRoot, cfg.RoadmapRoot, false)
+		changes := proposedBootstrapChanges(cfg.RepoRoot, cfg.RoadmapRoot, false, cfg.Fields.DependencyLink)
 		if len(changes) > 0 {
 			// Apply bootstrap changes to ensure config and .stem exist
 			applyErrs := applyBootstrapChanges(cfg.RepoRoot, changes)
@@ -378,8 +379,10 @@ func repairStemIfNeeded(ctx context.Context, options Options, root string, roadm
 		}}
 	}
 
+	depLink := defaultDependencyLink(options)
+	canonicalStem := templates.GenerateStemContent(depLink)
 	fmt.Fprintf(stderr, "\nBootstrap: .stem schema is incompatible (estado required for outcomes).\n\n")
-	fmt.Fprintf(stderr, "--- current .stem\n%s\n+++ canonical .stem\n%s\n", string(content), templates.BaseStemContent)
+	fmt.Fprintf(stderr, "--- current .stem\n%s\n+++ canonical .stem\n%s\n", string(content), canonicalStem)
 
 	if !yes {
 		fmt.Fprintf(stderr, "Update .stem to canonical schema? [y/N]: ")
@@ -390,7 +393,7 @@ func repairStemIfNeeded(ctx context.Context, options Options, root string, roadm
 		}
 	}
 
-	if err := os.WriteFile(stemPath, []byte(templates.BaseStemContent), 0o644); err != nil {
+	if err := os.WriteFile(stemPath, []byte(canonicalStem), 0o644); err != nil {
 		return false, []diagnostics.Diagnostic{bootstrapApplyDiagnostic(relToRoot(root, stemPath), err)}
 	}
 
@@ -484,4 +487,13 @@ func contextStringsFromArray(value any) []string {
 		}
 	}
 	return result
+}
+
+// defaultDependencyLink returns the configured dependency link field name,
+// falling back to the config default when no config file exists yet.
+func defaultDependencyLink(options Options) string {
+	if cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot}); err == nil {
+		return cfg.Fields.DependencyLink
+	}
+	return config.DefaultDependencyLink
 }

@@ -121,7 +121,7 @@ func TestBootstrapRepairAppliesOnYesInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(content) != templates.BaseStemContent {
+	if string(content) != templates.GenerateStemContent("blocked_by") {
 		t.Fatalf(".stem not updated to canonical:\n%s", string(content))
 	}
 }
@@ -143,7 +143,7 @@ func TestBootstrapRepairAppliesWithYesFlag(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(content) != templates.BaseStemContent {
+	if string(content) != templates.GenerateStemContent("blocked_by") {
 		t.Fatalf(".stem not updated to canonical:\n%s", string(content))
 	}
 
@@ -202,7 +202,7 @@ func TestBootstrapRepairUnsupportedCustomStem(t *testing.T) {
 
 func TestBootstrapRepairNotTriggeredForCanonicalStem(t *testing.T) {
 	requiresRealRootline(t)
-	repo := setupRepairRepo(t, templates.BaseStemContent)
+	repo := setupRepairRepo(t, templates.GenerateStemContent("blocked_by"))
 
 	var stdout, stderr bytes.Buffer
 	code := ExecuteWithStdin(
@@ -223,7 +223,7 @@ func TestBootstrapRepairNotTriggeredForCanonicalStem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(content) != templates.BaseStemContent {
+	if string(content) != templates.GenerateStemContent("blocked_by") {
 		t.Fatalf(".stem was unexpectedly modified")
 	}
 }
@@ -241,7 +241,7 @@ func TestIsStemRecognizedLegacy(t *testing.T) {
 		},
 		{
 			name:    "canonical stem",
-			content: templates.BaseStemContent,
+			content: templates.GenerateStemContent("blocked_by"),
 			want:    true,
 		},
 		{

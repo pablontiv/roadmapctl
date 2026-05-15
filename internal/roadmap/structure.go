@@ -23,10 +23,13 @@ const (
 type Diagnostic = diagnostics.Diagnostic
 
 var (
-	blockedByLinkPattern = regexp.MustCompile(`\[\[blocked_by:([^\]]+)\]\]`)
-	outcomeNamePattern   = regexp.MustCompile(`^(O[0-9]{2})-.+`)
-	taskNamePattern      = regexp.MustCompile(`^(T[0-9]{3})-.+\.md$`)
+	outcomeNamePattern = regexp.MustCompile(`^(O[0-9]{2})-.+`)
+	taskNamePattern    = regexp.MustCompile(`^(T[0-9]{3})-.+\.md$`)
 )
+
+func blockedByPattern(linkName string) *regexp.Regexp {
+	return regexp.MustCompile(fmt.Sprintf(`\[\[%s:([^\]]+)\]\]`, regexp.QuoteMeta(linkName)))
+}
 
 func CheckStructure(cfg *config.Config, roadmapRoot string) ([]Diagnostic, error) {
 	root := filepath.Clean(roadmapRoot)
@@ -39,7 +42,7 @@ func CheckStructure(cfg *config.Config, roadmapRoot string) ([]Diagnostic, error
 	outcomeIDs := map[string]string{}
 	directTaskIDs := map[string]string{}
 
-	rawLinkDiagnostics, err := checkRawBlockedByLinks(root)
+	rawLinkDiagnostics, err := checkRawBlockedByLinks(root, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +145,8 @@ func checkOutcomeStructure(root string, outcomePath string) ([]Diagnostic, error
 	return found, nil
 }
 
-func checkRawBlockedByLinks(root string) ([]Diagnostic, error) {
+func checkRawBlockedByLinks(root string, cfg *config.Config) ([]Diagnostic, error) {
+	pattern := blockedByPattern(cfg.Fields.DependencyLink)
 	var found []Diagnostic
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
@@ -161,9 +165,9 @@ func checkRawBlockedByLinks(root string) ([]Diagnostic, error) {
 		if err != nil {
 			return fmt.Errorf("read roadmap record %s: %w", relPath(root, path), err)
 		}
-		for _, match := range blockedByLinkPattern.FindAllStringSubmatch(string(data), -1) {
+		for _, match := range pattern.FindAllStringSubmatch(string(data), -1) {
 			target := strings.TrimSpace(match[1])
-			if diagnostic, ok := invalidBlockedByDiagnostic(root, path, target); ok {
+			if diagnostic, ok := invalidBlockedByDiagnostic(root, path, target, cfg.Fields.DependencyLink); ok {
 				found = append(found, diagnostic)
 			}
 		}
@@ -175,23 +179,23 @@ func checkRawBlockedByLinks(root string) ([]Diagnostic, error) {
 	return found, nil
 }
 
-func invalidBlockedByDiagnostic(root string, sourcePath string, target string) (Diagnostic, bool) {
+func invalidBlockedByDiagnostic(root string, sourcePath string, target string, linkName string) (Diagnostic, bool) {
 	if !isExplicitBlockedByTarget(target) {
-		return blockedByDiagnostic(root, sourcePath, target, "blocked_by target must use explicit relative path to a task file"), true
+		return blockedByDiagnostic(root, sourcePath, target, fmt.Sprintf("%s target must use explicit relative path to a task file", linkName)), true
 	}
 	resolved := filepath.Clean(filepath.Join(filepath.Dir(sourcePath), filepath.FromSlash(target)))
 	if !strings.HasPrefix(resolved, root+string(filepath.Separator)) && resolved != root {
-		return blockedByDiagnostic(root, sourcePath, target, "blocked_by target must stay inside roadmap root"), true
+		return blockedByDiagnostic(root, sourcePath, target, fmt.Sprintf("%s target must stay inside roadmap root", linkName)), true
 	}
 	info, err := os.Stat(resolved)
 	if err != nil {
 		return Diagnostic{}, false
 	}
 	if info.IsDir() {
-		return blockedByDiagnostic(root, sourcePath, target, "blocked_by target must point to a task file"), true
+		return blockedByDiagnostic(root, sourcePath, target, fmt.Sprintf("%s target must point to a task file", linkName)), true
 	}
 	if _, ok := TaskID(filepath.Base(resolved)); !ok {
-		return blockedByDiagnostic(root, sourcePath, target, "blocked_by target must point to a TXXX task file"), true
+		return blockedByDiagnostic(root, sourcePath, target, fmt.Sprintf("%s target must point to a TXXX task file", linkName)), true
 	}
 	return Diagnostic{}, false
 }
