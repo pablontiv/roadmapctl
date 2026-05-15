@@ -1,8 +1,8 @@
 package roadmap
 
 import (
-	"github.com/pablontiv/roadmapctl/internal/config"
 	"fmt"
+	"github.com/pablontiv/roadmapctl/internal/config"
 	"path/filepath"
 )
 
@@ -111,11 +111,11 @@ func ReadModelFromRootline(tree map[string]any, query map[string]any, graph map[
 		}
 		path := cleanSlashPath(stringField(row, "path"))
 		frontmatter, _ := row["frontmatter"].(map[string]any)
-		statusByPath[path] = stringField(frontmatter, "estado")
-		typeByPath[path] = stringField(frontmatter, "tipo")
+		statusByPath[path] = stringField(frontmatter, cfg.Fields.Lifecycle)
+		typeByPath[path] = stringField(frontmatter, cfg.Fields.RecordType)
 	}
 	if len(model.Tasks) == 0 {
-		model.Tasks = tasksFromQueryRows(query)
+		model.Tasks = tasksFromQueryRows(query, cfg)
 	}
 	doneSet := stringSet(roles.Done)
 	activeSet := stringSet(roles.Active)
@@ -131,10 +131,10 @@ func ReadModelFromRootline(tree map[string]any, query map[string]any, graph map[
 	}
 	for _, edgeValue := range arrayValue(graph["edges"]) {
 		edge, ok := edgeValue.(map[string]any)
-		if !ok || stringField(edge, "type") != "blocked_by" {
+		if !ok || stringField(edge, "type") != cfg.Fields.DependencyLink {
 			continue
 		}
-		dep := Dependency{Source: cleanSlashPath(stringField(edge, "source")), Target: cleanSlashPath(stringField(edge, "target")), Type: "blocked_by"}
+		dep := Dependency{Source: cleanSlashPath(stringField(edge, "source")), Target: cleanSlashPath(stringField(edge, "target")), Type: cfg.Fields.DependencyLink}
 		model.Dependencies = append(model.Dependencies, dep)
 		if task := model.TaskByPath[dep.Source]; task != nil {
 			task.Dependencies = append(task.Dependencies, dep.Target)
@@ -155,10 +155,10 @@ func tasksFromQueryRows(query map[string]any, cfg *config.Config) []Task {
 		}
 		path := cleanSlashPath(stringField(row, "path"))
 		frontmatter, _ := row["frontmatter"].(map[string]any)
-		if stringField(frontmatter, "tipo") != "task" {
+		if stringField(frontmatter, cfg.Fields.RecordType) != cfg.Fields.TaskValue {
 			continue
 		}
-		tasks = append(tasks, Task{Name: filepath.Base(path), Path: path, OutcomePath: outcomePathForTask(path), Status: stringField(frontmatter, "estado"), Type: "task"})
+		tasks = append(tasks, Task{Name: filepath.Base(path), Path: path, OutcomePath: outcomePathForTask(path), Status: stringField(frontmatter, cfg.Fields.Lifecycle), Type: cfg.Fields.TaskValue})
 	}
 	return tasks
 }

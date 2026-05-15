@@ -1,6 +1,7 @@
 package lint
 
 import (
+	"github.com/pablontiv/roadmapctl/internal/config"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -43,6 +44,17 @@ func TestCheckFilenamePortabilityReportsCaseCollisionAndReservedName(t *testing.
 }
 
 func TestCheckSchemaCompatibilityAllowsExtensionsAndRequiresCoreFields(t *testing.T) {
+	cfg := &config.Config{
+		Fields: config.FieldsConfig{
+			Lifecycle:      "estado",
+			RecordType:     "tipo",
+			TaskValue:      "task",
+			OutcomeValue:   "outcome",
+			DisplayName:    "titulo",
+			DependencyLink: "blocked_by",
+		},
+	}
+
 	valid := map[string]any{
 		"schema": map[string]any{
 			"estado": map[string]any{"required": true, "required_match": map[string]any{"patterns": []any{"T*"}}},
