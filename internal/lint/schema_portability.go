@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
 )
 
@@ -63,7 +64,7 @@ func checkCaseCollisionsInDir(root string, dir string) ([]diagnostics.Diagnostic
 	return found, nil
 }
 
-func CheckSchemaCompatibility(describe map[string]any) []diagnostics.Diagnostic {
+func CheckSchemaCompatibility(cfg *config.Config, describe map[string]any) []diagnostics.Diagnostic {
 	var found []diagnostics.Diagnostic
 	schema, _ := describe["schema"].(map[string]any)
 	for _, field := range []string{"estado", "tipo"} {
@@ -73,8 +74,8 @@ func CheckSchemaCompatibility(describe map[string]any) []diagnostics.Diagnostic 
 	}
 	links, _ := describe["links"].(map[string]any)
 	rules, _ := links["rules"].(map[string]any)
-	if _, ok := rules["blocked_by"]; !ok {
-		found = append(found, lintSchemaDiagnostic(diagnostics.DiagnosticLintSchemaLinkMissing, "effective schema is missing required blocked_by link rule", "blocked_by"))
+	if _, ok := rules[cfg.Fields.DependencyLink]; !ok {
+		found = append(found, lintSchemaDiagnostic(diagnostics.DiagnosticLintSchemaLinkMissing, "effective schema is missing required "+cfg.Fields.DependencyLink+" link rule", cfg.Fields.DependencyLink))
 	}
 	sortDiagnostics(found)
 	return found

@@ -19,7 +19,8 @@ func TestCheckRootlineDetectsCycleFromGraphJSON(t *testing.T) {
 		},
 	}
 
-	diagnostics, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Specified", "In Progress", "Completed", "Blocked", "Obsolete"}})
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckRootline(context.Background(), cfg, client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Specified", "In Progress", "Completed", "Blocked", "Obsolete"}})
 	if err != nil {
 		t.Fatalf("CheckRootline error = %v", err)
 	}
@@ -36,7 +37,8 @@ func TestCheckRootlineDetectsBrokenBlockedByFromGraphJSON(t *testing.T) {
 		},
 	}
 
-	diagnostics, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Specified", "In Progress", "Completed", "Blocked", "Obsolete"}})
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckRootline(context.Background(), cfg, client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Specified", "In Progress", "Completed", "Blocked", "Obsolete"}})
 	if err != nil {
 		t.Fatalf("CheckRootline error = %v", err)
 	}
@@ -53,7 +55,8 @@ func TestCheckRootlineDetectsStatusOutsideSchemaOrConfig(t *testing.T) {
 		graph: map[string]any{},
 	}
 
-	diagnostics, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Completed"}})
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckRootline(context.Background(), cfg, client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Completed"}})
 	if err != nil {
 		t.Fatalf("CheckRootline error = %v", err)
 	}
@@ -73,7 +76,8 @@ func TestCheckRootlineAllowsSchemaStatusWithoutOperationalRole(t *testing.T) {
 		graph: map[string]any{},
 	}
 
-	diagnostics, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Completed"}})
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckRootline(context.Background(), cfg, client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Completed"}})
 	if err != nil {
 		t.Fatalf("CheckRootline error = %v", err)
 	}
@@ -93,7 +97,8 @@ func TestCheckRootlineDetectsTypeOutsideSchema(t *testing.T) {
 		graph: map[string]any{},
 	}
 
-	diagnostics, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Completed"}})
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckRootline(context.Background(), cfg, client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending", "Completed"}})
 	if err != nil {
 		t.Fatalf("CheckRootline error = %v", err)
 	}
@@ -113,7 +118,8 @@ func TestCheckRootlineDetectsOperationalStatusOutsideSchema(t *testing.T) {
 		graph: map[string]any{},
 	}
 
-	diagnostics, err := CheckRootline(context.Background(), client, RootlineCheckOptions{
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckRootline(context.Background(), cfg, client, RootlineCheckOptions{
 		RoadmapRoot: "/repo/docs/roadmap",
 		LeafFilter:  "isIndex == false",
 		OperationalStatuses: []OperationalStatus{
@@ -140,7 +146,8 @@ func TestCheckRootlineDetectsOperationalStatusOutsideSchema(t *testing.T) {
 func TestCheckRootlineMissingRootlineDiagnosticExit3(t *testing.T) {
 	client := &fakeRootlineClient{err: &rootlinecli.Error{Kind: rootlinecli.ErrorMissingBinary, Message: "missing rootline", ExitCode: diagnostics.ExitEnvironment}}
 
-	found, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending"}})
+	cfg := testDefaultConfig()
+	found, err := CheckRootline(context.Background(), cfg, client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending"}})
 	if err != nil {
 		t.Fatalf("CheckRootline error = %v", err)
 	}
@@ -159,7 +166,8 @@ func TestCheckRootlineParsesValidateJSONOnNonZeroExit(t *testing.T) {
 		graph:       map[string]any{},
 	}
 
-	found, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending"}})
+	cfg := testDefaultConfig()
+	found, err := CheckRootline(context.Background(), cfg, client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending"}})
 	if err != nil {
 		t.Fatalf("CheckRootline error = %v", err)
 	}
@@ -177,7 +185,8 @@ func TestCheckRootlineUsesGenericRootlineJSONCommands(t *testing.T) {
 		graph:    map[string]any{},
 	}
 
-	_, err := CheckRootline(context.Background(), client, RootlineCheckOptions{RoadmapRoot: "docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending"}})
+	cfg := testDefaultConfig()
+	_, err := CheckRootline(context.Background(), cfg, client, RootlineCheckOptions{RoadmapRoot: "docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending"}})
 	if err != nil {
 		t.Fatalf("CheckRootline error = %v", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
 	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
@@ -41,7 +42,7 @@ type RootlineCheckOptions struct {
 	OperationalStatuses []OperationalStatus
 }
 
-func CheckRootline(ctx context.Context, client RootlineClient, options RootlineCheckOptions) ([]Diagnostic, error) {
+func CheckRootline(ctx context.Context, cfg *config.Config, client RootlineClient, options RootlineCheckOptions) ([]Diagnostic, error) {
 	var found []Diagnostic
 
 	validateResult, err := client.Validate(ctx, "--all", options.RoadmapRoot)
@@ -69,24 +70,25 @@ func CheckRootline(ctx context.Context, client RootlineClient, options RootlineC
 	if err != nil {
 		found = append(found, rootlineOperationDiagnostic("describe", err))
 	} else {
-		schemaStatuses = extractStatusValues(describeResult.Decoded)
-		schemaTypes = extractTypeValues(describeResult.Decoded)
+		schemaStatuses = extractStatusValues(describeResult.Decoded, cfg)
+		schemaTypes = extractTypeValues(describeResult.Decoded, cfg)
 		found = append(found, operationalStatusDiagnostics(options.OperationalStatuses, schemaStatuses)...)
 		found = append(found, roadmaplint.CheckOutcomeSchemaCompatibility(describeResult.Decoded)...)
 	}
 
-	queryResult, err := client.Query(ctx, options.RoadmapRoot, options.LeafFilter, `tipo == "task"`)
+	queryFilter := cfg.Fields.RecordType + ` == "` + cfg.Fields.TaskValue + `"`
+	queryResult, err := client.Query(ctx, options.RoadmapRoot, options.LeafFilter, queryFilter)
 	if err != nil {
 		found = append(found, rootlineOperationDiagnostic("query", err))
 	} else {
-		found = append(found, statusDiagnostics(queryResult.Decoded, options.AllowedStatuses, schemaStatuses, schemaTypes)...)
+		found = append(found, statusDiagnostics(queryResult.Decoded, cfg, options.AllowedStatuses, schemaStatuses, schemaTypes)...)
 	}
 
 	graphResult, err := client.Graph(ctx, options.RoadmapRoot, options.LeafFilter)
 	if err != nil {
 		found = append(found, rootlineOperationDiagnostic("graph", err))
 	} else {
-		found = append(found, graphDiagnostics(graphResult.Decoded)...)
+		found = append(found, graphDiagnostics(cfg, graphResult.Decoded)...)
 	}
 
 	return found, nil
@@ -108,7 +110,7 @@ func validateDiagnostics(decoded map[string]any) []Diagnostic {
 	}}
 }
 
-func graphDiagnostics(decoded map[string]any) []Diagnostic {
+func graphDiagnostics(cfg *config.Config, decoded map[string]any) []Diagnostic {
 	var found []Diagnostic
 	for _, cycle := range arrayValue(decoded["cycles"]) {
 		found = append(found, Diagnostic{
@@ -123,7 +125,7 @@ func graphDiagnostics(decoded map[string]any) []Diagnostic {
 		if !ok {
 			continue
 		}
-		if stringField(link, "type") != "blocked_by" {
+		if stringField(link, "type") != cfg.Fields.DependencyLink {
 			continue
 		}
 		found = append(found, Diagnostic{

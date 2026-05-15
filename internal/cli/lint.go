@@ -33,7 +33,7 @@ func runLint(ctx context.Context, options Options) diagnostics.Report {
 	if err != nil {
 		found = append(found, rootlineDiagnostic(err))
 	} else {
-		found = append(found, roadmaplint.CheckSchemaCompatibility(describe.Decoded)...)
+		found = append(found, roadmaplint.CheckSchemaCompatibility(cfg, describe.Decoded)...)
 		found = append(found, roadmaplint.CheckOutcomeSchemaCompatibility(describe.Decoded)...)
 	}
 	return diagnostics.NewReport("roadmapctl/lint", cfg.RepoRoot, cfg.RoadmapRoot, found)

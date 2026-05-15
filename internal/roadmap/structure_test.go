@@ -8,7 +8,8 @@ import (
 )
 
 func TestCheckStructureRejectsSingleSummaryFileFallback(t *testing.T) {
-	diagnostics, err := CheckStructure(fixturePath("invalid-single-summary-file"))
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckStructure(cfg, fixturePath("invalid-single-summary-file"))
 	if err != nil {
 		t.Fatalf("CheckStructure() error = %v", err)
 	}
@@ -17,7 +18,8 @@ func TestCheckStructureRejectsSingleSummaryFileFallback(t *testing.T) {
 }
 
 func TestCheckStructureRejectsOutcomeMissingReadme(t *testing.T) {
-	diagnostics, err := CheckStructure(fixturePath("invalid-missing-outcome-readme"))
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckStructure(cfg, fixturePath("invalid-missing-outcome-readme"))
 	if err != nil {
 		t.Fatalf("CheckStructure() error = %v", err)
 	}
@@ -26,7 +28,8 @@ func TestCheckStructureRejectsOutcomeMissingReadme(t *testing.T) {
 }
 
 func TestCheckStructureAcceptsValidDirectTasks(t *testing.T) {
-	diagnostics, err := CheckStructure(fixturePath("valid-direct-tasks"))
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckStructure(cfg, fixturePath("valid-direct-tasks"))
 	if err != nil {
 		t.Fatalf("CheckStructure() error = %v", err)
 	}
@@ -36,7 +39,8 @@ func TestCheckStructureAcceptsValidDirectTasks(t *testing.T) {
 }
 
 func TestCheckStructureAcceptsValidOutcomeWithTasks(t *testing.T) {
-	diagnostics, err := CheckStructure(fixturePath("valid-outcome-with-tasks"))
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckStructure(cfg, fixturePath("valid-outcome-with-tasks"))
 	if err != nil {
 		t.Fatalf("CheckStructure() error = %v", err)
 	}
@@ -46,7 +50,8 @@ func TestCheckStructureAcceptsValidOutcomeWithTasks(t *testing.T) {
 }
 
 func TestCheckStructureDetectsBareBlockedByTarget(t *testing.T) {
-	found, err := CheckStructure(fixturePath("invalid-bare-blocked-by"))
+	cfg := testDefaultConfig()
+	found, err := CheckStructure(cfg, fixturePath("invalid-bare-blocked-by"))
 	if err != nil {
 		t.Fatalf("CheckStructure error = %v", err)
 	}
@@ -57,7 +62,8 @@ func TestCheckStructureDetectsBareBlockedByTarget(t *testing.T) {
 }
 
 func TestCheckStructureRejectsDuplicateIDsByScope(t *testing.T) {
-	diagnostics, err := CheckStructure(fixturePath("invalid-duplicate-ids"))
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckStructure(cfg, fixturePath("invalid-duplicate-ids"))
 	if err != nil {
 		t.Fatalf("CheckStructure() error = %v", err)
 	}
@@ -68,7 +74,8 @@ func TestCheckStructureRejectsDuplicateIDsByScope(t *testing.T) {
 }
 
 func TestCheckStructureRejectsExtraNestingUnderOutcome(t *testing.T) {
-	diagnostics, err := CheckStructure(fixturePath("invalid-extra-nesting"))
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckStructure(cfg, fixturePath("invalid-extra-nesting"))
 	if err != nil {
 		t.Fatalf("CheckStructure() error = %v", err)
 	}
@@ -77,7 +84,8 @@ func TestCheckStructureRejectsExtraNestingUnderOutcome(t *testing.T) {
 }
 
 func TestCheckStructureNormalizesDiagnosticPathsToSlashSeparators(t *testing.T) {
-	diagnostics, err := CheckStructure(filepath.Join("..", "..", "testdata", "fixtures", "invalid-extra-nesting", "docs", "roadmap"))
+	cfg := testDefaultConfig()
+	diagnostics, err := CheckStructure(cfg, filepath.Join("..", "..", "testdata", "fixtures", "invalid-extra-nesting", "docs", "roadmap"))
 	if err != nil {
 		t.Fatalf("CheckStructure() error = %v", err)
 	}

@@ -18,7 +18,7 @@ func runCheck(ctx context.Context, options Options) diagnostics.Report {
 	}
 
 	found := configWarnings(cfg)
-	structureDiagnostics, err := roadmap.CheckStructure(cfg.RoadmapRoot)
+	structureDiagnostics, err := roadmap.CheckStructure(cfg, cfg.RoadmapRoot)
 	if err != nil {
 		found = append(found, diagnostics.Diagnostic{
 			ID:       "RMC_STRUCTURE_ERROR",
@@ -34,7 +34,7 @@ func runCheck(ctx context.Context, options Options) diagnostics.Report {
 		Dir:     cfg.RepoRoot,
 		Timeout: options.Timeout,
 	})
-	rootlineDiagnostics, err := roadmap.CheckRootline(ctx, client, roadmap.RootlineCheckOptions{
+	rootlineDiagnostics, err := roadmap.CheckRootline(ctx, cfg, client, roadmap.RootlineCheckOptions{
 		RoadmapRoot:         cfg.RoadmapRoot,
 		LeafFilter:          cfg.LeafFilter,
 		AllowedStatuses:     configuredStatuses(cfg),

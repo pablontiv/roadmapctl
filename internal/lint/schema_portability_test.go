@@ -52,12 +52,12 @@ func TestCheckSchemaCompatibilityAllowsExtensionsAndRequiresCoreFields(t *testin
 		"validate": []any{map[string]any{"field": "tipo", "rule": "non_empty"}},
 		"links":    map[string]any{"rules": map[string]any{"blocked_by": map[string]any{}, "reference": map[string]any{}}},
 	}
-	if found := CheckSchemaCompatibility(valid); len(found) != 0 {
+	if found := CheckSchemaCompatibility(cfg, valid); len(found) != 0 {
 		t.Fatalf("valid diagnostics = %#v", found)
 	}
 
 	missing := map[string]any{"schema": map[string]any{"tipo": map[string]any{}}, "links": map[string]any{"rules": map[string]any{}}}
-	found := CheckSchemaCompatibility(missing)
+	found := CheckSchemaCompatibility(cfg, missing)
 	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintSchemaFieldMissing, ".stem", "estado")
 	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintSchemaLinkMissing, ".stem", "blocked_by")
 }

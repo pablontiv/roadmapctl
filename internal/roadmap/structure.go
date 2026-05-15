@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
 )
 
@@ -27,7 +28,7 @@ var (
 	taskNamePattern      = regexp.MustCompile(`^(T[0-9]{3})-.+\.md$`)
 )
 
-func CheckStructure(roadmapRoot string) ([]Diagnostic, error) {
+func CheckStructure(cfg *config.Config, roadmapRoot string) ([]Diagnostic, error) {
 	root := filepath.Clean(roadmapRoot)
 	entries, err := os.ReadDir(root)
 	if err != nil {

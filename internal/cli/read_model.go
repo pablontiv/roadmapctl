@@ -16,7 +16,8 @@ func readModelForConfig(ctx context.Context, cfg *config.Config, options Options
 	if err != nil {
 		found = append(found, rootlineDiagnostic(err))
 	}
-	query, err := client.Query(ctx, cfg.RoadmapRoot, cfg.LeafFilter, `tipo == "task"`)
+	queryFilter := cfg.Fields.RecordType + ` == "` + cfg.Fields.TaskValue + `"`
+	query, err := client.Query(ctx, cfg.RoadmapRoot, cfg.LeafFilter, queryFilter)
 	if err != nil {
 		found = append(found, rootlineDiagnostic(err))
 	}
@@ -27,7 +28,7 @@ func readModelForConfig(ctx context.Context, cfg *config.Config, options Options
 	if len(found) > 0 {
 		return roadmap.ReadModel{}, found
 	}
-	model, modelDiagnostics := roadmap.ReadModelFromRootline(tree.Decoded, query.Decoded, graph.Decoded, roadmap.StatusRoleConfig{Done: cfg.DoneStatuses, Active: cfg.ActiveStatuses})
+	model, modelDiagnostics := roadmap.ReadModelFromRootline(tree.Decoded, query.Decoded, graph.Decoded, cfg, roadmap.StatusRoleConfig{Done: cfg.DoneStatuses, Active: cfg.ActiveStatuses})
 	found = append(found, modelDiagnostics...)
 	return model, found
 }

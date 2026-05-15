@@ -1,6 +1,7 @@
 package roadmap
 
 import (
+	"github.com/pablontiv/roadmapctl/internal/config"
 	"fmt"
 	"path/filepath"
 )
@@ -95,7 +96,7 @@ func RoadmapContextFromTree(decoded map[string]any) (RoadmapContext, error) {
 	return ctx, nil
 }
 
-func ReadModelFromRootline(tree map[string]any, query map[string]any, graph map[string]any, roles StatusRoleConfig) (ReadModel, []Diagnostic) {
+func ReadModelFromRootline(tree map[string]any, query map[string]any, graph map[string]any, cfg *config.Config, roles StatusRoleConfig) (ReadModel, []Diagnostic) {
 	ctx, err := RoadmapContextFromTree(tree)
 	if err != nil {
 		ctx = RoadmapContext{}
@@ -142,10 +143,10 @@ func ReadModelFromRootline(tree map[string]any, query map[string]any, graph map[
 			task.Blocks = append(task.Blocks, dep.Source)
 		}
 	}
-	return model, graphDiagnostics(graph)
+	return model, graphDiagnostics(cfg, graph)
 }
 
-func tasksFromQueryRows(query map[string]any) []Task {
+func tasksFromQueryRows(query map[string]any, cfg *config.Config) []Task {
 	var tasks []Task
 	for _, rowValue := range arrayValue(query["rows"]) {
 		row, ok := rowValue.(map[string]any)

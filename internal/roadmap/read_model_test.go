@@ -1,6 +1,10 @@
 package roadmap
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/pablontiv/roadmapctl/internal/config"
+)
 
 func TestReadModelFromRootlineNormalizesDependenciesAndStatusRoles(t *testing.T) {
 	tree := map[string]any{"root": map[string]any{"children": []any{
@@ -17,7 +21,17 @@ func TestReadModelFromRootlineNormalizesDependenciesAndStatusRoles(t *testing.T)
 	}}
 	graph := map[string]any{"edges": []any{map[string]any{"source": "O01-work/T002-blocked.md", "target": "O01-work/T001-done.md", "type": "blocked_by"}}, "cycles": []any{}, "broken_links": []any{}}
 
-	model, diagnostics := ReadModelFromRootline(tree, query, graph, StatusRoleConfig{Done: []string{"Done"}, Active: []string{"Pending", "Ready"}})
+	cfg := &config.Config{
+		Fields: config.FieldsConfig{
+			Lifecycle:      "estado",
+			RecordType:     "tipo",
+			TaskValue:      "task",
+			OutcomeValue:   "outcome",
+			DisplayName:    "titulo",
+			DependencyLink: "blocked_by",
+		},
+	}
+	model, diagnostics := ReadModelFromRootline(tree, query, graph, cfg, StatusRoleConfig{Done: []string{"Done"}, Active: []string{"Pending", "Ready"}})
 	if len(diagnostics) != 0 {
 		t.Fatalf("diagnostics = %#v", diagnostics)
 	}
@@ -38,7 +52,17 @@ func TestReadModelFromRootlineFallsBackToQueryRowsWhenTreeOmitsCustomStatuses(t 
 	query := map[string]any{"rows": []any{
 		map[string]any{"path": "O01-work/T001-ready.md", "frontmatter": map[string]any{"tipo": "task", "estado": "Ready"}},
 	}}
-	model, diagnostics := ReadModelFromRootline(map[string]any{"root": map[string]any{}}, query, map[string]any{"edges": []any{}, "cycles": []any{}, "broken_links": []any{}}, StatusRoleConfig{Done: []string{"Done"}, Active: []string{"Ready"}})
+	cfg := &config.Config{
+		Fields: config.FieldsConfig{
+			Lifecycle:      "estado",
+			RecordType:     "tipo",
+			TaskValue:      "task",
+			OutcomeValue:   "outcome",
+			DisplayName:    "titulo",
+			DependencyLink: "blocked_by",
+		},
+	}
+	model, diagnostics := ReadModelFromRootline(map[string]any{"root": map[string]any{}}, query, map[string]any{"edges": []any{}, "cycles": []any{}, "broken_links": []any{}}, cfg, StatusRoleConfig{Done: []string{"Done"}, Active: []string{"Ready"}})
 	if len(diagnostics) != 0 {
 		t.Fatalf("diagnostics = %#v", diagnostics)
 	}
@@ -48,7 +72,17 @@ func TestReadModelFromRootlineFallsBackToQueryRowsWhenTreeOmitsCustomStatuses(t 
 }
 
 func TestReadModelFromRootlineReportsGraphDiagnostics(t *testing.T) {
-	model, diagnostics := ReadModelFromRootline(map[string]any{"root": map[string]any{}}, map[string]any{"rows": []any{}}, map[string]any{"cycles": []any{[]any{"a", "b"}}, "broken_links": []any{map[string]any{"source": "a", "target": "missing", "type": "blocked_by"}}}, StatusRoleConfig{})
+	cfg := &config.Config{
+		Fields: config.FieldsConfig{
+			Lifecycle:      "estado",
+			RecordType:     "tipo",
+			TaskValue:      "task",
+			OutcomeValue:   "outcome",
+			DisplayName:    "titulo",
+			DependencyLink: "blocked_by",
+		},
+	}
+	model, diagnostics := ReadModelFromRootline(map[string]any{"root": map[string]any{}}, map[string]any{"rows": []any{}}, map[string]any{"cycles": []any{[]any{"a", "b"}}, "broken_links": []any{map[string]any{"source": "a", "target": "missing", "type": "blocked_by"}}}, cfg, StatusRoleConfig{})
 	if len(model.Tasks) != 0 {
 		t.Fatalf("Tasks = %#v", model.Tasks)
 	}

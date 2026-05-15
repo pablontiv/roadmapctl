@@ -1,13 +1,16 @@
 package roadmap
 
-import "github.com/pablontiv/roadmapctl/internal/diagnostics"
+import (
+	"github.com/pablontiv/roadmapctl/internal/config"
+	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+)
 
-func statusDiagnostics(decoded map[string]any, configured []string, schemaStatuses []string, schemaTypes []string) []Diagnostic {
+func statusDiagnostics(decoded map[string]any, cfg *config.Config, configured []string, schemaStatuses []string, schemaTypes []string) []Diagnostic {
 	allowedStatuses := stringSet(configured)
 	if len(schemaStatuses) > 0 {
 		allowedStatuses = stringSet(schemaStatuses)
 	}
-	allowedTypes := map[string]bool{"task": true, "outcome": true}
+	allowedTypes := map[string]bool{cfg.Fields.TaskValue: true, cfg.Fields.OutcomeValue: true}
 	if len(schemaTypes) > 0 {
 		allowedTypes = stringSet(schemaTypes)
 	}
@@ -20,24 +23,24 @@ func statusDiagnostics(decoded map[string]any, configured []string, schemaStatus
 		}
 		path := stringField(row, "path")
 		frontmatter, _ := row["frontmatter"].(map[string]any)
-		status := stringField(frontmatter, "estado")
+		status := stringField(frontmatter, cfg.Fields.Lifecycle)
 		if status == "" || !allowedStatuses[status] {
 			found = append(found, Diagnostic{
 				ID:       DiagnosticStatusUnknown,
 				Severity: diagnostics.SeverityError,
-				Message:  "task estado is not allowed by Rootline schema",
+				Message:  "task " + cfg.Fields.Lifecycle + " is not allowed by Rootline schema",
 				Path:     path,
-				Details:  map[string]any{"estado": status},
+				Details:  map[string]any{cfg.Fields.Lifecycle: status},
 			})
 		}
-		tipo := stringField(frontmatter, "tipo")
+		tipo := stringField(frontmatter, cfg.Fields.RecordType)
 		if tipo == "" || !allowedTypes[tipo] {
 			found = append(found, Diagnostic{
 				ID:       DiagnosticTypeUnknown,
 				Severity: diagnostics.SeverityError,
-				Message:  "record tipo is not allowed by Rootline schema",
+				Message:  "record " + cfg.Fields.RecordType + " is not allowed by Rootline schema",
 				Path:     path,
-				Details:  map[string]any{"tipo": tipo},
+				Details:  map[string]any{cfg.Fields.RecordType: tipo},
 			})
 		}
 	}
@@ -75,15 +78,15 @@ func operationalStatusDiagnostics(statuses []OperationalStatus, schemaStatuses [
 	return found
 }
 
-func extractStatusValues(decoded map[string]any) []string {
+func extractStatusValues(decoded map[string]any, cfg *config.Config) []string {
 	if values := stringsFromArray(decoded["values"]); len(values) > 0 {
 		return values
 	}
-	return extractSchemaEnumValues(decoded, "estado")
+	return extractSchemaEnumValues(decoded, cfg.Fields.Lifecycle)
 }
 
-func extractTypeValues(decoded map[string]any) []string {
-	return extractSchemaEnumValues(decoded, "tipo")
+func extractTypeValues(decoded map[string]any, cfg *config.Config) []string {
+	return extractSchemaEnumValues(decoded, cfg.Fields.RecordType)
 }
 
 func extractSchemaEnumValues(decoded map[string]any, field string) []string {
