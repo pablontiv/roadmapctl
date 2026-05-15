@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T020: Add rootline binary staleness check to loop-subcommand.md preflight
