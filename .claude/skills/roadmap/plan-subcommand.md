@@ -122,3 +122,14 @@ git -C <repo-path> commit -m "chore(roadmap): create planning docs"
 ```
 
 STOP. Informar: "Archivos de planificación creados. Ejecutar `/roadmap loop` cuando esté listo para implementar."
+
+### Prohibición post-plan
+
+La aprobación del árbol propuesto autoriza **solo** la creación de archivos `.md`. Está explícitamente prohibido:
+
+- Llamar `roadmapctl transition start` o `roadmapctl transition complete` sobre cualquier task
+- Modificar el contenido de los archivos descritos por las tasks (código, documentación, skills)
+- Continuar implementando cualquier lógica, código o documentación de las tasks recién creadas
+- Tratar la aprobación del árbol como autorización para implementar
+
+Todo lo que sigue a la creación de archivos `.md` es responsabilidad exclusiva de `/roadmap loop`.

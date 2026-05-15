@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T021: Enforce plan/loop boundary in plan-subcommand.md
