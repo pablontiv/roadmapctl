@@ -1,5 +1,5 @@
 ---
-estado: Completed
+estado: Obsolete
 tipo: task
 ---
 # T002: Expose execution settings in roadmapctl context

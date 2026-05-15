@@ -1,5 +1,5 @@
 ---
-estado: Completed
+estado: Specified
 tipo: task
 ---
 # T003: Add `title` to `next` command output
