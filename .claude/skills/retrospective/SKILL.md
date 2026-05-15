@@ -55,7 +55,14 @@ git log --oneline -20
 
 ### Recuperación de errores pre-compact (si sesión larga)
 
-Intentar leer el archivo de sesión para recuperar errores ocurridos antes del último compact:
+**Primario** — usar `backscroll search` para recuperar errores de sesiones anteriores:
+
+
+```bash
+backscroll search "error fail wrong issue incorrecto" --session last
+```
+
+**Fallback** — si `backscroll` no está disponible, leer el archivo de sesión directamente:
 
 ```bash
 PROJECT_SLUG=$(pwd | tr '/' '-' | sed 's/^-//')

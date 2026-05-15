@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T024: Fix retrospective SKILL.md to use backscroll as primary retrieval
