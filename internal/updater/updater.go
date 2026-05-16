@@ -104,6 +104,10 @@ func isNewer(candidate, current string) bool {
 
 func parseSemver(v string) ([3]int, bool) {
 	v = strings.TrimPrefix(v, "v")
+	// Strip pre-release and build metadata (e.g. "-alpha", "+build").
+	if idx := strings.IndexAny(v, "-+"); idx != -1 {
+		v = v[:idx]
+	}
 	parts := strings.SplitN(v, ".", 3)
 	if len(parts) != 3 {
 		return [3]int{}, false
