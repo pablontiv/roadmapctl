@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/updater"
 	"github.com/spf13/cobra"
 )
 
@@ -30,6 +31,9 @@ type Options struct {
 }
 
 func Execute(args []string, stdout io.Writer, stderr io.Writer, version string) int {
+	updater.CurrentVersion = version
+	_ = updater.ApplyStagedIfAvailable()
+	go updater.FetchAndStage(version) //nolint:errcheck
 	return ExecuteWithStdin(args, os.Stdin, stdout, stderr, version)
 }
 

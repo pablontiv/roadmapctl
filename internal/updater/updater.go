@@ -25,7 +25,11 @@ const (
 	binary = "roadmapctl"
 )
 
-var httpClient = &http.Client{Timeout: 60 * time.Second}
+var (
+	httpClient   = &http.Client{Timeout: 60 * time.Second}
+	githubAPI    = "https://api.github.com/repos/" + repo + "/releases/latest"
+	githubDLBase = "https://github.com/" + repo + "/releases/download/"
+)
 
 // FetchAndStage downloads the latest roadmapctl release into a staging
 // directory without interrupting the current command. It returns nil silently
@@ -59,8 +63,7 @@ func FetchAndStage(currentVersion string) error {
 }
 
 func fetchLatestTag() (string, error) {
-	url := "https://api.github.com/repos/" + repo + "/releases/latest"
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil) //nolint:gosec
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, githubAPI, nil) //nolint:gosec
 	if err != nil {
 		return "", err
 	}
@@ -159,7 +162,7 @@ func archiveName(tag string) string {
 
 func stageRelease(tag, stageDir, stagedBin string) error {
 	archive := archiveName(tag)
-	baseURL := "https://github.com/" + repo + "/releases/download/" + tag + "/"
+	baseURL := githubDLBase + tag + "/"
 
 	body, err := downloadBytes(baseURL + archive)
 	if err != nil {

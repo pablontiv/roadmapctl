@@ -1,9 +1,11 @@
 package updater
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -153,18 +155,111 @@ func TestApplyStagedNotNewer(t *testing.T) {
 
 func TestApplyPermissionError(t *testing.T) {
 	// AC4: permission error in os.Rename → nil (silent)
-	// We test atomicReplace directly with a path that causes an error.
 	err := atomicReplace("/nonexistent-dest/roadmapctl", "/also-nonexistent/roadmapctl")
 	if err == nil {
 		t.Fatal("expected error from atomicReplace with bad paths")
 	}
-	// But ApplyStagedIfAvailable swallows it → nil.
-	// Verify by checking the logic: when atomicReplace errors, ApplyStagedIfAvailable returns nil.
 	t.Log("AC4: atomicReplace returns error; ApplyStagedIfAvailable swallows it")
 
-	// Verify that errors.Is works as expected for this kind of path error.
 	var pathErr *os.PathError
 	if !errors.As(err, &pathErr) {
 		t.Logf("atomicReplace error: %v", err)
+	}
+}
+
+func TestAtomicReplace_OK(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src")
+	dest := filepath.Join(dir, "dest")
+	content := []byte("new-binary")
+
+	if err := os.WriteFile(src, content, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dest, []byte("old"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := atomicReplace(dest, src); err != nil {
+		t.Fatalf("atomicReplace() = %v", err)
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, content) {
+		t.Fatalf("dest content = %q, want %q", got, content)
+	}
+}
+
+func TestCopyFile_OK(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "source")
+	dst := filepath.Join(dir, "dest")
+	content := []byte("copy-test")
+
+	if err := os.WriteFile(src, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyFile(src, dst); err != nil {
+		t.Fatalf("copyFile() = %v", err)
+	}
+	got, err := os.ReadFile(dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, content) {
+		t.Fatalf("copyFile content mismatch: got %q, want %q", got, content)
+	}
+}
+
+func TestCopyFile_BadSrc(t *testing.T) {
+	err := copyFile("/nonexistent/src", filepath.Join(t.TempDir(), "dst"))
+	if err == nil {
+		t.Fatal("expected error for nonexistent source")
+	}
+}
+
+func TestCopyIO_OK(t *testing.T) {
+	var dst bytes.Buffer
+	n, err := copyIO(strings.NewReader("hello"), &dst)
+	if err != nil {
+		t.Fatalf("copyIO() = %v", err)
+	}
+	if n != 5 {
+		t.Fatalf("copyIO() n = %d, want 5", n)
+	}
+	if dst.String() != "hello" {
+		t.Fatalf("copyIO() result = %q", dst.String())
+	}
+}
+
+func TestFindNewest_MultipleVersions(t *testing.T) {
+	base := t.TempDir()
+	for _, tag := range []string{"v0.1.0", "v0.3.0", "v0.2.0"} {
+		dir := filepath.Join(base, tag)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, binaryName()), []byte("fake"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tag, _, err := findNewest(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag != "v0.3.0" {
+		t.Fatalf("findNewest returned %q, want v0.3.0", tag)
+	}
+}
+
+func TestPlatformExec_Error(t *testing.T) {
+	// platformExec with a nonexistent path should return an error (Unix: syscall.Exec fails)
+	// or succeed in launching (Windows: exec.Command).
+	// On Unix, syscall.Exec on a nonexistent binary returns ENOENT.
+	err := platformExec("/nonexistent-binary-for-test")
+	if err == nil {
+		t.Fatal("expected error for nonexistent binary in platformExec")
 	}
 }
