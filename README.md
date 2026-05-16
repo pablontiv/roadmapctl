@@ -23,6 +23,7 @@ Companion CLI for Rootline-governed roadmaps.
 - [Core Idea](#core-idea)
 - [Layer Responsibilities](#layer-responsibilities)
 - [Installation](#installation)
+- [Auto-update](#auto-update)
 - [Commands](#commands)
 - [AI-Native](#ai-native)
 - [Skill Source](#skill-source)
@@ -114,6 +115,21 @@ go install github.com/pablontiv/roadmapctl/cmd/roadmapctl@latest
 ```
 
 `roadmapctl` expects a compatible `rootline` binary via `--rootline`, `ROOTLINE_BIN`, or `PATH`. See [docs/release.md](docs/release.md) for compatibility notes.
+
+---
+
+## Auto-update
+
+roadmapctl updates itself automatically using a **staged async** pattern. A new release is downloaded in the background during run N and applied transparently at the start of run N+1 — no prompts, no interruptions.
+
+```bash
+# Disable auto-update entirely
+ROADMAPCTL_NO_UPDATE=1 roadmapctl <command>
+```
+
+- Development builds (`version == "dev"`) never auto-update.
+- Permission errors applying an update are suppressed silently — the command always runs.
+- See [docs/auto-update.md](docs/auto-update.md) for the full pattern, OS-specific behavior, and troubleshooting.
 
 ---
 
@@ -211,6 +227,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 | Topic | Description |
 |-------|-------------|
 | [CLI Contract](docs/cli-contract.md) | Commands, flags, exit codes, JSON output shapes |
+| [Auto-update](docs/auto-update.md) | Staged async update pattern, OS behavior, escape hatches |
 | [Skill Integration](docs/roadmap-skill-integration.md) | How the `/roadmap` skill delegates to roadmapctl |
 | [Release](docs/release.md) | Release outline and rootline compatibility notes |
 | [Roadmap](docs/roadmap/) | Project roadmap (governed by rootline + roadmapctl) |
