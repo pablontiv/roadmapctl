@@ -261,8 +261,8 @@ func TestBootstrapFieldExtractionScalarValue(t *testing.T) {
 		t.Fatalf("bootstrap --field exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
 	output := stdout.String()
-	expected := filepath.Join(repo, "docs", "roadmap")
-	if !strings.Contains(output, expected) {
+	expected := filepath.ToSlash(filepath.Join(repo, "docs", "roadmap"))
+	if !strings.Contains(filepath.ToSlash(output), expected) {
 		t.Fatalf("output should contain %q, got: %s", expected, output)
 	}
 	// Verify raw string output (no JSON quotes)

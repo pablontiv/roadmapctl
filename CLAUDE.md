@@ -48,3 +48,13 @@ titulo := stringField(fields, "titulo")  // correct
 - **Always in `frontmatter`**: document YAML headers (`estado`, `tipo`, etc.)
 - **Always in `derived`**: computed fields like `titulo` (via `source:` rules), `is_done`, `isIndex`
 - **Access everything via**: `effectiveFields(row)` to ensure consistency
+
+## Lint Patterns (golangci-lint v2 with gosec)
+
+**G704 SSRF taint analysis** — gosec flags `httpClient.Do(req)` when the URL originates from a package-level variable (even if set to a known endpoint). Add `//nolint:gosec` to the `.Do(req)` call in addition to the `http.NewRequestWithContext` line.
+
+**G602 slice bounds** — gosec flags `b[i]` when `i` comes from `range a` and `b` is a separate array (even if both are `[3]int`). Avoid range loops over one array when indexing another; compare fields directly instead.
+
+**G703 errors on Close** — use `defer func() { _ = f.Close() }()` rather than `defer f.Close()` to satisfy errcheck.
+
+**Cross-platform path tests** — when asserting that output contains a filesystem path, normalize both sides with `filepath.ToSlash` so the test passes on Windows (which uses `/` in Go's temp paths but `filepath.Join` produces `\`).

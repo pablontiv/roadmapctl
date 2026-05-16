@@ -67,7 +67,7 @@ func fetchLatestTag() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resp, err := httpClient.Do(req)
+	resp, err := httpClient.Do(req) //nolint:gosec
 	if err != nil {
 		return "", err
 	}
@@ -94,15 +94,13 @@ func isNewer(candidate, current string) bool {
 	if !aOK || !bOK {
 		return false
 	}
-	for i := range a {
-		if a[i] > b[i] {
-			return true
-		}
-		if a[i] < b[i] {
-			return false
-		}
+	if a[0] != b[0] {
+		return a[0] > b[0]
 	}
-	return false
+	if a[1] != b[1] {
+		return a[1] > b[1]
+	}
+	return a[2] > b[2]
 }
 
 func parseSemver(v string) ([3]int, bool) {
@@ -194,7 +192,7 @@ func downloadBytes(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := httpClient.Do(req)
+	resp, err := httpClient.Do(req) //nolint:gosec
 	if err != nil {
 		return nil, err
 	}
