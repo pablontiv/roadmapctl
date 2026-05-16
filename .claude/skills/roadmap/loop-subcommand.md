@@ -55,7 +55,7 @@ roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json 
 
 Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de seleccionar o ejecutar tasks. Reportar comando, exit code y diagnostic IDs si hubo JSON. No ejecutar tasks ni mutar estados.
 
-**Staged async auto-update** — `internal/updater.FetchAndStage` descarga en staging (`~/.cache/roadmapctl/staged/<version>/`) la versión más nueva del binario sin interrumpir el comando en curso. El wiring en el CLI es gestionado por la task T003-cli-wiring; la ejecución del loop no necesita invocar ni esperar el updater. Errores de red son silenciosos; un SHA256 incorrecto retorna error sin dejar archivos en staging. Para desactivar: `ROADMAPCTL_NO_UPDATE=1`.
+**Staged async auto-update** — `internal/updater` implementa el patrón staged async: `FetchAndStage` descarga en background la versión más nueva a `~/.cache/roadmapctl/staged/<version>/`; `ApplyStagedIfAvailable` detecta el binario staged en la siguiente invocación, lo reemplaza atómicamente (os.Rename en Unix) y re-exec. El wiring en el CLI es gestionado por T003-cli-wiring; la ejecución del loop no necesita invocar ni esperar el updater. Errores de red y permisos son silenciosos. Para desactivar: `ROADMAPCTL_NO_UPDATE=1`.
 
 **Rootline binary staleness** — Cuando el loop ejecuta tasks en el repo `rootline` (o en repos que modifican `cmd/rootline/` o `internal/`), verificar que el binario instalado refleja los cambios recientes. Si el binario es stale, `roadmapctl next` puede devolver JSON formato v1 (sin `frontmatter` map) produciendo títulos vacíos y otros fallos silenciosos.
 
