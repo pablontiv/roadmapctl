@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T005: Close GitHub issues #2 and #3 with explanatory comments
