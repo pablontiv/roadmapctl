@@ -52,7 +52,6 @@ Commands support `--output text` and `--output json`.
 | Flag | Values | Default | Description |
 |------|--------|---------|-------------|
 | `--repo` | path | cwd | Repository root or workspace member to inspect. |
-| `--roadmap-root` | path | inferred from `<roadmap-root>/.roadmapctl.toml` or one-time legacy migration input | Override configured roadmap root. The resolved path must stay inside the repo. |
 | `--workspace` | bool | auto | Treat `--repo`/cwd as a workspace containing multiple repos. |
 | `--output` | `text`, `json` | `text` | Select human or machine-readable output. |
 | `--strict` | bool | `false` | Treat warnings as failures when calculating exit code. |
@@ -63,7 +62,7 @@ Durations use Go duration syntax, for example `500ms`, `10s`, `2m`.
 
 ## Configuration contract
 
-Preferred post-MVP config lives at `<roadmap-root>/.roadmapctl.toml` (for example `docs/roadmap/.roadmapctl.toml`). The roadmap root is inferred from the directory containing the TOML file; `roadmap_root` is intentionally not a TOML key. `--roadmap-root` remains a command-line override for explicit inspection and migration workflows.
+The roadmap root is fixed at `docs/roadmap/` under the selected repo. It is not configurable: no CLI flag overrides it, and `.roadmapctl.toml` does not declare it. Config lives at `<roadmap-root>/.roadmapctl.toml` (i.e. `docs/roadmap/.roadmapctl.toml`); the resolved absolute path appears as the `roadmap_root` field in every JSON report and in `roadmapctl bootstrap --output json`.
 
 Example single-repo config:
 
@@ -121,7 +120,7 @@ Operational config does not define or constrain the full document schema. The ef
 
 Precedence:
 
-1. Command-line flags for process scope (`--repo`, `--roadmap-root`, `--rootline`, `--timeout`, `--output`, `--strict`). These flags do not override behavior settings such as `parallel`, `autonomy`, `compact_after_task_commit`, or `pr_mode`. `/roadmap loop --filter` and `/roadmap loop --max` remain skill-layer one-run selection/cap controls.
+1. Command-line flags for process scope (`--repo`, `--rootline`, `--timeout`, `--output`, `--strict`). These flags do not override behavior settings such as `parallel`, `autonomy`, `compact_after_task_commit`, or `pr_mode`. `/roadmap loop --filter` and `/roadmap loop --max` remain skill-layer one-run selection/cap controls.
 2. Preferred `<roadmap-root>/.roadmapctl.toml` discovered under the selected repo/roadmap root.
 3. Legacy `.claude/roadmap.local.md` as one-time migration input only.
 4. Built-in defaults above for omitted optional keys.
@@ -226,8 +225,8 @@ roadmapctl lint --repo . --output json --strict
 JSON remains the source of truth for CI. Recommended CI usage runs `check` and, when semantic conventions are desired, `lint` with `--output json --strict`:
 
 ```bash
-roadmapctl check --repo . --roadmap-root docs/roadmap --output json --strict > roadmapctl-check.json
-roadmapctl lint --repo . --roadmap-root docs/roadmap --output json --strict > roadmapctl-lint.json
+roadmapctl check --repo . --output json --strict > roadmapctl-check.json
+roadmapctl lint --repo . --output json --strict > roadmapctl-lint.json
 ```
 
 Exit codes are the stable machine contract. Additional formats such as SARIF/JUnit are deferred until explicitly approved; GitHub-specific annotations should be generated from JSON by wrapper workflows rather than changing core command semantics.
@@ -417,7 +416,7 @@ If the effective schema produces any of the following diagnostics, the repair pa
 ### `--yes` flag
 
 ```bash
-roadmapctl bootstrap --repo <path> --roadmap-root <root> --yes
+roadmapctl bootstrap --repo <path> --yes
 ```
 
 Skips the interactive prompt and applies the repair directly. Use this in autonomous agents and CI scripts.
