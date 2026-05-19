@@ -144,6 +144,12 @@ Si `parallel == true`, ejecutar cada wave despachando llamadas paralelas al tool
 
 Si dos tasks de la misma wave producen conflicto al integrar, tratar como dependencia faltante según el modo de autonomía — no usar worktrees para forzar el merge.
 
+### Pre-dispatch: serializar tasks con `## Fuente de verdad` solapada
+
+Antes de despachar la wave en paralelo, leer la sección `## Fuente de verdad` de cada task de `ready[]`. Si dos o más tasks declaran el mismo path como fuente de verdad, **serializarlas dentro de la wave** — ejecutar una, integrar, recalcular `roadmapctl next`, ejecutar la siguiente. Esta es ordenación de ejecución, no una dependencia estructural del roadmap: no agregar `blocked_by`, no mutar el grafo.
+
+Sin este pre-check, dos agentes en paralelo editan el mismo archivo y producen conflicto al integrar; el handler "Conflictos por dependencia faltante" descrito abajo es reactivo y ya desperdició cómputo del agente. La detección por `Fuente de verdad` evita el desperdicio sin contradecir la regla de no inferir `blocked_by` por heurísticas — solo reordena la cola intra-wave.
+
 Conflictos por dependencia faltante:
 
 - `manual`: reportar el `blocked_by` recomendado y detenerse.
