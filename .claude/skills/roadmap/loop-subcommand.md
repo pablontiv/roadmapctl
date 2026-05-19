@@ -242,6 +242,22 @@ Para cada task o wave ordenada:
 
    Ejemplo real (picokit T002): el subagente reportó `coverage: 95.7% (cached)` sobre código que en realidad no había sido modificado por su edit. El loop tomó eso como AC pasado y solo se descubrió el problema en CI. Con `-count=1` el cache hit no ocurre y el resultado refleja el estado real del código.
 
+   **Lint local antes de declarar ACs pasados (requisito si el repo tiene linter)**
+
+   Si la task modifica código fuente (`.go`, `.ts`, `.js`, `.rs`, `.py`, `.rb`, etc.) y el repo tiene un linter configurado (`.golangci.yml`/`.golangci.yaml`, `.eslintrc*`, `clippy.toml`, `pyproject.toml` con ruff/flake8, etc.), correr el linter sobre los paquetes/módulos afectados antes de invocar `roadmapctl transition complete --apply`:
+
+   - Go: `golangci-lint run ./<pkg-modificado>/...` (o `./...` si la task tocó varios).
+   - JS/TS: `npx eslint <files>` o el comando configurado en package.json.
+   - Rust: `cargo clippy -- -D warnings` (o subset por crate).
+   - Python: `ruff check <paths>` o `flake8 <paths>`.
+
+   Cómo tratar los hallazgos:
+
+   - **Violations en archivos tocados por la task activa**: son parte del scope. Resolverlas antes de `transition complete`.
+   - **Violations en archivos NO tocados por la task activa**: heredadas del estado previo del repo. Documentarlas en el contexto de la sesión como candidatas a nueva task de fix; **no implementarlas dentro del scope activo** (la regla de scope guard del paso 5 sigue vigente).
+
+   Ejemplo real (picokit T003): el repo tenía 6 violations de lint (errcheck, staticcheck SA5011/SA9003, unused) en paquetes no tocados por T002. Como no se corrió el linter localmente, T003 las heredó y tuvo que producir 3 commits de fix no planificados que rompían su propio scope. Con lint local antes del push, esos hallazgos se documentan como candidatos a nueva task en lugar de contaminar el scope activo.
+
 7. **Outcome close check**
    Si es la última task pendiente del Outcome, ejecutar comandos de `outcome_close_verify` si existen. Warning informativo, no bloqueo automático.
 

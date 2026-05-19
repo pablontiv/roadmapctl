@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T029: Loop — correr linter localmente antes de declarar ACs pasados en tasks con CI
