@@ -105,6 +105,25 @@ Mostrar `TaskList`.
 
 Si `pr_mode == true`, leer [pr-workflow.md](pr-workflow.md) y ejecutar Branch & PR Detection. Si `pr_mode == false`, omitir workflow de PR.
 
+## Observabilidad de procesos largos
+
+- **Usar `Monitor`** (no `Bash` foreground bloqueante) cuando un proceso corre en background y queremos surfacear stdout línea-por-línea (tests, builds, agent dispatches durante una task). Patrón canónico: lanzar con `Bash` + `run_in_background: true` teando a `/tmp/roadmap-<task-id>.log`, luego `Monitor` con `grep -E --line-buffered` filtrando hitos (`PASS|FAIL|ERROR|heartbeat`).
+- **Usar `ScheduleWakeup`** (no `bash sleep` loops) cuando hay que esperar estado externo que el harness no notifica: GitHub Actions runs (`gh run watch` bloquea; preferir wakeup + `gh run view --json status`), deploys, queues remotas.
+- **Prohibido** encadenar `Bash sleep` para polling: elegir `Monitor` (stdout streamable) o `ScheduleWakeup` (poll interval externo) según el caso.
+- **Instrucción directa del usuario**: si dice "monitorea" / "use monitor" / "watch this", invocar `Monitor` inmediatamente en el siguiente paso de proceso largo — no sustituir silenciosamente por `Bash background + sleep`.
+
+Ejemplo del patrón completo:
+
+```bash
+# 1. Lanzar tests en background, tee a log
+Bash(command="go test ./... -v 2>&1 | tee /tmp/roadmap-T001.log",
+     run_in_background=true)
+
+# 2. Streamear hitos del log
+Monitor(command="grep -E --line-buffered '(PASS|FAIL|ok|---)' /tmp/roadmap-T001.log",
+        description="T001 test run")
+```
+
 ## Fase 3: Loop
 
 Variables:
