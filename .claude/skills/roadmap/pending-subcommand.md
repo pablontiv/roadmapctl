@@ -25,7 +25,7 @@ Renderizar desde el JSON:
 ## Single-repo
 
 ```bash
-roadmapctl pending --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl pending --repo <repo> --output json
 ```
 
 Reglas:

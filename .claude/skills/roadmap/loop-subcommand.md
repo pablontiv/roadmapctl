@@ -39,7 +39,7 @@ Calcular `effective_max` así:
 El loop opera en un repo a la vez.
 
 - Con `--repo <name>`: usar ese repo.
-- Sin `--repo`: contar pendientes por repo con `roadmapctl pending --repo <repo-path> --roadmap-root <roadmap-root> --output json` y pedir selección.
+- Sin `--repo`: contar pendientes por repo con `roadmapctl pending --repo <repo-path> --output json` y pedir selección.
 
 ## Fase 1: Discovery
 
@@ -49,8 +49,8 @@ Antes de consultar o ejecutar tasks pendientes:
 
 ```bash
 command -v roadmapctl
-roadmapctl doctor --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
-roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl doctor --repo <repo-path> --output json --strict
+roadmapctl check --repo <repo-path> --output json --strict
 ```
 
 Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de seleccionar o ejecutar tasks. Reportar comando, exit code y diagnostic IDs si hubo JSON. No ejecutar tasks ni mutar estados.
@@ -74,7 +74,7 @@ Nota CI: `go test ./...` funciona sin rootline instalado — `TestMain` activa e
 
 1. Obtener estado determinístico de ejecución:
    ```bash
-   roadmapctl next --repo <repo-path> --roadmap-root <roadmap-root> --output json
+   roadmapctl next --repo <repo-path> --output json
    ```
    - Si `summary.status != "ok"` o el comando sale non-zero: reportar diagnostics y parar.
    - Usar `ready[]` como cola ejecutable; usar `blocked[]` solo para explicar skips/bloqueos.
@@ -82,7 +82,7 @@ Nota CI: `go test ./...` funciona sin rootline instalado — `TestMain` activa e
    - No ejecutar `rootline graph`, `rootline query` o `rootline tree` ni postprocesar JSON crudo de Rootline para reconstruir la cola.
 2. Obtener listado activo para tabla y conteos:
    ```bash
-   roadmapctl pending --repo <repo-path> --roadmap-root <roadmap-root> --output json
+   roadmapctl pending --repo <repo-path> --output json
    ```
    - Si `summary.status != "ok"` o el comando sale non-zero: reportar diagnostics y parar.
 3. Aplicar `--filter` por path sobre `ready[]` si existe.
@@ -137,7 +137,7 @@ Para cada task o wave ordenada:
 
 1. **Verificar transición de inicio**
    ```bash
-   roadmapctl transition can-start <task.md> --repo <repo-path> --roadmap-root <roadmap-root> --output json
+   roadmapctl transition can-start <task.md> --repo <repo-path> --output json
    ```
    - Usar el JSON de `roadmapctl`; no recalcular reglas de dependencias en prompt.
    - Si `allowed=false`, skip con `blocking_dependencies[]`/`diagnostics[]`.
@@ -149,7 +149,7 @@ Para cada task o wave ordenada:
 
 3. **Marcar inicio**
    ```bash
-   roadmapctl transition start <task.md> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
+   roadmapctl transition start <task.md> --apply --repo <repo-path> --output json
    ```
    Si `allowed=false`, `summary.status="error"`, o el comando sale non-zero, detenerse antes de ejecutar la task o commitear. `roadmapctl transition start --apply` es responsable de `rootline set`, `rootline validate` y postcheck; no duplicar esas reglas en prompt. Actualizar UI con `TaskUpdate` solo después de pasar.
 
@@ -174,7 +174,7 @@ Para cada task o wave ordenada:
 
 9. **Complete + commit**
    ```bash
-   roadmapctl transition complete <task.md> --apply --repo <repo-path> --roadmap-root <roadmap-root> --output json
+   roadmapctl transition complete <task.md> --apply --repo <repo-path> --output json
    ```
    Ejecutar este comando solo después de que ACs e invariantes pasaron. Si `allowed=false`, `summary.status="error"`, o el comando sale non-zero, reportar diagnostics y detenerse antes de declarar completada la iteración o commitear. Si pasa: `git add` específico, commit según `commit_style`, push según `auto_push`, y PR bookkeeping según `pr_mode`.
 

@@ -76,8 +76,8 @@ Si aparecieron nuevos archivos que cambian los números propuestos, informar al 
 
 ```bash
 command -v roadmapctl
-roadmapctl doctor --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
-roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl doctor --repo <repo-path> --output json --strict
+roadmapctl check --repo <repo-path> --output json --strict
 ```
 
 Si cualquier comando sale non-zero: detenerse, reportar exit code y diagnostics. No crear archivos.
@@ -85,7 +85,7 @@ Si cualquier comando sale non-zero: detenerse, reportar exit code y diagnostics.
 > **Stem legacy:** Si `doctor`/`check` falla con `RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED` o
 > `RMC_LINT_SCHEMA_OUTCOME_ESTADO_NON_EMPTY`, ejecutar:
 > ```bash
-> roadmapctl bootstrap --repo <repo-path> --roadmap-root <roadmap-root> --yes
+> roadmapctl bootstrap --repo <repo-path> --yes
 > ```
 > y reintentar el preflight. En modo autónomo (`--yes`) la reparación aplica sin prompt.
 > Si el `.stem` tiene campos custom no reconocidos, bootstrap emite `RMC_BOOTSTRAP_REPAIR_UNSUPPORTED_STEM`
@@ -109,7 +109,7 @@ Por cada archivo creado. Si falla: reportar y detener.
 **3.5 Postcheck obligatorio**
 
 ```bash
-roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl check --repo <repo-path> --output json --strict
 ```
 
 Si falla: detenerse, reportar diagnostics. No commitear.

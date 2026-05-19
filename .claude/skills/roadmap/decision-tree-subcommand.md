@@ -11,25 +11,25 @@ Si `<repos>` existe, ejecutar por repo y agrupar salida con prefijo `[repo]`. Si
 Para cada repo resuelto:
 
 ```bash
-roadmapctl decision --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl decision --repo <repo> --output json
 ```
 
 Opcionalmente, para mostrar solo readiness/blockers sin scoring:
 
 ```bash
-roadmapctl next --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl next --repo <repo> --output json
 ```
 
 ## Single-repo
 
 ```bash
-roadmapctl decision --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl decision --repo <repo> --output json
 ```
 
 Si el usuario pide específicamente "next task", "listas" o "bloqueadas":
 
 ```bash
-roadmapctl next --repo <repo> --roadmap-root <roadmap-root> --output json
+roadmapctl next --repo <repo> --output json
 ```
 
 ## Interpretar `roadmapctl decision`

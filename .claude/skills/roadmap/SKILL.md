@@ -106,7 +106,7 @@ command -v roadmapctl
 Ejecutar para cada repo objetivo:
 
 ```bash
-roadmapctl bootstrap --repo <repo-path> --roadmap-root <roadmap-root-si-se-conoce> --output json
+roadmapctl bootstrap --repo <repo-path> --output json
 ```
 
 Usar el JSON devuelto como fuente de verdad para:
@@ -232,14 +232,14 @@ Gate antes de escribir/mutar/ejecutar/declarar validez:
 
 ```bash
 command -v roadmapctl
-roadmapctl doctor --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
-roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl doctor --repo <repo-path> --output json --strict
+roadmapctl check --repo <repo-path> --output json --strict
 ```
 
 Postcheck obligatorio después de materializar o mutar:
 
 ```bash
-roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl check --repo <repo-path> --output json --strict
 ```
 
 Si `roadmapctl` falta o sale non-zero, detenerse y reportar diagnostics. No

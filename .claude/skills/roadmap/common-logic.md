@@ -25,14 +25,14 @@ Antes de escribir, mutar o ejecutar:
 ```bash
 command -v roadmapctl
 roadmapctl --version                                                                  # diagnóstico: version del binario instalado
-roadmapctl doctor --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
-roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl doctor --repo <repo-path> --output json --strict
+roadmapctl check --repo <repo-path> --output json --strict
 ```
 
 Después de cualquier materialización o mutación del roadmap:
 
 ```bash
-roadmapctl check --repo <repo-path> --roadmap-root <roadmap-root> --output json --strict
+roadmapctl check --repo <repo-path> --output json --strict
 ```
 
 Si `roadmapctl` no existe o cualquier comando sale non-zero, detenerse antes de continuar. Reportar comando, exit code y diagnostic IDs si hubo JSON. No auto-fix, no fallback a markdown libre, no ejecutar tasks y no commitear mutaciones del roadmap.
