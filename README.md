@@ -20,6 +20,7 @@ Companion CLI for Rootline-governed roadmaps.
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Workspace mode](#workspace-mode)
 - [Core Idea](#core-idea)
 - [Layer Responsibilities](#layer-responsibilities)
 - [Installation](#installation)
@@ -54,6 +55,37 @@ roadmapctl transition start docs/roadmap/T001-my-task.md --repo . --apply
 # 6. Complete a task — transitions estado In Progress → Completed
 roadmapctl transition complete docs/roadmap/T001-my-task.md --repo . --apply
 ```
+
+---
+
+## Workspace mode
+
+When `roadmapctl` runs from a directory without a `.git` directory but containing sibling repos with their own `.git`, it operates in **workspace mode**.
+
+**Convention**: each participating repo maintains its own complete roadmap under `<repo>/docs/roadmap/` with `.stem`, `.roadmapctl.toml`, outcomes, and tasks. Each repo is autonomous — its roadmap, its tasks, its commits.
+
+**Layout example**:
+
+```text
+my-workspace/                    # parent dir without .git
+├── docs/                        # repo 1: own .git + docs/roadmap/
+│   ├── .git/
+│   └── docs/roadmap/
+│       ├── .stem
+│       └── .roadmapctl.toml
+├── tsg-valuecreation-core/      # repo 2: same layout
+│   ├── .git/
+│   └── docs/roadmap/
+│       └── ...
+└── tsg-valuecreation-frontend/  # repo 3: same layout
+    ├── .git/
+    └── docs/roadmap/
+        └── ...
+```
+
+**Invocation**: most commands operate on a single repo at a time. Pass `--repo <path>` to target a specific repo. `roadmapctl pending --workspace` iterates the discovered repos and aggregates results.
+
+**Anti-pattern**: do not create "code repos" without their own roadmap, expecting a central roadmap repo to commit on their behalf. Each repo is autonomous; cross-repo commit routing is not supported. If a repo needs to participate in the workspace, it needs its own `<repo>/docs/roadmap/`.
 
 ---
 

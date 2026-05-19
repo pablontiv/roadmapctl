@@ -120,6 +120,12 @@ Si `roadmapctl bootstrap` falla o `roadmapctl` no existe:
 2. Para cada repo, ejecutar `roadmapctl bootstrap` si está disponible y calcular helpers desde su JSON.
 3. Imprimir checkpoint con repos detectados.
 
+Cada repo del workspace mantiene su propio roadmap completo bajo `<repo>/docs/roadmap/` con `.stem`, `.roadmapctl.toml`, outcomes y tasks; no existen repos sin roadmap propio. El skill opera **por repo**:
+
+- `/roadmap loop` se invoca sobre un repo a la vez. Usar `--repo <name>` para targetear uno específico, o ejecutar el comando dentro del repo (cwd con `.git`).
+- Cada repo gestiona su propio commit/push según el `auto_push` resuelto en su propio `.roadmapctl.toml`.
+- No existe routing de commits cross-repo: cada task de un repo debe tocar únicamente archivos de ese repo.
+
 ### Single-repo mode
 
 1. Resolver repo actual.
