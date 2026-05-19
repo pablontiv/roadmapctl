@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T002: Reemplazar gitflow inline del loop por invocación a `/integrate`

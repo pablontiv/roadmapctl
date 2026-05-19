@@ -101,10 +101,6 @@ Para cada task:
 
 Mostrar `TaskList`.
 
-## Fase 2.5: PR mode
-
-Si `pr_mode == true`, leer [pr-workflow.md](pr-workflow.md) y ejecutar Branch & PR Detection. Si `pr_mode == false`, omitir workflow de PR.
-
 ## Observabilidad de procesos largos
 
 - **Usar `Monitor`** (no `Bash` foreground bloqueante) cuando un proceso corre en background y queremos surfacear stdout línea-por-línea (tests, builds, agent dispatches durante una task). Patrón canónico: lanzar con `Bash` + `run_in_background: true` teando a `/tmp/roadmap-<task-id>.log`, luego `Monitor` con `grep -E --line-buffered` filtrando hitos (`PASS|FAIL|ERROR|heartbeat`).
@@ -169,8 +165,8 @@ Para cada task o wave ordenada:
    - No llamar `rootline set` directamente para iniciar tasks.
 
 2. **Scope change**
-   - Si cambia Outcome/direct scope y `pr_mode == true`, cerrar PR anterior si corresponde y ejecutar Outcome Setup.
-   - Sin PR mode, solo actualizar `current_scope`.
+   - Registrar `previous_scope = current_scope`; si cambia, actualizar `current_scope`.
+   - El skill `/integrate` recibe `previous_scope` y gestiona el cierre de PR anterior y el branch setup cuando `pr_mode == true`.
 
 3. **Marcar inicio**
    ```bash
@@ -197,11 +193,31 @@ Para cada task o wave ordenada:
 8. **Security review selectivo**
    Si se tocaron archivos sensibles (`secret`, `credentials`, `.env`, `auth`, `crypto`) o la task lo pide, ejecutar review de seguridad. Findings HIGH bloquean.
 
-9. **Complete + commit**
+9. **Integrate**
+
+   Gate del modelo — ejecutar **solo** después de que ACs e invariantes pasaron:
    ```bash
    roadmapctl transition complete <task.md> --apply --repo <repo-path> --output json
    ```
-   Ejecutar este comando solo después de que ACs e invariantes pasaron. Si `allowed=false`, `summary.status="error"`, o el comando sale non-zero, reportar diagnostics y detenerse antes de declarar completada la iteración o commitear. Si pasa: `git add` específico, commit según `commit_style`, push según `auto_push`, y PR bookkeeping según `pr_mode`.
+   Si `allowed=false`, `summary.status="error"`, o el comando sale non-zero, reportar diagnostics y detenerse.
+
+   Si pasa, invocar el skill `/integrate`:
+   ```
+   Skill("integrate",
+     task_path=<task.md>,
+     scope=<current_scope>,
+     previous_scope=<previous_scope>,
+     repo_path=<repo-path>,
+     config=<snapshot JSON con commit_style, auto_push, pr_mode, pr_merge_strategy, autonomy, base_branch>,
+     commit_files=<archivos modificados por la task>,
+     is_last_in_scope=<true si ready[] post-completion está vacío para este scope>
+   )
+   ```
+
+   Capturar el bloque `INTEGRATE_RESULT` devuelto por el skill:
+   - Si `scope_changed == true`: actualizar `current_scope`.
+   - Si `pr != null`: registrar en `prs_created`.
+   - Si `diagnostics[]` contiene errores: reportar y detenerse.
 
 10. **Actualizar UI y resumen**
    ```bash
