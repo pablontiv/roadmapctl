@@ -91,7 +91,20 @@ Nota CI: `go test ./...` funciona sin rootline instalado — `TestMain` activa e
 4. Mantener el orden determinístico devuelto por `roadmapctl next`; no hacer topological sort manual.
 5. Aplicar `effective_max` si es mayor que cero.
 6. Renderizar tabla desde JSON (`ready[]`, `blocked[]` y `pending.tasks[]`).
-7. Si no hay tasks en `ready[]` después del filtro: informar pendientes bloqueadas y parar.
+7. Si no hay tasks en `ready[]` después del filtro: informar pendientes bloqueadas y, **antes de devolver control al usuario, invocar `/retrospective`** de forma incondicional (el cierre del loop siempre dispara retrospective, incluso sin trabajo nuevo):
+
+   ```
+   Skill("retrospective",
+     checkpoint_commit=<HEAD actual>,
+     tasks_completadas=0,
+     tasks_saltadas=0,
+     acs_passed=0,
+     acs_total=0,
+     prs_created=[],
+     commits=[],
+     repo_path=<repo-path>
+   )
+   ```
 
 ## Fase 2: TodoList
 
@@ -267,6 +280,17 @@ RESUMEN LOOP
 └─ Tasks restantes: ...
 ```
 
-→ Invocar skill `/retrospective` pasando en contexto:
-  - `checkpoint_commit` (capturado al inicio de Fase 3)
-  - Tasks completadas, saltadas y ACs del resumen anterior
+Tras renderizar el resumen, **invocar inmediatamente** el skill `/retrospective` en el mismo turno — no devolver control al usuario antes. Esta invocación es **obligatoria e incondicional** al cierre de Fase 4, aun con N=0 tasks completadas; el skill maneja gracefully el caso "0 commits para analizar".
+
+```
+Skill("retrospective",
+  checkpoint_commit=<HEAD inicial capturado en Fase 3>,
+  tasks_completadas=<N>,
+  tasks_saltadas=<M>,
+  acs_passed=<passed>,
+  acs_total=<total>,
+  prs_created=<lista de PRs si pr_mode>,
+  commits=<lista de hashes>,
+  repo_path=<repo-path>
+)
+```
