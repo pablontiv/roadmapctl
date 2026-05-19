@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T004: Documentar la nueva arquitectura `/roadmap` ↔ `/integrate`

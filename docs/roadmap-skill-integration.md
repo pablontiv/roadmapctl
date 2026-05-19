@@ -209,6 +209,36 @@ After changing task status, links, dependencies, or task files:
 
 `/roadmap loop` may still run targeted task acceptance checks and existing Rootline commands, but those checks are additive. They do not replace `roadmapctl doctor` and `roadmapctl check`.
 
+## `/roadmap loop` ↔ `/integrate` integration
+
+After `roadmapctl transition complete --apply` passes, `/roadmap loop` delegates all commit/push/PR work to the `/integrate` skill via `Skill("integrate", ...)`. The loop does not contain `git` or `gh` commands.
+
+**Inputs** passed by the loop on each task completion:
+
+| Field | Description |
+|-------|-------------|
+| `task_path` | Path of the completed task |
+| `scope` | Active Outcome or `direct-tasks` |
+| `previous_scope` | Previous scope (empty if first task) |
+| `repo_path` | Absolute path to the repo |
+| `config` | JSON with `commit_style`, `auto_push`, `pr_mode`, `pr_merge_strategy`, `autonomy`, `base_branch` |
+| `commit_files[]` | Files modified by the task |
+| `is_last_in_scope` | Whether this is the last task in the current scope |
+
+**Output** printed by `/integrate` as `INTEGRATE_RESULT`:
+
+```json
+{
+  "commit_hash": "<hash or null>",
+  "branch": "<branch name or null>",
+  "pr": null,
+  "scope_changed": false,
+  "diagnostics": []
+}
+```
+
+The loop captures `INTEGRATE_RESULT` and updates `current_scope` (if `scope_changed`) and `prs_created` (if `pr != null`). If `diagnostics` contains errors, the loop stops. This ensures commit/push/PR prose lives in one skill (`/integrate`), not duplicated across loop and workflow files.
+
 ## Loop status transitions
 
 The `/roadmap loop` skill must delegate task status transition policy and mutation to `roadmapctl transition`:
@@ -282,7 +312,8 @@ After the cutover, the `/roadmap` skill intentionally keeps only conversational 
 |------|------------------|---------------------|
 | Bootstrap | choose repo/workspace target, render checkpoint, stop on guard failure | `context` resolves config/schema/helpers |
 | Pending/decision | human presentation and routing | `pending`, `next`, `decision` compute state, blockers and scoring |
-| Loop | read task, implement code, run ACs, commit/push according to config | `transition` owns start/complete policy, status mutation and postcheck |
+| Loop | read task, implement code, run ACs, delegate commit/push/PR to `/integrate` | `transition` owns start/complete policy, status mutation and postcheck |
+| Loop integration (git/PR) | Skill `/integrate` (callee del loop) | — |
 | Plan | decompose conceptually, ask approval, serialize structured plan, **write approved Outcome/Task markdown**, review postcheck | `plan-paths` owns numbering and canonical paths; `check` owns pre/post validation and policy enforcement |
 
 Rootline commands may remain only as troubleshooting/reference or for loop graph/query discovery where no roadmapctl command owns that read yet. They must not be used as the primary writer/mutator when a roadmapctl command exists.
@@ -353,3 +384,13 @@ When the guard fails, stop and explain the failure with actionable diagnostics.
 `roadmapctl` may invoke Rootline as an external executable. `/roadmap` should treat `roadmapctl` as the roadmap-specific policy layer and Rootline as the generic DBMS/constraint engine.
 
 The skill may still use Rootline commands for materialization and querying after `roadmapctl` preflight succeeds, but commands that write, mutate, execute, or claim validity must be guarded by `roadmapctl`.
+
+## Refactor metrics
+
+Measured after O24 (extract `/integrate` + shrink `/roadmap`), 2026-05-18:
+
+| Artifact | Before | After |
+|----------|--------|-------|
+| `/roadmap` SKILL.md | 312 lines | 100 lines |
+| `/roadmap` skill total (all `.md`) | 1458 lines | 1350 lines |
+| `/integrate` SKILL.md | — | 224 lines |
