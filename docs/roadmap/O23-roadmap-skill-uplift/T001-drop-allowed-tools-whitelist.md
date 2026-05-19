@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T001: Eliminar bloque allowed-tools del frontmatter de SKILL.md

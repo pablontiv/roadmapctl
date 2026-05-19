@@ -10,20 +10,6 @@ description: |
   requerimientos, quiere ver pendientes/progreso, o dice "next task",
   "planificar" o "descomponer".
 argument-hint: "<texto libre> | [pending|loop|plan] [args]"
-allowed-tools:
-  - Write
-  - Read
-  - Grep
-  - Glob
-  - Bash
-  - TaskCreate
-  - TaskList
-  - TaskUpdate
-  - TaskGet
-  - Skill
-  - AskUserQuestion
-  - ExitPlanMode
-  - Agent
 effort: xhigh
 execution-model: sonnet
 worktree-per-outcome: false
