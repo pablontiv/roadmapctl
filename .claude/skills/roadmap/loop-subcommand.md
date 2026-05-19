@@ -1,5 +1,7 @@
 # /roadmap loop [--filter PATTERN] [--max N]
 
+> Referencias obligatorias antes de ejecutar: [bootstrap-reference.md](bootstrap-reference.md)
+
 Ejecutar tasks pendientes usando la configuración efectiva devuelta por `roadmapctl bootstrap`. El loop acepta solo `--filter`, `--max` y el flag global `--repo` (workspace mode).
 
 Ruta normal autosuficiente: este archivo contiene el procedimiento operativo completo. No leer `common-logic.md` ni documentación de integración para ejecutar el loop; esos documentos son referencia de mantenimiento/troubleshooting.

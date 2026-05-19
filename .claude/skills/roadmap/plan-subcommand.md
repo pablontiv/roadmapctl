@@ -1,5 +1,7 @@
 # /roadmap plan
 
+> Referencias obligatorias antes de escribir: [bootstrap-reference.md](bootstrap-reference.md)
+
 Materializa el plan de la conversación como archivos `.md` del roadmap. No implementa código.
 
 Ruta normal autosuficiente: este archivo contiene el procedimiento operativo completo. No leer `common-logic.md` ni documentación de integración para ejecutar el flujo; esos documentos son referencia de mantenimiento/troubleshooting.
