@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T027: Loop — forzar bypass de caché en verificación de tests post-edit

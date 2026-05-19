@@ -211,6 +211,18 @@ Para cada task o wave ordenada:
    
    Ejemplo: si la task modificó `pkg/foo.go` y el AC es `"grep -r 'OldSymbol' pkg/foo/ retorna vacío"`, ejecutar directamente ese grep en el shell del loop **antes de llamar `roadmapctl transition complete --apply`**, no confiar solo en el resumen del agente.
 
+   **Bypass de caché en runners de test (requisito)**
+
+   Cuando el AC verifica tests o cobertura con un runner que cachea resultados (Go test, Jest, pytest, cargo test, etc.) **y la task modificó archivos bajo test**, forzar ejecución sin caché al re-verificar. Un resultado marcado `(cached)` o `from cache` sobre código recién editado es un falso positivo — no cuenta como AC verificado.
+
+   - Go: `go test -count=1 ./...` (o `-count=1` por paquete).
+   - Jest: `jest --no-cache`.
+   - pytest: `pytest --cache-clear`.
+   - cargo: `cargo test` con `CARGO_INCREMENTAL=0` o limpieza previa.
+   - Otros runners tienen flags equivalentes; aplicar el principio, no la sintaxis literal.
+
+   Ejemplo real (picokit T002): el subagente reportó `coverage: 95.7% (cached)` sobre código que en realidad no había sido modificado por su edit. El loop tomó eso como AC pasado y solo se descubrió el problema en CI. Con `-count=1` el cache hit no ocurre y el resultado refleja el estado real del código.
+
 7. **Outcome close check**
    Si es la última task pendiente del Outcome, ejecutar comandos de `outcome_close_verify` si existen. Warning informativo, no bloqueo automático.
 
