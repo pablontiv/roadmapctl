@@ -21,13 +21,12 @@ const (
 )
 
 type Options struct {
-	Repo        string
-	RoadmapRoot string
-	Workspace   bool
-	Output      string
-	Strict      bool
-	Rootline    string
-	Timeout     time.Duration
+	Repo      string
+	Workspace bool
+	Output    string
+	Strict    bool
+	Rootline  string
+	Timeout   time.Duration
 }
 
 func Execute(args []string, stdout io.Writer, stderr io.Writer, version string) int {
@@ -66,7 +65,6 @@ func newRootCommand(stdin io.Reader, stdout io.Writer, stderr io.Writer, exitCod
 
 	flags := cmd.PersistentFlags()
 	flags.StringVar(&options.Repo, "repo", options.Repo, "repository root or workspace member to inspect")
-	flags.StringVar(&options.RoadmapRoot, "roadmap-root", options.RoadmapRoot, "override configured roadmap root")
 	flags.BoolVar(&options.Workspace, "workspace", options.Workspace, "treat repo as workspace")
 	flags.StringVar(&options.Output, "output", options.Output, "output format: text or json")
 	flags.BoolVar(&options.Strict, "strict", options.Strict, "treat warnings as failures")
@@ -136,7 +134,7 @@ func executeLeafCommand(ctx context.Context, name string, options Options, stdou
 		return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
 	}
 
-	report := diagnostics.NewReport("roadmapctl/"+name, options.Repo, options.RoadmapRoot, nil)
+	report := diagnostics.NewReport("roadmapctl/"+name, options.Repo, "", nil)
 	if name == "doctor" {
 		report = runDoctor(ctx, options)
 	}

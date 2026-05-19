@@ -11,7 +11,7 @@ import (
 
 func runCheck(ctx context.Context, options Options) diagnostics.Report {
 	repoRoot := absoluteClean(options.Repo)
-	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		found := []diagnostics.Diagnostic{configDiagnostic(repoRoot, err)}
 		return diagnostics.NewReport("roadmapctl/check", repoRoot, "", found)

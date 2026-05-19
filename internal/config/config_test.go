@@ -40,7 +40,7 @@ in_progress = "Doing"
 completed = "Done"
 `)
 
-	loaded, err := Load(repo, Options{})
+	loaded, err := Load(repo)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -69,7 +69,7 @@ completed = "Done"
 }
 
 func TestLoadFixtureValidRoadmapctlTOMLDefault(t *testing.T) {
-	loaded, err := Load(filepath.Join("..", "..", "testdata", "fixtures", "valid-roadmapctl-toml-default"), Options{})
+	loaded, err := Load(filepath.Join("..", "..", "testdata", "fixtures", "valid-roadmapctl-toml-default"))
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -81,30 +81,13 @@ func TestLoadFixtureValidRoadmapctlTOMLDefault(t *testing.T) {
 	}
 }
 
-func TestLoadUsesRoadmapRootOverrideForTOMLDiscovery(t *testing.T) {
-	repo := t.TempDir()
-	writeRoadmapctlTOML(t, repo, filepath.Join("custom", "roadmap"), `active_statuses = ["Queued"]
-`)
-
-	loaded, err := Load(repo, Options{RoadmapRoot: "custom/roadmap"})
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-	if loaded.RoadmapRootRel != "custom/roadmap" {
-		t.Fatalf("RoadmapRootRel = %q", loaded.RoadmapRootRel)
-	}
-	if got := loaded.ActiveStatuses; len(got) != 1 || got[0] != "Queued" {
-		t.Fatalf("ActiveStatuses = %#v", got)
-	}
-}
-
 func TestLoadUsesDefaultsWhenTOMLMissingButRoadmapRootExists(t *testing.T) {
 	repo := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(repo, "docs", "roadmap"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	loaded, err := Load(repo, Options{})
+	loaded, err := Load(repo)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -124,7 +107,7 @@ func TestLoadTOMLParseErrorIsUsageError(t *testing.T) {
 	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `done_statuses = ["Completed"
 `)
 
-	_, err := Load(repo, Options{})
+	_, err := Load(repo)
 	if err == nil {
 		t.Fatal("Load() error = nil, want TOML parse error")
 	}
@@ -144,7 +127,7 @@ done-statuses: ['Done']
 auto-push: false
 `)
 
-	loaded, err := Load(repo, Options{})
+	loaded, err := Load(repo)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -170,7 +153,7 @@ func TestLoadExistingTOMLDeletesLegacyWithoutConflictWarning(t *testing.T) {
 	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `done_statuses = ["Completed"]
 `)
 
-	loaded, err := Load(repo, Options{})
+	loaded, err := Load(repo)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -188,7 +171,7 @@ func TestLoadInvalidTOMLDoesNotFallbackToLegacy(t *testing.T) {
 	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `done_statuses = ["Completed"
 `)
 
-	_, err := Load(repo, Options{})
+	_, err := Load(repo)
 	if err == nil {
 		t.Fatal("Load() error = nil, want TOML parse error")
 	}
@@ -207,7 +190,7 @@ func TestLoadRejectsInvalidExecutionSettings(t *testing.T) {
 		writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `autonomy = "robot"
 `)
 
-		_, err := Load(repo, Options{})
+		_, err := Load(repo)
 		if err == nil {
 			t.Fatal("Load() error = nil, want validation error")
 		}
@@ -222,7 +205,7 @@ func TestLoadRejectsInvalidExecutionSettings(t *testing.T) {
 		writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `loop_max_tasks = -1
 `)
 
-		_, err := Load(repo, Options{})
+		_, err := Load(repo)
 		if err == nil {
 			t.Fatal("Load() error = nil, want validation error")
 		}
@@ -237,7 +220,7 @@ func TestLoadRejectsInvalidExecutionSettings(t *testing.T) {
 			repo := t.TempDir()
 			writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), "required_code_coverage = "+value+"\n")
 
-			_, err := Load(repo, Options{})
+			_, err := Load(repo)
 			if err == nil {
 				t.Fatal("Load() error = nil, want validation error")
 			}
@@ -259,7 +242,7 @@ status-values:
 auto-push: false
 `)
 
-	plan, err := LegacyMigrationPlan(repo, Options{})
+	plan, err := LegacyMigrationPlan(repo)
 	if err != nil {
 		t.Fatalf("LegacyMigrationPlan() error = %v", err)
 	}
@@ -280,7 +263,7 @@ func TestLoadResolvesValidRoadmapRootInsideRepo(t *testing.T) {
 	repo := t.TempDir()
 	writeConfig(t, repo, "roadmap-root: docs/roadmap\n")
 
-	loaded, err := Load(repo, Options{})
+	loaded, err := Load(repo)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -304,7 +287,7 @@ func TestLoadRejectsParentEscape(t *testing.T) {
 	repo := t.TempDir()
 	writeConfig(t, repo, "roadmap-root: ../outside\n")
 
-	_, err := Load(repo, Options{})
+	_, err := Load(repo)
 	if err == nil {
 		t.Fatal("Load() error = nil, want path escape error")
 	}
@@ -323,7 +306,7 @@ func TestLoadRejectsParentEscape(t *testing.T) {
 func TestLoadMissingConfigIsUsageError(t *testing.T) {
 	repo := t.TempDir()
 
-	_, err := Load(repo, Options{})
+	_, err := Load(repo)
 	if err == nil {
 		t.Fatal("Load() error = nil, want missing config error")
 	}
@@ -343,7 +326,7 @@ func TestLoadAcceptsWindowsStyleSeparatorsInRoadmapRoot(t *testing.T) {
 	repo := t.TempDir()
 	writeConfig(t, repo, "roadmap-root: docs\\\\roadmap\n")
 
-	loaded, err := Load(repo, Options{})
+	loaded, err := Load(repo)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -371,7 +354,7 @@ commit-style: conventional
 auto-push: false
 `)
 
-	loaded, err := Load(repo, Options{})
+	loaded, err := Load(repo)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -405,24 +388,6 @@ auto-push: false
 	}
 }
 
-func TestLoadRoadmapRootOverride(t *testing.T) {
-	repo := t.TempDir()
-	writeConfig(t, repo, "roadmap-root: docs/roadmap\n")
-
-	loaded, err := Load(repo, Options{RoadmapRoot: "custom\\roadmap"})
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-
-	want := filepath.Join(repo, "custom", "roadmap")
-	if loaded.RoadmapRoot != want {
-		t.Fatalf("RoadmapRoot = %q, want %q", loaded.RoadmapRoot, want)
-	}
-	if loaded.RoadmapRootRel != "custom/roadmap" {
-		t.Fatalf("RoadmapRootRel = %q", loaded.RoadmapRootRel)
-	}
-}
-
 func writeConfig(t *testing.T, repo string, body string) {
 	t.Helper()
 	dir := filepath.Join(repo, ".claude")
@@ -452,7 +417,7 @@ func TestFieldsConfigDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	loaded, err := Load(repo, Options{})
+	loaded, err := Load(repo)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -488,7 +453,7 @@ display_name = "nombre"
 dependency_link = "depends_on"
 `)
 
-	loaded, err := Load(repo, Options{})
+	loaded, err := Load(repo)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -519,7 +484,7 @@ func TestFieldsConfigPartialOverride(t *testing.T) {
 lifecycle = "custom_status"
 `)
 
-	loaded, err := Load(repo, Options{})
+	loaded, err := Load(repo)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}

@@ -42,7 +42,7 @@ func runPending(ctx context.Context, options Options) pendingReport {
 	if options.Workspace {
 		return runPendingWorkspace(ctx, options)
 	}
-	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		diagnostic := configDiagnostic(absoluteClean(options.Repo), err)
 		return newPendingReport(absoluteClean(options.Repo), "", nil, nil, []diagnostics.Diagnostic{diagnostic})
@@ -64,7 +64,7 @@ func runPendingWorkspace(ctx context.Context, options Options) pendingReport {
 			continue
 		}
 		seen[name] = relToRoot(workspaceRoot, repoRoot)
-		cfg, err := config.Load(repoRoot, config.Options{})
+		cfg, err := config.Load(repoRoot)
 		if err != nil {
 			found = append(found, configDiagnostic(workspaceRoot, err))
 			continue

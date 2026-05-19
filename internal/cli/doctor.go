@@ -25,7 +25,7 @@ func runDoctor(ctx context.Context, options Options) diagnostics.Report {
 	var roadmapRoot string
 	var found []diagnostics.Diagnostic
 
-	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		found = append(found, configDiagnostic(repoRoot, err))
 		return diagnostics.NewReport("roadmapctl/doctor", repoRoot, roadmapRoot, found)

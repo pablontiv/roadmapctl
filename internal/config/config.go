@@ -17,6 +17,8 @@ const (
 	ErrRoadmapRootEscape  = "RMC_CONFIG_ROADMAP_ROOT_ESCAPE"
 
 	DefaultDependencyLink = "blocked_by"
+
+	roadmapRootDir = "docs/roadmap"
 )
 
 type Error struct {
@@ -36,10 +38,6 @@ func (e *Error) Error() string {
 
 func (e *Error) Unwrap() error {
 	return e.Cause
-}
-
-type Options struct {
-	RoadmapRoot string
 }
 
 type Config struct {
@@ -100,7 +98,7 @@ type FieldsConfig struct {
 	DependencyLink string `json:"dependency_link"`
 }
 
-func Load(repo string, opts Options) (*Config, error) {
+func Load(repo string) (*Config, error) {
 	absRepo, err := filepath.Abs(repo)
 	if err != nil {
 		return nil, &Error{Code: ErrConfigParse, Message: "resolve repo root", ExitCode: 2, Cause: err}
@@ -109,13 +107,9 @@ func Load(repo string, opts Options) (*Config, error) {
 	cfg := defaultConfig(absRepo)
 
 	legacyPath := filepath.Join(absRepo, ".claude", "roadmap.local.md")
-	roadmapRoot := opts.RoadmapRoot
-	if strings.TrimSpace(roadmapRoot) == "" {
-		roadmapRoot = filepath.ToSlash(filepath.Join("docs", "roadmap"))
-	}
+	roadmapRoot := roadmapRootDir
 
-	tomlRoadmapRoot := roadmapRoot
-	tomlPath := filepath.Join(absRepo, filepath.FromSlash(normalizeSeparators(tomlRoadmapRoot)), ".roadmapctl.toml")
+	tomlPath := filepath.Join(absRepo, filepath.FromSlash(roadmapRoot), ".roadmapctl.toml")
 	switch {
 	case fileExists(tomlPath):
 		cfg.ConfigPath = tomlPath
@@ -137,9 +131,7 @@ func Load(repo string, opts Options) (*Config, error) {
 		if err := validateConfig(cfg, legacyPath); err != nil {
 			return nil, err
 		}
-		if strings.TrimSpace(opts.RoadmapRoot) == "" {
-			roadmapRoot = stringValue(fields["roadmap-root"])
-		}
+		roadmapRoot = stringValue(fields["roadmap-root"])
 		if strings.TrimSpace(roadmapRoot) == "" {
 			return nil, &Error{Code: ErrRoadmapRootMissing, Message: "roadmap-root is required", Path: legacyPath, ExitCode: 2}
 		}
@@ -165,11 +157,7 @@ func Load(repo string, opts Options) (*Config, error) {
 		cfg = migratedCfg
 		roadmapRoot = filepath.ToSlash(filepath.Dir(strings.TrimPrefix(migratedPath, absRepo+string(filepath.Separator))))
 	case !roadmapRootExists(absRepo, roadmapRoot):
-		missingPath := tomlPath
-		if strings.TrimSpace(opts.RoadmapRoot) == "" {
-			missingPath = legacyPath
-		}
-		return nil, &Error{Code: ErrConfigMissing, Message: "roadmap config not found", Path: missingPath, ExitCode: 2, Cause: os.ErrNotExist}
+		return nil, &Error{Code: ErrConfigMissing, Message: "roadmap config not found", Path: legacyPath, ExitCode: 2, Cause: os.ErrNotExist}
 	default:
 		cfg.ConfigPath = tomlPath
 	}
@@ -224,7 +212,7 @@ type tomlStatusValues struct {
 	Obsolete   string `toml:"obsolete"`
 }
 
-func LegacyMigrationPlan(repo string, opts Options) (MigrationPlan, error) {
+func LegacyMigrationPlan(repo string) (MigrationPlan, error) {
 	absRepo, err := filepath.Abs(repo)
 	if err != nil {
 		return MigrationPlan{}, &Error{Code: ErrConfigParse, Message: "resolve repo root", ExitCode: 2, Cause: err}
@@ -238,9 +226,6 @@ func LegacyMigrationPlan(repo string, opts Options) (MigrationPlan, error) {
 	cfg := defaultConfig(absRepo)
 	applyFields(cfg, fields)
 	roadmapRoot := stringValue(fields["roadmap-root"])
-	if opts.RoadmapRoot != "" {
-		roadmapRoot = opts.RoadmapRoot
-	}
 	absRoadmapRoot, _, err := fsx.ResolveInside(absRepo, roadmapRoot)
 	if err != nil {
 		return MigrationPlan{}, &Error{Code: ErrRoadmapRootEscape, Message: "roadmap-root must resolve inside repo", Path: legacyPath, ExitCode: 2, Cause: err}
@@ -438,10 +423,6 @@ func roadmapRootExists(repo string, roadmapRoot string) bool {
 	}
 	info, err := os.Stat(root)
 	return err == nil && info.IsDir()
-}
-
-func normalizeSeparators(path string) string {
-	return strings.ReplaceAll(path, "\\", "/")
 }
 
 func defaultConfig(repo string) *Config {

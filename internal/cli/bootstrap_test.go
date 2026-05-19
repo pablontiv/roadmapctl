@@ -15,7 +15,7 @@ import (
 func TestBootstrapInspectIsReadOnlyAndReportsMissing(t *testing.T) {
 	repo := t.TempDir()
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "inspect", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"bootstrap", "inspect", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("inspect exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -37,7 +37,7 @@ func TestBootstrapInspectIsReadOnlyAndReportsMissing(t *testing.T) {
 func TestBootstrapInitDryRunDoesNotWriteAndShowsChanges(t *testing.T) {
 	repo := t.TempDir()
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--dry-run", "--output", "json"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--dry-run", "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("init dry-run exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -76,7 +76,7 @@ func TestBootstrapInitApplyWritesAllowedFiles(t *testing.T) {
 	repo := t.TempDir()
 	initGitRepo(t, repo)
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("init apply exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -96,7 +96,7 @@ func TestBootstrapInitApplyRunsPostcheck(t *testing.T) {
 	initGitRepo(t, repo)
 	var stdout, stderr bytes.Buffer
 	missingRootline := filepath.Join(t.TempDir(), "missing-rootline")
-	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--rootline", missingRootline, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--rootline", missingRootline, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
 	if code == 0 {
 		t.Fatalf("init apply with failing postcheck exit = 0, want non-zero; stderr=%q stdout=%q", stderr.String(), stdout.String())
 	}
@@ -252,11 +252,11 @@ func TestBootstrapFieldExtractionScalarValue(t *testing.T) {
 	initGitRepo(t, repo)
 	// Initialize bootstrap files so we have a valid config
 	var stdout, stderr bytes.Buffer
-	Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+	Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
 
 	stdout.Reset()
 	stderr.Reset()
-	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json", "--field", "roadmap_root"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"bootstrap", "--repo", repo, "--output", "json", "--field", "roadmap_root"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("bootstrap --field exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -276,11 +276,11 @@ func TestBootstrapFieldExtractionNestedValue(t *testing.T) {
 	initGitRepo(t, repo)
 	// Initialize bootstrap files so we have a valid config
 	var stdout, stderr bytes.Buffer
-	Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+	Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
 
 	stdout.Reset()
 	stderr.Reset()
-	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json", "--field", "helpers.where_leaf"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"bootstrap", "--repo", repo, "--output", "json", "--field", "helpers.where_leaf"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("bootstrap --field nested exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
 	}
@@ -294,7 +294,7 @@ func TestBootstrapFieldExtractionNestedValue(t *testing.T) {
 func TestBootstrapFieldExtractionNonexistentField(t *testing.T) {
 	repo := t.TempDir()
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json", "--field", "nonexistent"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"bootstrap", "--repo", repo, "--output", "json", "--field", "nonexistent"}, &stdout, &stderr, "dev")
 	if code == 0 {
 		t.Fatalf("bootstrap --field nonexistent exit = 0, want non-zero")
 	}
@@ -308,7 +308,7 @@ func TestBootstrapFieldExtractionObjectNotAllowed(t *testing.T) {
 	repo := t.TempDir()
 	initGitRepo(t, repo)
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json", "--field", "helpers"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"bootstrap", "--repo", repo, "--output", "json", "--field", "helpers"}, &stdout, &stderr, "dev")
 	if code == 0 {
 		t.Fatalf("bootstrap --field object exit = 0, want non-zero")
 	}
@@ -321,7 +321,7 @@ func TestBootstrapFieldExtractionObjectNotAllowed(t *testing.T) {
 func TestBootstrapFieldExtractionArrayNotAllowed(t *testing.T) {
 	repo := t.TempDir()
 	var stdout, stderr bytes.Buffer
-	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json", "--field", "diagnostics"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"bootstrap", "--repo", repo, "--output", "json", "--field", "diagnostics"}, &stdout, &stderr, "dev")
 	if code == 0 {
 		t.Fatalf("bootstrap --field array exit = 0, want non-zero")
 	}
@@ -336,11 +336,11 @@ func TestBootstrapWithoutFieldStillReturnsFullJSON(t *testing.T) {
 	initGitRepo(t, repo)
 	// Initialize bootstrap files so we have a valid config
 	var stdout, stderr bytes.Buffer
-	Execute([]string{"bootstrap", "init", "--repo", repo, "--roadmap-root", "docs/roadmap", "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+	Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
 
 	stdout.Reset()
 	stderr.Reset()
-	code := Execute([]string{"bootstrap", "--repo", repo, "--roadmap-root", "docs/roadmap", "--output", "json"}, &stdout, &stderr, "dev")
+	code := Execute([]string{"bootstrap", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
 	if code != 0 {
 		t.Fatalf("bootstrap without --field exit = %d, want 0; stderr=%q", code, stderr.String())
 	}

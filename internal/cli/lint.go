@@ -11,7 +11,7 @@ import (
 
 func runLint(ctx context.Context, options Options) diagnostics.Report {
 	repoRoot := absoluteClean(options.Repo)
-	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		return diagnostics.NewReport("roadmapctl/lint", repoRoot, "", []diagnostics.Diagnostic{configDiagnostic(repoRoot, err)})
 	}

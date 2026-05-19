@@ -53,7 +53,7 @@ func newDecisionCommand(options *Options, stdout io.Writer, stderr io.Writer, ex
 }
 
 func runDecision(ctx context.Context, options Options) decisionReport {
-	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		found := []diagnostics.Diagnostic{configDiagnostic(absoluteClean(options.Repo), err)}
 		return newDecisionReport(absoluteClean(options.Repo), "", nil, nil, nil, nil, found)

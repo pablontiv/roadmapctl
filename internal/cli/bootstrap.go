@@ -157,7 +157,6 @@ func buildBootstrapInit(ctx context.Context, options Options, apply bool) bootst
 			if len(report.Diagnostics) == 0 {
 				postOptions := options
 				postOptions.Repo = root
-				postOptions.RoadmapRoot = relToRoot(root, roadmapRoot)
 				postcheck := runCheck(ctx, postOptions)
 				report.Diagnostics = append(report.Diagnostics, postcheck.Diagnostics...)
 			}
@@ -169,11 +168,7 @@ func buildBootstrapInit(ctx context.Context, options Options, apply bool) bootst
 
 func bootstrapRoots(options Options) (string, string, []diagnostics.Diagnostic) {
 	root := absoluteClean(options.Repo)
-	roadmapRootValue := options.RoadmapRoot
-	if roadmapRootValue == "" {
-		roadmapRootValue = filepath.ToSlash(filepath.Join("docs", "roadmap"))
-	}
-	roadmapRoot, _, err := fsx.ResolveInside(root, roadmapRootValue)
+	roadmapRoot, _, err := fsx.ResolveInside(root, filepath.ToSlash(filepath.Join("docs", "roadmap")))
 	if err != nil {
 		return root, "", []diagnostics.Diagnostic{{ID: "RMC_CONFIG_ROADMAP_ROOT_ESCAPE", Severity: diagnostics.SeverityError, Message: "roadmap-root must resolve inside repo", ExitCode: diagnostics.ExitUsage}}
 	}
@@ -248,7 +243,7 @@ func bootstrapSchemaCompatibilityDiagnostics(ctx context.Context, options Option
 
 func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigReport {
 	root := absoluteClean(options.Repo)
-	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		diagnostic := configDiagnostic(root, err)
 		return newBootstrapConfigReport(root, "", "", "", "", nil, []diagnostics.Diagnostic{diagnostic})
@@ -272,7 +267,7 @@ func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigR
 			found = append(found, applyErrs...)
 			if len(applyErrs) == 0 {
 				// Reload config after bootstrap apply
-				cfg, err = config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+				cfg, err = config.Load(options.Repo)
 				if err != nil {
 					diagnostic := configDiagnostic(root, err)
 					return newBootstrapConfigReport(root, "", "", "", "", nil, []diagnostics.Diagnostic{diagnostic})
@@ -418,7 +413,6 @@ func repairStemIfNeeded(ctx context.Context, options Options, root string, roadm
 
 	postOptions := options
 	postOptions.Repo = root
-	postOptions.RoadmapRoot = relToRoot(root, roadmapRoot)
 	postcheck := runCheck(ctx, postOptions)
 	if len(postcheck.Diagnostics) > 0 {
 		return true, postcheck.Diagnostics
@@ -511,7 +505,7 @@ func contextStringsFromArray(value any) []string {
 // defaultDependencyLink returns the configured dependency link field name,
 // falling back to the config default when no config file exists yet.
 func defaultDependencyLink(options Options) string {
-	if cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot}); err == nil {
+	if cfg, err := config.Load(options.Repo); err == nil {
 		return cfg.Fields.DependencyLink
 	}
 	return config.DefaultDependencyLink

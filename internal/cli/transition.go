@@ -83,7 +83,7 @@ func newTransitionActionCommand(options *Options, stdout io.Writer, stderr io.Wr
 
 func runTransition(ctx context.Context, options Options, action string, taskPath string, explicitStatus string, apply bool) transitionReport {
 	repoRoot := absoluteClean(options.Repo)
-	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		found := []diagnostics.Diagnostic{configDiagnostic(repoRoot, err)}
 		return newTransitionReport(repoRoot, "", action, normalizeTransitionPath("", taskPath), roadmap.TransitionResult{Diagnostics: found})
@@ -136,7 +136,6 @@ func applyTransitionChanges(ctx context.Context, cfg *config.Config, options Opt
 	}
 	postOptions := options
 	postOptions.Repo = cfg.RepoRoot
-	postOptions.RoadmapRoot = cfg.RoadmapRootRel
 	postcheck := runCheck(ctx, postOptions)
 	if postcheck.Summary.Errors > 0 {
 		result.Allowed = false

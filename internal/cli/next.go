@@ -52,7 +52,7 @@ func newNextCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCo
 }
 
 func runNext(ctx context.Context, options Options, limit int) nextReport {
-	cfg, err := config.Load(options.Repo, config.Options{RoadmapRoot: options.RoadmapRoot})
+	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		found := []diagnostics.Diagnostic{configDiagnostic(absoluteClean(options.Repo), err)}
 		return newNextReport(absoluteClean(options.Repo), "", nil, nil, found)
