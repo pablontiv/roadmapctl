@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T028: Loop — verificar CI verde antes de ejecutar tasks con invariante de CI

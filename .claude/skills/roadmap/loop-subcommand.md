@@ -91,6 +91,25 @@ Nota CI: `go test ./...` funciona sin rootline instalado — `TestMain` activa e
 4. Mantener el orden determinístico devuelto por `roadmapctl next`; no hacer topological sort manual.
 5. Aplicar `effective_max` si es mayor que cero.
 6. Renderizar tabla desde JSON (`ready[]`, `blocked[]` y `pending.tasks[]`).
+
+   **Pre-check selectivo: CI verde (informativo)**
+
+   Después de fijar `ready[]`, escanear cada task para detectar si declara CI como invariante. La detección es por palabras clave en las secciones `## Preserva` o `## Criterios de Aceptación` del archivo de la task:
+
+   - "CI verde", "CI pasa", "pipeline verde", "build verde", "CI green", "green CI".
+
+   Si una task del `ready[]` matchea, ejecutar:
+
+   ```bash
+   gh run list --branch <base_branch> --limit 5 --json status,conclusion,headSha
+   ```
+
+   - Si ningún run reciente tiene `conclusion: "success"`, reportar la condición como **bloqueante informativo** para esa task — anotarla en el resumen del discovery y dejar que el modo de autonomía decida si continuar (no bloquear automáticamente).
+   - Si todos los runs recientes son `success` o el último relevante lo es, continuar normalmente.
+   - Si `gh` no está disponible en PATH, advertir una sola vez y continuar sin bloquear (entornos sin GitHub CLI no deben quedar bloqueados).
+
+   El pre-check es **selectivo**: aplica solo a tasks que declaran CI como invariante explícito, no es un gate universal de la queue.
+
 7. Si no hay tasks en `ready[]` después del filtro: informar pendientes bloqueadas y, **antes de devolver control al usuario, invocar `/retrospective`** de forma incondicional (el cierre del loop siempre dispara retrospective, incluso sin trabajo nuevo):
 
    ```
