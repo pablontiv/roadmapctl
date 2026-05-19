@@ -201,6 +201,15 @@ Para cada task o wave ordenada:
    - Ejecutar cada AC.
    - Ejecutar cada verificación en `## Preserva` si existe.
    - Si falla algo: parar y reportar.
+   
+   **Re-verificación directa post-subagente paralelo (requisito)**
+   
+   Cuando `parallel == true` y la task fue ejecutada por un Agent dispatch independiente, **re-ejecutar directamente en el loop los ACs verificables por comando directo** antes de invocar `roadmapctl transition complete --apply`. Esta re-verificación es un requisito previo, no opcional.
+   
+   - **ACs verificables externamente** (requieren re-verificación): aquellos cuya evidencia depende de un comando directo — grep, compilación (`go build`), tests (`go test`), existencia de archivo, cambios de contenido, etc.
+   - **ACs solo verificables por el agente** (sin re-verificación obligatoria): decisiones de diseño, code review subjetivas, cambios semánticos que no reflejan cambios detectables en archivos.
+   
+   Ejemplo: si la task modificó `pkg/foo.go` y el AC es `"grep -r 'OldSymbol' pkg/foo/ retorna vacío"`, ejecutar directamente ese grep en el shell del loop **antes de llamar `roadmapctl transition complete --apply`**, no confiar solo en el resumen del agente.
 
 7. **Outcome close check**
    Si es la última task pendiente del Outcome, ejecutar comandos de `outcome_close_verify` si existen. Warning informativo, no bloqueo automático.

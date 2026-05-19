@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T026: Loop — re-verificar ACs de código modificado por subagente paralelo
