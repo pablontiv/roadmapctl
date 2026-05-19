@@ -4,14 +4,13 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
 func TestConfigErrorFormatsPathAndUnwrapsCause(t *testing.T) {
 	cause := errors.New("cause")
-	err := &Error{Code: ErrConfigParse, Message: "bad config", Path: ".claude/roadmap.local.md", Cause: cause}
-	if got := err.Error(); got != "RMC_CONFIG_PARSE: .claude/roadmap.local.md: bad config" {
+	err := &Error{Code: ErrConfigParse, Message: "bad config", Path: "docs/roadmap/.roadmapctl.toml", Cause: cause}
+	if got := err.Error(); got != "RMC_CONFIG_PARSE: docs/roadmap/.roadmapctl.toml: bad config" {
 		t.Fatalf("Error() = %q", got)
 	}
 	if !errors.Is(err, cause) {
@@ -120,70 +119,6 @@ func TestLoadTOMLParseErrorIsUsageError(t *testing.T) {
 	}
 }
 
-func TestLoadLegacyOnlyMigratesToTOMLAndDeletesLegacy(t *testing.T) {
-	repo := t.TempDir()
-	writeConfig(t, repo, `roadmap-root: docs/roadmap
-done-statuses: ['Done']
-auto-push: false
-`)
-
-	loaded, err := Load(repo)
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-
-	tomlPath := filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml")
-	if loaded.ConfigPath != tomlPath || loaded.RoadmapRootRel != "docs/roadmap" {
-		t.Fatalf("loaded = %#v", loaded)
-	}
-	if _, err := os.Stat(tomlPath); err != nil {
-		t.Fatalf("migrated TOML missing: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(repo, ".claude", "roadmap.local.md")); !os.IsNotExist(err) {
-		t.Fatalf("legacy config still exists after migration: %v", err)
-	}
-	if loaded.DoneStatuses[0] != "Done" || loaded.AutoPush || loaded.LoopMaxTasks != 0 || !loaded.Parallel || loaded.Autonomy != "until_done" || !loaded.CompactAfterTaskCommit || loaded.PRMode {
-		t.Fatalf("loaded config = %#v", loaded)
-	}
-}
-
-func TestLoadExistingTOMLDeletesLegacyWithoutConflictWarning(t *testing.T) {
-	repo := t.TempDir()
-	writeConfig(t, repo, "roadmap-root: docs/roadmap\ndone-statuses: ['Done']\n")
-	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `done_statuses = ["Completed"]
-`)
-
-	loaded, err := Load(repo)
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-	if len(loaded.Warnings) != 0 {
-		t.Fatalf("Warnings = %#v", loaded.Warnings)
-	}
-	if _, err := os.Stat(filepath.Join(repo, ".claude", "roadmap.local.md")); !os.IsNotExist(err) {
-		t.Fatalf("legacy config still exists after TOML load: %v", err)
-	}
-}
-
-func TestLoadInvalidTOMLDoesNotFallbackToLegacy(t *testing.T) {
-	repo := t.TempDir()
-	writeConfig(t, repo, "roadmap-root: docs/roadmap\n")
-	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `done_statuses = ["Completed"
-`)
-
-	_, err := Load(repo)
-	if err == nil {
-		t.Fatal("Load() error = nil, want TOML parse error")
-	}
-	var cfgErr *Error
-	if !errors.As(err, &cfgErr) || cfgErr.Code != ErrConfigParse {
-		t.Fatalf("Load() error = %#v, want RMC_CONFIG_PARSE", err)
-	}
-	if _, statErr := os.Stat(filepath.Join(repo, ".claude", "roadmap.local.md")); statErr != nil {
-		t.Fatalf("legacy config should remain after invalid TOML: %v", statErr)
-	}
-}
-
 func TestLoadRejectsInvalidExecutionSettings(t *testing.T) {
 	t.Run("invalid autonomy", func(t *testing.T) {
 		repo := t.TempDir()
@@ -232,36 +167,9 @@ func TestLoadRejectsInvalidExecutionSettings(t *testing.T) {
 	}
 }
 
-func TestLegacyMigrationPlanGeneratesTOMLWithoutWriting(t *testing.T) {
-	repo := t.TempDir()
-	writeConfig(t, repo, `roadmap-root: docs/roadmap
-done-statuses: ['Done', 'Archived']
-active-statuses: ['Ready']
-status-values:
-  completed: Done
-auto-push: false
-`)
-
-	plan, err := LegacyMigrationPlan(repo)
-	if err != nil {
-		t.Fatalf("LegacyMigrationPlan() error = %v", err)
-	}
-	if plan.TargetPath != filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml") {
-		t.Fatalf("TargetPath = %q", plan.TargetPath)
-	}
-	for _, want := range []string{`done_statuses = ['Done', 'Archived']`, `active_statuses = ['Ready']`, `completed = 'Done'`, `auto_push = false`, `required_code_coverage = 85.0`} {
-		if !strings.Contains(plan.Content, want) {
-			t.Fatalf("migration content missing %q:\n%s", want, plan.Content)
-		}
-	}
-	if _, err := os.Stat(plan.TargetPath); !os.IsNotExist(err) {
-		t.Fatalf("migration wrote target unexpectedly: %v", err)
-	}
-}
-
 func TestLoadResolvesValidRoadmapRootInsideRepo(t *testing.T) {
 	repo := t.TempDir()
-	writeConfig(t, repo, "roadmap-root: docs/roadmap\n")
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), "")
 
 	loaded, err := Load(repo)
 	if err != nil {
@@ -277,29 +185,6 @@ func TestLoadResolvesValidRoadmapRootInsideRepo(t *testing.T) {
 	}
 	if loaded.ConfigPath != filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml") {
 		t.Fatalf("ConfigPath = %q", loaded.ConfigPath)
-	}
-	if _, err := os.Stat(filepath.Join(repo, ".claude", "roadmap.local.md")); !os.IsNotExist(err) {
-		t.Fatalf("legacy config still exists after migration: %v", err)
-	}
-}
-
-func TestLoadRejectsParentEscape(t *testing.T) {
-	repo := t.TempDir()
-	writeConfig(t, repo, "roadmap-root: ../outside\n")
-
-	_, err := Load(repo)
-	if err == nil {
-		t.Fatal("Load() error = nil, want path escape error")
-	}
-	var cfgErr *Error
-	if !errors.As(err, &cfgErr) {
-		t.Fatalf("Load() error type = %T, want *Error", err)
-	}
-	if cfgErr.Code != ErrRoadmapRootEscape {
-		t.Fatalf("error code = %q, want %q", cfgErr.Code, ErrRoadmapRootEscape)
-	}
-	if cfgErr.ExitCode != 2 {
-		t.Fatalf("exit code = %d, want 2", cfgErr.ExitCode)
 	}
 }
 
@@ -319,84 +204,6 @@ func TestLoadMissingConfigIsUsageError(t *testing.T) {
 	}
 	if cfgErr.ExitCode != 2 {
 		t.Fatalf("exit code = %d, want 2", cfgErr.ExitCode)
-	}
-}
-
-func TestLoadAcceptsWindowsStyleSeparatorsInRoadmapRoot(t *testing.T) {
-	repo := t.TempDir()
-	writeConfig(t, repo, "roadmap-root: docs\\\\roadmap\n")
-
-	loaded, err := Load(repo)
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-
-	want := filepath.Join(repo, "docs", "roadmap")
-	if loaded.RoadmapRoot != want {
-		t.Fatalf("RoadmapRoot = %q, want %q", loaded.RoadmapRoot, want)
-	}
-	if loaded.RoadmapRootRel != "docs/roadmap" {
-		t.Fatalf("RoadmapRootRel = %q, want docs/roadmap", loaded.RoadmapRootRel)
-	}
-}
-
-func TestLoadAppliesDocumentedDefaultsAndParsesOverrides(t *testing.T) {
-	repo := t.TempDir()
-	writeConfig(t, repo, `roadmap-root: docs/roadmap
-done-statuses: ['Done', 'Archived']
-active-statuses: ['Ready', 'Doing']
-status-values:
-  in-progress: Doing
-leaf-filter: 'isIndex == false'
-outcome-close-verify: ['go test ./...', 'go build ./cmd/roadmapctl']
-pr-merge-strategy: merge
-commit-style: conventional
-auto-push: false
-`)
-
-	loaded, err := Load(repo)
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-
-	if got := loaded.DoneStatuses; len(got) != 2 || got[0] != "Done" || got[1] != "Archived" {
-		t.Fatalf("DoneStatuses = %#v, want overrides", got)
-	}
-	if got := loaded.ActiveStatuses; len(got) != 2 || got[0] != "Ready" || got[1] != "Doing" {
-		t.Fatalf("ActiveStatuses = %#v, want overrides", got)
-	}
-	if loaded.StatusValues.InProgress != "Doing" {
-		t.Fatalf("StatusValues.InProgress = %q, want Doing", loaded.StatusValues.InProgress)
-	}
-	if loaded.StatusValues.Pending != "Pending" {
-		t.Fatalf("StatusValues.Pending = %q, want default", loaded.StatusValues.Pending)
-	}
-	if loaded.LeafFilter != "isIndex == false" {
-		t.Fatalf("LeafFilter = %q", loaded.LeafFilter)
-	}
-	if got := loaded.OutcomeCloseVerify; len(got) != 2 || got[0] != "go test ./..." || got[1] != "go build ./cmd/roadmapctl" {
-		t.Fatalf("OutcomeCloseVerify = %#v", got)
-	}
-	if loaded.PRMergeStrategy != "merge" {
-		t.Fatalf("PRMergeStrategy = %q", loaded.PRMergeStrategy)
-	}
-	if loaded.CommitStyle != "conventional" {
-		t.Fatalf("CommitStyle = %q", loaded.CommitStyle)
-	}
-	if loaded.AutoPush {
-		t.Fatal("AutoPush = true, want false override")
-	}
-}
-
-func writeConfig(t *testing.T, repo string, body string) {
-	t.Helper()
-	dir := filepath.Join(repo, ".claude")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	content := "---\n" + body + "---\n"
-	if err := os.WriteFile(filepath.Join(dir, "roadmap.local.md"), []byte(content), 0o644); err != nil {
-		t.Fatal(err)
 	}
 }
 

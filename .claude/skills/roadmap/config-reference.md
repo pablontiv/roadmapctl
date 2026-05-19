@@ -7,8 +7,7 @@
 Fuente de configuración:
 
 1. `<roadmap-root>/.roadmapctl.toml` vía `roadmapctl bootstrap`.
-2. La config local legacy es solo input de migración para roadmapctl.
-3. Defaults solo para modo conceptual/no-write.
+2. Defaults solo para modo conceptual/no-write.
 
 | Config key | Default | Placeholder |
 |------------|---------|-------------|

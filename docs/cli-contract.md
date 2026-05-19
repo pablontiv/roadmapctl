@@ -116,21 +116,19 @@ Config keys:
 | `[status_values].blocked` | string | `Blocked` | Operational blocked role value. |
 | `[status_values].obsolete` | string | `Obsolete` | Operational obsolete role value. |
 
-Operational config does not define or constrain the full document schema. The effective Rootline `.stem` remains the source of truth for valid `estado`, `tipo`, and link values. `roadmapctl check` validates operational status values against the schema separately and emits `RMC_CONFIG_STATUS_SCHEMA_MISMATCH` when a role points at a status absent from `.stem`; diagnostics point at the effective config path (`<roadmap-root>/.roadmapctl.toml` for TOML-backed repos, legacy path only for legacy-only migration inputs).
+Operational config does not define or constrain the full document schema. The effective Rootline `.stem` remains the source of truth for valid `estado`, `tipo`, and link values. `roadmapctl check` validates operational status values against the schema separately and emits `RMC_CONFIG_STATUS_SCHEMA_MISMATCH` when a role points at a status absent from `.stem`; diagnostics point at the effective config path (`<roadmap-root>/.roadmapctl.toml`).
 
 Precedence:
 
 1. Command-line flags for process scope (`--repo`, `--rootline`, `--timeout`, `--output`, `--strict`). These flags do not override behavior settings such as `parallel`, `autonomy`, `compact_after_task_commit`, or `pr_mode`. `/roadmap loop --filter` and `/roadmap loop --max` remain skill-layer one-run selection/cap controls.
-2. Preferred `<roadmap-root>/.roadmapctl.toml` discovered under the selected repo/roadmap root.
-3. Legacy `.claude/roadmap.local.md` as one-time migration input only.
-4. Built-in defaults above for omitted optional keys.
+2. `<roadmap-root>/.roadmapctl.toml` discovered under the selected repo/roadmap root.
+3. Built-in defaults above for omitted optional keys.
 
-Migration policy:
+Config policy:
 
-- If `<roadmap-root>/.roadmapctl.toml` exists, it is the only lasting config source. If legacy `.claude/roadmap.local.md` also exists, `roadmapctl` deletes the legacy file after TOML loads successfully and emits no conflict warning.
-- If TOML exists but is invalid, config loading fails with `RMC_CONFIG_PARSE` and never falls back to legacy.
-- If only the legacy file exists, `roadmapctl` reads it as migration input, writes `<roadmap-root>/.roadmapctl.toml` with preserved values plus defaults, validates the generated TOML, deletes legacy only after successful validation, and continues with TOML as the effective config.
-- If neither config exists and no explicit roadmap root can be resolved, `doctor` emits a config diagnostic and write/mutation flows must block.
+- `<roadmap-root>/.roadmapctl.toml` is the only supported config source. If the file does not exist but the roadmap root directory does, built-in defaults apply.
+- If TOML exists but is invalid, config loading fails with `RMC_CONFIG_PARSE`.
+- If neither the TOML file nor the roadmap root directory exists, `doctor` emits `RMC_CONFIG_MISSING` and write/mutation flows must block.
 
 Open decision: workspace-level discovery may later add a root `.roadmapctl.toml` or workspace index. Until that is approved, this contract treats config as per-repository.
 
@@ -141,7 +139,7 @@ Open decision: workspace-level discovery may later add a root `.roadmapctl.toml`
 It checks:
 
 1. repo/workspace discovery from `--repo` or cwd;
-2. `<roadmap-root>/.roadmapctl.toml` loading or legacy `.claude/roadmap.local.md` one-time migration;
+2. `<roadmap-root>/.roadmapctl.toml` loading;
 3. `roadmap-root` resolution and containment inside the repo;
 4. Rootline executable discovery and basic invocation;
 5. roadmap root and `.stem` presence;

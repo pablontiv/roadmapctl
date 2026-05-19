@@ -38,7 +38,7 @@ func TestRenderJSONWritesOnlyParseableReport(t *testing.T) {
 func TestRenderTextIncludesSummaryAndDiagnostics(t *testing.T) {
 	report := NewReport("roadmapctl/doctor", "/repo", "", []Diagnostic{
 		{ID: DiagnosticRootlineMissing, Severity: SeverityError, Message: "rootline not found"},
-		{ID: "RMC_CONFIG_DEFAULT_USED", Severity: SeverityWarning, Message: "using default", Path: ".claude/roadmap.local.md"},
+		{ID: "RMC_CONFIG_DEFAULT_USED", Severity: SeverityWarning, Message: "using default", Path: "docs/roadmap/.roadmapctl.toml"},
 		{ID: "RMC_ENV_PATH", Severity: SeverityInfo, Message: "PATH checked"},
 	})
 
@@ -47,7 +47,7 @@ func TestRenderTextIncludesSummaryAndDiagnostics(t *testing.T) {
 		t.Fatalf("RenderText error = %v", err)
 	}
 	text := out.String()
-	for _, want := range []string{"roadmapctl/doctor", "status: error", "errors: 1", "warnings: 1", "infos: 1", "[error] RMC_ENV_ROOTLINE_MISSING", "[warning] RMC_CONFIG_DEFAULT_USED", ".claude/roadmap.local.md"} {
+	for _, want := range []string{"roadmapctl/doctor", "status: error", "errors: 1", "warnings: 1", "infos: 1", "[error] RMC_ENV_ROOTLINE_MISSING", "[warning] RMC_CONFIG_DEFAULT_USED", "docs/roadmap/.roadmapctl.toml"} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("text output missing %q:\n%s", want, text)
 		}

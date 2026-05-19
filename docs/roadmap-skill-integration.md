@@ -60,7 +60,7 @@ The bootstrap should prefer deterministic context from roadmapctl:
 roadmapctl context --repo <repo> --roadmap-root <roadmap-root> --output json
 ```
 
-The returned `helpers`, `status_values`, `done_statuses`, `active_statuses`, operational settings, `root`, and `roadmap_root` fields are the source of truth for prompt placeholders. `<roadmap-root>/.roadmapctl.toml` is the lasting config source; `.claude/roadmap.local.md` is migration input only and is deleted by roadmapctl after a successful TOML load or migration.
+The returned `helpers`, `status_values`, `done_statuses`, `active_statuses`, operational settings, `root`, and `roadmap_root` fields are the source of truth for prompt placeholders. `<roadmap-root>/.roadmapctl.toml` is the only supported config source.
 
 ### Bootstrap exception for missing roadmap roots
 

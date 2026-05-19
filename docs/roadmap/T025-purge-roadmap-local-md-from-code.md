@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T025: Purgar toda referencia a `roadmap.local.md` del código

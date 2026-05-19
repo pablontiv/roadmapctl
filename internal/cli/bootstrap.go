@@ -473,9 +473,6 @@ func statusWhere(prefix string, values []string) string {
 }
 
 func configSource(cfg *config.Config) string {
-	if filepath.Base(cfg.ConfigPath) == "roadmap.local.md" {
-		return "legacy"
-	}
 	if _, err := os.Stat(cfg.ConfigPath); err == nil {
 		return "toml"
 	}

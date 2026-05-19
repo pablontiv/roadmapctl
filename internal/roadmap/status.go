@@ -64,9 +64,6 @@ func operationalStatusDiagnostics(statuses []OperationalStatus, schemaStatuses [
 		}
 		seen[key] = true
 		path := status.Path
-		if path == "" {
-			path = ".claude/roadmap.local.md"
-		}
 		found = append(found, Diagnostic{
 			ID:       DiagnosticConfigStatusSchemaMismatch,
 			Severity: diagnostics.SeverityError,
