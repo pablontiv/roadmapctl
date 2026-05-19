@@ -38,22 +38,73 @@ Companion CLI for Rootline-governed roadmaps.
 
 ```bash
 # 1. Check environment — rootline binary found, config valid
-roadmapctl doctor --repo .
+roadmapctl doctor
+# Output:
+# roadmapctl/doctor
+# status: ok
+# errors: 0
+# warnings: 0
+# infos: 1
+# [info] RMC_ENV_PATH docs/roadmap: roadmapctl doctor paths resolved
 
 # 2. Validate roadmap against schema (strict mode required before any writes)
-roadmapctl check --repo . --strict
+roadmapctl check --strict
+# Output:
+# roadmapctl/check
+# status: ok
+# errors: 0
+# warnings: 0
+# infos: 0
 
 # 3. List all pending tasks
-roadmapctl pending --repo .
+roadmapctl pending
+# Output:
+# roadmapctl/pending
+# status: ok
+# pending: 2
 
 # 4. See what to work on next
-roadmapctl next --repo .
+roadmapctl next --output json
+# Output (trimmed):
+# {
+#   "version": 1, "kind": "roadmapctl/next",
+#   "summary": {"status": "ok", "errors": 0, "warnings": 0, "infos": 0},
+#   "ready": [{"path": "OXX-slug/TXXX-slug.md", "status": "Specified"}],
+#   "blocked": []
+# }
 
-# 5. Start a task — transitions estado Pending → In Progress
-roadmapctl transition start docs/roadmap/T001-my-task.md --repo . --apply
+# 5. Prioritize across ready/blocked tasks
+roadmapctl decision
+# Output:
+# roadmapctl/decision
+# status: ok
+# recommendations: 2
+# quick_wins: 2
+# blocked: 0
 
-# 6. Complete a task — transitions estado In Progress → Completed
-roadmapctl transition complete docs/roadmap/T001-my-task.md --repo . --apply
+# 6. Resolve effective config for agents (skill bootstrap)
+roadmapctl bootstrap --output json
+# Output (trimmed):
+# {
+#   "version": 1, "kind": "roadmapctl/bootstrap",
+#   "summary": {"status": "ok", "errors": 0, ...},
+#   "root": "/abs/path/to/repo",
+#   "roadmap_root": "/abs/path/to/repo/docs/roadmap",
+#   "config_path": "docs/roadmap/.roadmapctl.toml",
+#   "helpers": {"where_leaf": "isIndex == false", ...}
+# }
+
+# 7. Start a task — transitions estado Pending → In Progress
+roadmapctl transition start docs/roadmap/T001-my-task.md --apply --output json
+# Output (trimmed):
+# {
+#   "kind": "roadmapctl/transition", "action": "start",
+#   "allowed": true, "current_status": "Specified", "target_status": "In Progress",
+#   "changes": [{"field": "estado", "before": "Specified", "after": "In Progress", "applied": true}]
+# }
+
+# 8. Complete a task — transitions estado In Progress → Completed
+roadmapctl transition complete docs/roadmap/T001-my-task.md --apply
 ```
 
 ---
@@ -200,9 +251,9 @@ roadmapctl is designed to be invoked by AI agents without human supervision.
 
 ```bash
 # Agent bootstrap pattern
-config=$(roadmapctl bootstrap --repo . --output json)
-pending=$(roadmapctl pending --repo . --output json)
-next=$(roadmapctl next --repo . --output json)
+config=$(roadmapctl bootstrap --output json)
+pending=$(roadmapctl pending --output json)
+next=$(roadmapctl next --output json)
 ```
 
 ---

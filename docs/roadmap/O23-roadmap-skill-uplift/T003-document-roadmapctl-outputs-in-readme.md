@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T003: Documentar outputs reales de roadmapctl en README + quitar `--repo .` redundante
