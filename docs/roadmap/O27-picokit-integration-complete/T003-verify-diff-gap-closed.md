@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T003: Verify diff package gap is closed (no orphan callers)

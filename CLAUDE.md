@@ -60,3 +60,7 @@ titulo := stringField(fields, "titulo")  // correct
 **Cross-platform path tests** — when asserting that output contains a filesystem path, normalize both sides with `filepath.ToSlash` so the test passes on Windows (which uses `/` in Go's temp paths but `filepath.Join` produces `\`).
 
 **SA5011 nil pointer dereference (staticcheck)** — `if ptr == nil { t.Fatalf(...) }` followed by `ptr.Field` triggers SA5011 because staticcheck does not always recognize `t.Fatalf` (which calls `runtime.Goexit`) as a terminator. Add an unreachable `return` after `t.Fatalf` so staticcheck infers the nil branch does not fall through.
+
+## Extracted Packages (no longer in this repo)
+
+The diff utility was extracted upstream into `github.com/pablontiv/picokit/diff` (O25-T003). roadmapctl has no remaining callers — verified by O27-T003 — and intentionally does not depend on `picokit/diff`. If a future feature needs structural diff, import `picokit/diff` directly rather than re-introducing a local copy.
