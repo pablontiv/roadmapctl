@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T004: Replace diagnostics infrastructure with picokit/diag (type-alias strategy)
