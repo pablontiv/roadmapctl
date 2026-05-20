@@ -58,3 +58,5 @@ titulo := stringField(fields, "titulo")  // correct
 **G703 errors on Close** — use `defer func() { _ = f.Close() }()` rather than `defer f.Close()` to satisfy errcheck.
 
 **Cross-platform path tests** — when asserting that output contains a filesystem path, normalize both sides with `filepath.ToSlash` so the test passes on Windows (which uses `/` in Go's temp paths but `filepath.Join` produces `\`).
+
+**SA5011 nil pointer dereference (staticcheck)** — `if ptr == nil { t.Fatalf(...) }` followed by `ptr.Field` triggers SA5011 because staticcheck does not always recognize `t.Fatalf` (which calls `runtime.Goexit`) as a terminator. Add an unreachable `return` after `t.Fatalf` so staticcheck infers the nil branch does not fall through.

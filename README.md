@@ -306,7 +306,7 @@ golangci-lint run ./...   # CI lint gate (golangci-lint v2 required)
 ./scripts/check-coverage.sh  # coverage gate (≥85.0%)
 ```
 
-Common lint constraints: `defer f.Close()` must be wrapped as `defer func() { _ = f.Close() }()` (errcheck); `httpClient.Do(req)` requires `//nolint:gosec` when the URL comes from a variable (G704); avoid indexing array `b[i]` inside `for i := range a` across two arrays (G602 false positive). Cross-platform path assertions: use `filepath.ToSlash` on both sides when comparing output against `filepath.Join` paths.
+Common lint constraints: `defer f.Close()` must be wrapped as `defer func() { _ = f.Close() }()` (errcheck); `httpClient.Do(req)` requires `//nolint:gosec` when the URL comes from a variable (G704); avoid indexing array `b[i]` inside `for i := range a` across two arrays (G602 false positive). Cross-platform path assertions: use `filepath.ToSlash` on both sides when comparing output against `filepath.Join` paths. SA5011 (staticcheck nil-deref): add an unreachable `return` after `t.Fatalf` in nil-guard blocks so staticcheck infers the nil branch does not fall through.
 
 Non-goals:
 
