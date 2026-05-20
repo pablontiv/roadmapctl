@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 
+	"github.com/pablontiv/picokit/autoupdate"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
-	"github.com/pablontiv/roadmapctl/internal/updater"
 	"github.com/spf13/cobra"
 )
 
@@ -30,10 +31,21 @@ type Options struct {
 }
 
 func Execute(args []string, stdout io.Writer, stderr io.Writer, version string) int {
-	updater.CurrentVersion = version
-	_ = updater.ApplyStagedIfAvailable()
-	go updater.FetchAndStage(version) //nolint:errcheck
-	return ExecuteWithStdin(args, os.Stdin, stdout, stderr, version)
+	code, _ := executeWithSync(args, stdout, stderr, version)
+	return code
+}
+
+func executeWithSync(args []string, stdout io.Writer, stderr io.Writer, version string) (int, *sync.WaitGroup) {
+	u := autoupdate.New("pablontiv/roadmapctl", "roadmapctl", "ROADMAPCTL_NO_UPDATE")
+	u.CurrentVersion = version
+	_ = u.ApplyStagedIfAvailable()
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_ = u.FetchAndStage(version)
+	}()
+	return ExecuteWithStdin(args, os.Stdin, stdout, stderr, version), wg
 }
 
 func ExecuteWithStdin(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, version string) int {

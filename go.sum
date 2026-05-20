@@ -3,6 +3,8 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/pablontiv/picokit v0.1.0 h1:YIII1ZGtHwie5vSrDCrUenLtp1Tu1yehNyglsdshbms=
 github.com/pablontiv/picokit v0.1.0/go.mod h1:p1hQXyqtGxMz0c2FXmkd7k2bvpdkq7p0LScW1y6guYk=
+github.com/pablontiv/picokit v0.1.1 h1:BbCSSFFyi7VpM9zxQpXoKTTh7L443mzI3wU6Xd4J4bc=
+github.com/pablontiv/picokit v0.1.1/go.mod h1:p1hQXyqtGxMz0c2FXmkd7k2bvpdkq7p0LScW1y6guYk=
 github.com/pelletier/go-toml/v2 v2.3.1 h1:MYEvvGnQjeNkRF1qUuGolNtNExTDwct51yp7olPtrEc=
 github.com/pelletier/go-toml/v2 v2.3.1/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
