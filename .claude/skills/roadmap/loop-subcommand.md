@@ -261,6 +261,19 @@ Para cada task o wave ordenada:
    
    Ejemplo: si la task modificó `pkg/foo.go` y el AC es `"grep -r 'OldSymbol' pkg/foo/ retorna vacío"`, ejecutar directamente ese grep en el shell del loop **antes de llamar `roadmapctl transition complete --apply`**, no confiar solo en el resumen del agente.
 
+   **Fallback de re-verificación textual cuando `grep`/`git grep` está interceptado**
+
+   Si el shell del loop tiene `grep` o `git grep` interceptado por un hook local del proyecto (señal: stderr contiene mensajes como "use cartyx instead", "repo is indexed", o similar), **no abortar la re-verificación**. Usar en orden:
+
+   1. **`find` + `grep` por exec**: escapar el interceptor enviando `grep` como argumento de exec en lugar de comando directo:
+      ```bash
+      find <path> -name '*.<ext>' -exec grep -l '<patrón>' {} +
+      ```
+   2. **Leer con Read tool y matchear en conversación**: leer el archivo directamente con la herramienta `Read` y verificar textualmente que la cadena buscada aparece (o no aparece) en el contenido leído. Esta verificación es exacta y no depende de ningún comando shell.
+   3. **Comando alternativo del hook, solo si indexa contenido textual**: si el hook sugiere un comando alternativo (e.g., `cartyx query <término>`), usarlo **únicamente** si indexa contenido de texto literal — no si solo indexa estructura, símbolos o AST. Si indexa solo estructura/símbolos, **no cuenta como AC verificado** para ACs de presencia/ausencia de texto exacto.
+
+   La re-verificación nunca aborta por un hook interceptor: o se encuentra un camino verificable o se reporta el bloqueo y se detiene el loop con diagnóstico explícito.
+
    **Bypass de caché en runners de test (requisito)**
 
    Cuando el AC verifica tests o cobertura con un runner que cachea resultados (Go test, Jest, pytest, cargo test, etc.) **y la task modificó archivos bajo test**, forzar ejecución sin caché al re-verificar. Un resultado marcado `(cached)` o `from cache` sobre código recién editado es un falso positivo — no cuenta como AC verificado.

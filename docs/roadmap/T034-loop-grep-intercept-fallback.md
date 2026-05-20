@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T034: Loop — fallback de re-verificación textual cuando `grep` está interceptado
