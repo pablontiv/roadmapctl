@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pablontiv/roadmapctl/internal/fsx"
+	"github.com/pablontiv/picokit/pathsec"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -117,7 +117,7 @@ func Load(repo string) (*Config, error) {
 		return nil, &Error{Code: ErrRoadmapRootMissing, Message: "roadmap-root is required", Path: cfg.ConfigPath, ExitCode: 2}
 	}
 
-	absRoadmapRoot, relRoadmapRoot, err := fsx.ResolveInside(absRepo, roadmapRoot)
+	absRoadmapRoot, relRoadmapRoot, err := pathsec.ResolveInside(absRepo, roadmapRoot)
 	if err != nil {
 		return nil, &Error{Code: ErrRoadmapRootEscape, Message: "roadmap-root must resolve inside repo", Path: cfg.ConfigPath, ExitCode: 2, Cause: err}
 	}
@@ -292,7 +292,7 @@ func fileExists(path string) bool {
 }
 
 func roadmapRootExists(repo string, roadmapRoot string) bool {
-	root, _, err := fsx.ResolveInside(repo, roadmapRoot)
+	root, _, err := pathsec.ResolveInside(repo, roadmapRoot)
 	if err != nil {
 		return false
 	}

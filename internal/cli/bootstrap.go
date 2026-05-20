@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pablontiv/picokit/pathsec"
 	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
-	"github.com/pablontiv/roadmapctl/internal/fsx"
 	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 	"github.com/pablontiv/roadmapctl/internal/templates"
@@ -168,7 +168,7 @@ func buildBootstrapInit(ctx context.Context, options Options, apply bool) bootst
 
 func bootstrapRoots(options Options) (string, string, []diagnostics.Diagnostic) {
 	root := absoluteClean(options.Repo)
-	roadmapRoot, _, err := fsx.ResolveInside(root, filepath.ToSlash(filepath.Join("docs", "roadmap")))
+	roadmapRoot, _, err := pathsec.ResolveInside(root, filepath.ToSlash(filepath.Join("docs", "roadmap")))
 	if err != nil {
 		return root, "", []diagnostics.Diagnostic{{ID: "RMC_CONFIG_ROADMAP_ROOT_ESCAPE", Severity: diagnostics.SeverityError, Message: "roadmap-root must resolve inside repo", ExitCode: diagnostics.ExitUsage}}
 	}
