@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"sort"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/workspace"
 )
 
 type pendingReport struct {
@@ -53,7 +53,7 @@ func runPending(ctx context.Context, options Options) pendingReport {
 
 func runPendingWorkspace(ctx context.Context, options Options) pendingReport {
 	workspaceRoot := absoluteClean(options.Repo)
-	repos := workspaceRepoRoots(workspaceRoot)
+	repos := workspace.MemberRoots(workspaceRoot)
 	seen := map[string]string{}
 	var pendingRepos []pendingRepo
 	var found []diagnostics.Diagnostic
@@ -111,15 +111,3 @@ func renderPendingText(w io.Writer, report pendingReport) error {
 	return err
 }
 
-func workspaceRepoRoots(workspaceRoot string) []string {
-	var repos []string
-	_ = filepath.WalkDir(workspaceRoot, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || !entry.IsDir() || entry.Name() != ".git" {
-			return nil
-		}
-		repos = append(repos, filepath.Dir(path))
-		return filepath.SkipDir
-	})
-	sort.Strings(repos)
-	return repos
-}
