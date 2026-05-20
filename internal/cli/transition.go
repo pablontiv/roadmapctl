@@ -9,7 +9,8 @@ import (
 	"strings"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/roadmap"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 	"github.com/spf13/cobra"
@@ -18,7 +19,7 @@ import (
 type transitionReport struct {
 	Version              int                          `json:"version"`
 	Kind                 string                       `json:"kind"`
-	Summary              diagnostics.Summary          `json:"summary"`
+	Summary              diag.Summary          `json:"summary"`
 	Root                 string                       `json:"root"`
 	RoadmapRoot          string                       `json:"roadmap_root"`
 	Action               string                       `json:"action"`
@@ -30,7 +31,7 @@ type transitionReport struct {
 	Reasons              []string                     `json:"reasons"`
 	BlockingDependencies []roadmap.BlockingDependency `json:"blocking_dependencies"`
 	Changes              []roadmap.TransitionChange   `json:"changes"`
-	Diagnostics          []diagnostics.Diagnostic     `json:"diagnostics"`
+	Diagnostics          []diag.Diagnostic     `json:"diagnostics"`
 }
 
 func newTransitionCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
@@ -54,13 +55,13 @@ func newTransitionActionCommand(options *Options, stdout io.Writer, stderr io.Wr
 			status = flagStatus
 		}
 		if !apply && (action == "start" || action == "complete") {
-			report := newTransitionReport(absoluteClean(options.Repo), "", action, normalizeTransitionPath("", args[0]), roadmap.TransitionResult{Diagnostics: []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticTransitionApplyFailed, Severity: diagnostics.SeverityError, Message: "transition start and complete require --apply flag", Path: normalizeTransitionPath("", args[0]), ExitCode: diagnostics.ExitUsage}}})
+			report := newTransitionReport(absoluteClean(options.Repo), "", action, normalizeTransitionPath("", args[0]), roadmap.TransitionResult{Diagnostics: []diag.Diagnostic{{ID: reports.DiagnosticTransitionApplyFailed, Severity: diag.SeverityError, Message: "transition start and complete require --apply flag", Path: normalizeTransitionPath("", args[0]), ExitCode: diag.ExitUsage}}})
 			if options.Output == "json" {
 				_ = json.NewEncoder(stdout).Encode(report)
 			} else {
 				fmt.Fprintf(stdout, "%s\nstatus: %s\naction: %s\npath: %s\nallowed: %t\n", report.Kind, report.Summary.Status, report.Action, report.Path, report.Allowed)
 			}
-			*exitCode = diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
+			*exitCode = reports.ExitCode(reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
 			return nil
 		}
 		report := runTransition(context.Background(), *options, action, args[0], status, apply)
@@ -73,7 +74,7 @@ func newTransitionActionCommand(options *Options, stdout io.Writer, stderr io.Wr
 		} else {
 			fmt.Fprintf(stdout, "%s\nstatus: %s\naction: %s\npath: %s\nallowed: %t\n", report.Kind, report.Summary.Status, report.Action, report.Path, report.Allowed)
 		}
-		*exitCode = diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
+		*exitCode = reports.ExitCode(reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
 		return nil
 	}}
 	command.Flags().BoolVar(&dryRun, "dry-run", true, "plan transition without applying changes")
@@ -85,7 +86,7 @@ func runTransition(ctx context.Context, options Options, action string, taskPath
 	repoRoot := absoluteClean(options.Repo)
 	cfg, err := config.Load(options.Repo)
 	if err != nil {
-		found := []diagnostics.Diagnostic{configDiagnostic(repoRoot, err)}
+		found := []diag.Diagnostic{configDiagnostic(repoRoot, err)}
 		return newTransitionReport(repoRoot, "", action, normalizeTransitionPath("", taskPath), roadmap.TransitionResult{Diagnostics: found})
 	}
 	path := normalizeTransitionPath(cfg.RoadmapRoot, taskPath)
@@ -103,12 +104,12 @@ func runTransition(ctx context.Context, options Options, action string, taskPath
 	case "set-status":
 		targetStatus := transitionStatusValue(cfg, explicitStatus)
 		if targetStatus == "" {
-			result = roadmap.TransitionResult{Diagnostics: []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticTransitionStatusUnknown, Severity: diagnostics.SeverityError, Message: "target status is required", Path: path, ExitCode: diagnostics.ExitUsage}}}
+			result = roadmap.TransitionResult{Diagnostics: []diag.Diagnostic{{ID: reports.DiagnosticTransitionStatusUnknown, Severity: diag.SeverityError, Message: "target status is required", Path: path, ExitCode: diag.ExitUsage}}}
 		} else {
 			result = roadmap.SetStatus(model, roles, path, targetStatus)
 		}
 	default:
-		result = roadmap.TransitionResult{Diagnostics: []diagnostics.Diagnostic{{ID: "RMC_TRANSITION_ACTION_UNKNOWN", Severity: diagnostics.SeverityError, Message: "unsupported transition action", Path: path, ExitCode: diagnostics.ExitUsage}}}
+		result = roadmap.TransitionResult{Diagnostics: []diag.Diagnostic{{ID: "RMC_TRANSITION_ACTION_UNKNOWN", Severity: diag.SeverityError, Message: "unsupported transition action", Path: path, ExitCode: diag.ExitUsage}}}
 	}
 	result.Diagnostics = append(found, result.Diagnostics...)
 	result = validateTransitionTargetStatus(ctx, cfg, options, result, path)
@@ -163,7 +164,7 @@ func validateTransitionTargetStatus(ctx context.Context, cfg *config.Config, opt
 	}
 	result.Allowed = false
 	result.Changes = nil
-	result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{ID: diagnostics.DiagnosticTransitionStatusUnknown, Severity: diagnostics.SeverityError, Message: "target status is not present in effective schema", Path: path, Details: map[string]any{"target": result.TargetStatus}})
+	result.Diagnostics = append(result.Diagnostics, diag.Diagnostic{ID: reports.DiagnosticTransitionStatusUnknown, Severity: diag.SeverityError, Message: "target status is not present in effective schema", Path: path, Details: map[string]any{"target": result.TargetStatus}})
 	return result
 }
 
@@ -196,6 +197,6 @@ func normalizeTransitionPath(roadmapRoot string, taskPath string) string {
 }
 
 func newTransitionReport(root string, roadmapRoot string, action string, path string, result roadmap.TransitionResult) transitionReport {
-	report := diagnostics.NewReport("roadmapctl/transition", root, roadmapRoot, result.Diagnostics)
+	report := reports.NewReport("roadmapctl/transition", root, roadmapRoot, result.Diagnostics)
 	return transitionReport{Version: report.Version, Kind: report.Kind, Summary: report.Summary, Root: report.Root, RoadmapRoot: report.RoadmapRoot, Action: action, Path: path, Allowed: result.Allowed, CurrentStatus: result.CurrentStatus, TargetStatus: result.TargetStatus, Role: result.Role, Reasons: result.Reasons, BlockingDependencies: result.BlockingDependencies, Changes: result.Changes, Diagnostics: report.Diagnostics}
 }

@@ -13,7 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 )
 
 const (
@@ -47,18 +48,18 @@ func (e *Error) Unwrap() error {
 	return e.Err
 }
 
-func (e *Error) Diagnostic() diagnostics.Diagnostic {
+func (e *Error) Diagnostic() diag.Diagnostic {
 	id := "RMC_ROOTLINE_ERROR"
 	if e.Kind == ErrorMissingBinary {
-		id = diagnostics.DiagnosticRootlineMissing
+		id = reports.DiagnosticRootlineMissing
 	}
 	details := map[string]any{"kind": string(e.Kind)}
 	if e.Stderr != "" {
 		details["stderr"] = e.Stderr
 	}
-	return diagnostics.Diagnostic{
+	return diag.Diagnostic{
 		ID:       id,
-		Severity: diagnostics.SeverityError,
+		Severity: diag.SeverityError,
 		Message:  e.Message,
 		Path:     e.Path,
 		Details:  details,
@@ -140,7 +141,7 @@ func ResolveBinary(explicit string, env []string) (string, error) {
 	return "", &Error{
 		Kind:     ErrorMissingBinary,
 		Message:  "rootline executable not found via --rootline, ROOTLINE_BIN, or PATH",
-		ExitCode: diagnostics.ExitEnvironment,
+		ExitCode: diag.ExitEnvironment,
 	}
 }
 
@@ -221,7 +222,7 @@ func (c *Client) runJSON(ctx context.Context, args []string) (*JSONResult, error
 		if runErr != nil {
 			return nil, runErr
 		}
-		return nil, &Error{Kind: ErrorInvalidJSON, Message: "rootline returned invalid JSON", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
+		return nil, &Error{Kind: ErrorInvalidJSON, Message: "rootline returned invalid JSON", Stderr: string(result.Stderr), ExitCode: diag.ExitEnvironment, Err: err}
 	}
 	return &JSONResult{
 		Stdout:   append([]byte(nil), result.Stdout...),
@@ -252,7 +253,7 @@ func (c *Client) run(ctx context.Context, args []string) (Result, error) {
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(commandCtx.Err(), context.DeadlineExceeded) {
-			return result, &Error{Kind: ErrorTimeout, Message: "rootline command timed out", Stderr: string(result.Stderr), ExitCode: diagnostics.ExitEnvironment, Err: err}
+			return result, &Error{Kind: ErrorTimeout, Message: "rootline command timed out", Stderr: string(result.Stderr), ExitCode: diag.ExitEnvironment, Err: err}
 		}
 		return result, &Error{Kind: classifyExecutionKind(result.Stderr), Message: "rootline command failed", Stderr: string(result.Stderr), ExitCode: executionExitCode(result), Err: err}
 	}
@@ -271,7 +272,7 @@ func executionExitCode(result Result) int {
 	if result.ExitCode != 0 {
 		return result.ExitCode
 	}
-	return diagnostics.ExitEnvironment
+	return diag.ExitEnvironment
 }
 
 type OSExecutor struct{}
@@ -299,12 +300,12 @@ func resolveExecutable(path string, env []string) (string, error) {
 		if isExecutable(path) {
 			return path, nil
 		}
-		return "", &Error{Kind: ErrorMissingBinary, Message: "rootline executable not found or not executable", Path: path, ExitCode: diagnostics.ExitEnvironment}
+		return "", &Error{Kind: ErrorMissingBinary, Message: "rootline executable not found or not executable", Path: path, ExitCode: diag.ExitEnvironment}
 	}
 	if resolved, ok := lookPathInEnv(path, env); ok {
 		return resolved, nil
 	}
-	return "", &Error{Kind: ErrorMissingBinary, Message: "rootline executable not found or not executable", Path: path, ExitCode: diagnostics.ExitEnvironment}
+	return "", &Error{Kind: ErrorMissingBinary, Message: "rootline executable not found or not executable", Path: path, ExitCode: diag.ExitEnvironment}
 }
 
 func lookPathInEnv(name string, env []string) (string, bool) {

@@ -12,7 +12,8 @@ import (
 
 	"github.com/pablontiv/picokit/pathsec"
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 	"github.com/pablontiv/roadmapctl/internal/templates"
@@ -33,12 +34,12 @@ type bootstrapRepoEntry struct {
 type bootstrapReport struct {
 	Version     int                      `json:"version"`
 	Kind        string                   `json:"kind"`
-	Summary     diagnostics.Summary      `json:"summary"`
+	Summary     diag.Summary      `json:"summary"`
 	Root        string                   `json:"root"`
 	RoadmapRoot string                   `json:"roadmap_root"`
 	Missing     []string                 `json:"missing,omitempty"`
 	Changes     []bootstrapChange        `json:"changes,omitempty"`
-	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
+	Diagnostics []diag.Diagnostic `json:"diagnostics"`
 }
 
 type bootstrapChange struct {
@@ -57,7 +58,7 @@ type contextHelpers struct {
 type bootstrapConfigReport struct {
 	Version                int                      `json:"version"`
 	Kind                   string                   `json:"kind"`
-	Summary                diagnostics.Summary      `json:"summary"`
+	Summary                diag.Summary      `json:"summary"`
 	Root                   string                   `json:"root"`
 	RoadmapRoot            string                   `json:"roadmap_root"`
 	ConfigPath             string                   `json:"config_path"`
@@ -78,7 +79,7 @@ type bootstrapConfigReport struct {
 	PRMode                 bool                     `json:"pr_mode"`
 	Helpers                contextHelpers           `json:"helpers"`
 	Repos                  []bootstrapRepoEntry     `json:"repos,omitempty"`
-	Diagnostics            []diagnostics.Diagnostic `json:"diagnostics"`
+	Diagnostics            []diag.Diagnostic `json:"diagnostics"`
 }
 
 func newBootstrapCommand(options *Options, stdin io.Reader, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
@@ -101,11 +102,11 @@ func newBootstrapCommand(options *Options, stdin io.Reader, stdout io.Writer, st
 						report = buildBootstrapConfig(ctx, *options)
 						if len(extraDiags) > 0 {
 							report.Diagnostics = append(report.Diagnostics, extraDiags...)
-							report.Summary = diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics).Summary
+							report.Summary = reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics).Summary
 						}
 					} else {
 						report.Diagnostics = append(report.Diagnostics, extraDiags...)
-						report.Summary = diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics).Summary
+						report.Summary = reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics).Summary
 					}
 				}
 			}
@@ -151,7 +152,7 @@ func buildBootstrapInspect(ctx context.Context, options Options) bootstrapReport
 		report.Missing = missingBootstrapPaths(root, roadmapRoot)
 		report.Diagnostics = append(report.Diagnostics, bootstrapSchemaCompatibilityDiagnostics(ctx, options, root, roadmapRoot)...)
 	}
-	report.Summary = diagnostics.NewReport(report.Kind, root, roadmapRoot, report.Diagnostics).Summary
+	report.Summary = reports.NewReport(report.Kind, root, roadmapRoot, report.Diagnostics).Summary
 	return report
 }
 
@@ -174,15 +175,15 @@ func buildBootstrapInit(ctx context.Context, options Options, apply bool) bootst
 			}
 		}
 	}
-	report.Summary = diagnostics.NewReport(report.Kind, root, roadmapRoot, report.Diagnostics).Summary
+	report.Summary = reports.NewReport(report.Kind, root, roadmapRoot, report.Diagnostics).Summary
 	return report
 }
 
-func bootstrapRoots(options Options) (string, string, []diagnostics.Diagnostic) {
+func bootstrapRoots(options Options) (string, string, []diag.Diagnostic) {
 	root := absoluteClean(options.Repo)
 	roadmapRoot, _, err := pathsec.ResolveInside(root, filepath.ToSlash(filepath.Join("docs", "roadmap")))
 	if err != nil {
-		return root, "", []diagnostics.Diagnostic{{ID: "RMC_CONFIG_ROADMAP_ROOT_ESCAPE", Severity: diagnostics.SeverityError, Message: "roadmap-root must resolve inside repo", ExitCode: diagnostics.ExitUsage}}
+		return root, "", []diag.Diagnostic{{ID: "RMC_CONFIG_ROADMAP_ROOT_ESCAPE", Severity: diag.SeverityError, Message: "roadmap-root must resolve inside repo", ExitCode: diag.ExitUsage}}
 	}
 	return root, roadmapRoot, nil
 }
@@ -214,8 +215,8 @@ func proposedBootstrapChanges(root string, roadmapRoot string, apply bool, depen
 	return changes
 }
 
-func applyBootstrapChanges(root string, changes []bootstrapChange) []diagnostics.Diagnostic {
-	var found []diagnostics.Diagnostic
+func applyBootstrapChanges(root string, changes []bootstrapChange) []diag.Diagnostic {
+	var found []diag.Diagnostic
 	for _, change := range changes {
 		abs := filepath.Join(root, filepath.FromSlash(change.Path))
 		switch change.Operation {
@@ -236,11 +237,11 @@ func applyBootstrapChanges(root string, changes []bootstrapChange) []diagnostics
 	return found
 }
 
-func bootstrapApplyDiagnostic(path string, err error) diagnostics.Diagnostic {
-	return diagnostics.Diagnostic{ID: "RMC_BOOTSTRAP_APPLY_FAILED", Severity: diagnostics.SeverityError, Message: err.Error(), Path: path, ExitCode: diagnostics.ExitValidation}
+func bootstrapApplyDiagnostic(path string, err error) diag.Diagnostic {
+	return diag.Diagnostic{ID: "RMC_BOOTSTRAP_APPLY_FAILED", Severity: diag.SeverityError, Message: err.Error(), Path: path, ExitCode: diag.ExitValidation}
 }
 
-func bootstrapSchemaCompatibilityDiagnostics(ctx context.Context, options Options, root string, roadmapRoot string) []diagnostics.Diagnostic {
+func bootstrapSchemaCompatibilityDiagnostics(ctx context.Context, options Options, root string, roadmapRoot string) []diag.Diagnostic {
 	stemPath := filepath.Join(roadmapRoot, ".stem")
 	if _, err := os.Stat(stemPath); err != nil {
 		return nil
@@ -248,7 +249,7 @@ func bootstrapSchemaCompatibilityDiagnostics(ctx context.Context, options Option
 	client := rootlinecli.New(rootlinecli.Options{Binary: options.Rootline, Dir: root, Timeout: options.Timeout})
 	describe, err := client.Describe(ctx, ensureRootlineDirPath(roadmapRoot))
 	if err != nil {
-		return []diagnostics.Diagnostic{rootlineDiagnostic(err)}
+		return []diag.Diagnostic{rootlineDiagnostic(err)}
 	}
 	return roadmaplint.CheckOutcomeSchemaCompatibility(describe.Decoded)
 }
@@ -261,7 +262,7 @@ func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigR
 	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		diagnostic := configDiagnostic(root, err)
-		return newBootstrapConfigReport(root, "", "", "", "", nil, []diagnostics.Diagnostic{diagnostic})
+		return newBootstrapConfigReport(root, "", "", "", "", nil, []diag.Diagnostic{diagnostic})
 	}
 
 	found := configWarnings(cfg)
@@ -285,7 +286,7 @@ func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigR
 				cfg, err = config.Load(options.Repo)
 				if err != nil {
 					diagnostic := configDiagnostic(root, err)
-					return newBootstrapConfigReport(root, "", "", "", "", nil, []diagnostics.Diagnostic{diagnostic})
+					return newBootstrapConfigReport(root, "", "", "", "", nil, []diag.Diagnostic{diagnostic})
 				}
 			}
 		}
@@ -298,13 +299,13 @@ func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigR
 func buildBootstrapWorkspaceConfig(ctx context.Context, root string, options Options) bootstrapConfigReport {
 	members := workspace.MemberRoots(root)
 	var repos []bootstrapRepoEntry
-	var found []diagnostics.Diagnostic
+	var found []diag.Diagnostic
 	for _, member := range members {
 		cfg, err := config.Load(member)
 		if err != nil {
-			found = append(found, diagnostics.Diagnostic{
+			found = append(found, diag.Diagnostic{
 				ID:       "RMC_WORKSPACE_MEMBER_SKIPPED",
-				Severity: diagnostics.SeverityInfo,
+				Severity: diag.SeverityInfo,
 				Message:  "workspace member skipped: " + err.Error(),
 				Path:     relToRoot(root, member),
 			})
@@ -330,16 +331,16 @@ func buildBootstrapWorkspaceConfig(ctx context.Context, root string, options Opt
 	}
 
 	if len(repos) == 0 {
-		found = append(found, diagnostics.Diagnostic{
+		found = append(found, diag.Diagnostic{
 			ID:       ErrWorkspaceEmpty,
-			Severity: diagnostics.SeverityError,
+			Severity: diag.SeverityError,
 			Message:  "workspace root detected but no member has a valid roadmap config",
 			Path:     root,
-			ExitCode: diagnostics.ExitValidation,
+			ExitCode: diag.ExitValidation,
 		})
 	}
 
-	report := diagnostics.NewReport("roadmapctl/bootstrap", root, "", found)
+	report := reports.NewReport("roadmapctl/bootstrap", root, "", found)
 	return bootstrapConfigReport{
 		Version:         report.Version,
 		Kind:            report.Kind,
@@ -354,8 +355,8 @@ func buildBootstrapWorkspaceConfig(ctx context.Context, root string, options Opt
 	}
 }
 
-func newBootstrapConfigReport(root string, roadmapRoot string, configPath string, configSource string, rootlineVersion string, cfg *config.Config, found []diagnostics.Diagnostic) bootstrapConfigReport {
-	report := diagnostics.NewReport("roadmapctl/bootstrap", root, roadmapRoot, found)
+func newBootstrapConfigReport(root string, roadmapRoot string, configPath string, configSource string, rootlineVersion string, cfg *config.Config, found []diag.Diagnostic) bootstrapConfigReport {
+	report := reports.NewReport("roadmapctl/bootstrap", root, roadmapRoot, found)
 	result := bootstrapConfigReport{
 		Version:         report.Version,
 		Kind:            report.Kind,
@@ -408,7 +409,7 @@ func renderBootstrapConfig(report bootstrapConfigReport, output string, stdout i
 			return ExitUsage
 		}
 		fmt.Fprint(stdout, string(extracted))
-		return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), false)
+		return reports.ExitCode(reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), false)
 	}
 	if output == "json" {
 		data, err := json.Marshal(report)
@@ -421,7 +422,7 @@ func renderBootstrapConfig(report bootstrapConfigReport, output string, stdout i
 		fmt.Fprintf(stdout, "%s\nstatus: %s\nconfig: %s (%s)\nwhere_leaf: %s\nwhere_not_done: %s\nwhere_active: %s\n",
 			report.Kind, report.Summary.Status, report.ConfigPath, report.ConfigSource, report.Helpers.WhereLeaf, report.Helpers.WhereNotDone, report.Helpers.WhereActive)
 	}
-	return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), false)
+	return reports.ExitCode(reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), false)
 }
 
 func renderBootstrap(report bootstrapReport, output string, stdout io.Writer, stderr io.Writer) int {
@@ -437,20 +438,20 @@ func renderBootstrap(report bootstrapReport, output string, stdout io.Writer, st
 	} else {
 		fmt.Fprintf(stdout, "%s\nstatus: %s\nmissing: %d\nchanges: %d\n", report.Kind, report.Summary.Status, len(report.Missing), len(report.Changes))
 	}
-	return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), false)
+	return reports.ExitCode(reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), false)
 }
 
-func hasRepairTriggerDiagnostics(diags []diagnostics.Diagnostic) bool {
+func hasRepairTriggerDiagnostics(diags []diag.Diagnostic) bool {
 	for _, d := range diags {
-		if d.ID == diagnostics.DiagnosticLintSchemaOutcomeEstadoRequired ||
-			d.ID == diagnostics.DiagnosticLintSchemaOutcomeEstadoNonEmpty {
+		if d.ID == reports.DiagnosticLintSchemaOutcomeEstadoRequired ||
+			d.ID == reports.DiagnosticLintSchemaOutcomeEstadoNonEmpty {
 			return true
 		}
 	}
 	return false
 }
 
-func repairStemIfNeeded(ctx context.Context, options Options, root string, roadmapRoot string, yes bool, stdin io.Reader, stderr io.Writer) (applied bool, extraDiags []diagnostics.Diagnostic) {
+func repairStemIfNeeded(ctx context.Context, options Options, root string, roadmapRoot string, yes bool, stdin io.Reader, stderr io.Writer) (applied bool, extraDiags []diag.Diagnostic) {
 	stemPath := filepath.Join(roadmapRoot, ".stem")
 	content, err := os.ReadFile(stemPath)
 	if err != nil {
@@ -458,12 +459,12 @@ func repairStemIfNeeded(ctx context.Context, options Options, root string, roadm
 	}
 
 	if !isStemRecognizedLegacy(string(content)) {
-		return false, []diagnostics.Diagnostic{{
-			ID:       diagnostics.DiagnosticBootstrapRepairUnsupportedStem,
-			Severity: diagnostics.SeverityError,
+		return false, []diag.Diagnostic{{
+			ID:       reports.DiagnosticBootstrapRepairUnsupportedStem,
+			Severity: diag.SeverityError,
 			Message:  ".stem has unrecognized custom fields; automatic repair is not supported",
 			Path:     ".stem",
-			ExitCode: diagnostics.ExitValidation,
+			ExitCode: diag.ExitValidation,
 		}}
 	}
 
@@ -482,7 +483,7 @@ func repairStemIfNeeded(ctx context.Context, options Options, root string, roadm
 	}
 
 	if err := os.WriteFile(stemPath, []byte(canonicalStem), 0o644); err != nil {
-		return false, []diagnostics.Diagnostic{bootstrapApplyDiagnostic(relToRoot(root, stemPath), err)}
+		return false, []diag.Diagnostic{bootstrapApplyDiagnostic(relToRoot(root, stemPath), err)}
 	}
 
 	postOptions := options

@@ -1,6 +1,9 @@
 package roadmap
 
-import "github.com/pablontiv/roadmapctl/internal/diagnostics"
+import (
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
+)
 
 type TransitionRoles struct {
 	DoneStatuses     []string
@@ -14,7 +17,7 @@ type TransitionResult struct {
 	Reasons              []string
 	BlockingDependencies []BlockingDependency
 	Changes              []TransitionChange
-	Diagnostics          []diagnostics.Diagnostic
+	Diagnostics          []diag.Diagnostic
 	CurrentStatus        string
 	TargetStatus         string
 	Role                 string
@@ -40,12 +43,12 @@ func CanStart(model ReadModel, roles TransitionRoles, path string) TransitionRes
 	}
 	result := TransitionResult{CurrentStatus: task.Status, TargetStatus: roles.InProgressStatus, Role: "in_progress"}
 	if stringSet(roles.DoneStatuses)[task.Status] {
-		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{ID: diagnostics.DiagnosticTransitionAlreadyDone, Severity: diagnostics.SeverityWarning, Message: "task is already done", Path: path})
+		result.Diagnostics = append(result.Diagnostics, diag.Diagnostic{ID: reports.DiagnosticTransitionAlreadyDone, Severity: diag.SeverityWarning, Message: "task is already done", Path: path})
 		result.Reasons = append(result.Reasons, "task is already done")
 		return result
 	}
 	if !stringSet(roles.ActiveStatuses)[task.Status] {
-		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{ID: diagnostics.DiagnosticTransitionNotActive, Severity: diagnostics.SeverityWarning, Message: "task status is not active", Path: path})
+		result.Diagnostics = append(result.Diagnostics, diag.Diagnostic{ID: reports.DiagnosticTransitionNotActive, Severity: diag.SeverityWarning, Message: "task status is not active", Path: path})
 		result.Reasons = append(result.Reasons, "task status is not active")
 		return result
 	}
@@ -60,7 +63,7 @@ func CanStart(model ReadModel, roles TransitionRoles, path string) TransitionRes
 		}
 	}
 	if len(result.BlockingDependencies) > 0 {
-		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{ID: diagnostics.DiagnosticTransitionDependencyBlocked, Severity: diagnostics.SeverityWarning, Message: "task has dependencies outside done statuses", Path: path})
+		result.Diagnostics = append(result.Diagnostics, diag.Diagnostic{ID: reports.DiagnosticTransitionDependencyBlocked, Severity: diag.SeverityWarning, Message: "task has dependencies outside done statuses", Path: path})
 		result.Reasons = append(result.Reasons, "dependencies are not done")
 		return result
 	}
@@ -77,7 +80,7 @@ func CanComplete(model ReadModel, roles TransitionRoles, path string) Transition
 	}
 	result := TransitionResult{CurrentStatus: task.Status, TargetStatus: roles.CompletedStatus, Role: "completed"}
 	if stringSet(roles.DoneStatuses)[task.Status] {
-		result.Diagnostics = append(result.Diagnostics, diagnostics.Diagnostic{ID: diagnostics.DiagnosticTransitionAlreadyDone, Severity: diagnostics.SeverityWarning, Message: "task is already done", Path: path})
+		result.Diagnostics = append(result.Diagnostics, diag.Diagnostic{ID: reports.DiagnosticTransitionAlreadyDone, Severity: diag.SeverityWarning, Message: "task is already done", Path: path})
 		result.Reasons = append(result.Reasons, "task is already done")
 		return result
 	}
@@ -105,5 +108,5 @@ func SetStatus(model ReadModel, roles TransitionRoles, path string, targetStatus
 }
 
 func transitionTaskNotFound(path string) TransitionResult {
-	return TransitionResult{Reasons: []string{"task not found"}, Diagnostics: []diagnostics.Diagnostic{{ID: diagnostics.DiagnosticTransitionTaskNotFound, Severity: diagnostics.SeverityError, Message: "task not found in roadmap read model", Path: path}}}
+	return TransitionResult{Reasons: []string{"task not found"}, Diagnostics: []diag.Diagnostic{{ID: reports.DiagnosticTransitionTaskNotFound, Severity: diag.SeverityError, Message: "task not found in roadmap read model", Path: path}}}
 }

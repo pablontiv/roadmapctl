@@ -9,16 +9,17 @@ import (
 	"time"
 
 	"github.com/pablontiv/picokit/autoupdate"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/spf13/cobra"
 )
 
 const (
-	ExitOK          = diagnostics.ExitOK
-	ExitValidation  = diagnostics.ExitValidation
-	ExitUsage       = diagnostics.ExitUsage
-	ExitEnvironment = diagnostics.ExitEnvironment
-	ExitInternal    = diagnostics.ExitInternal
+	ExitOK          = diag.ExitOK
+	ExitValidation  = diag.ExitValidation
+	ExitUsage       = diag.ExitUsage
+	ExitEnvironment = diag.ExitEnvironment
+	ExitInternal    = diag.ExitInternal
 )
 
 type Options struct {
@@ -117,17 +118,17 @@ func executeLeafCommand(ctx context.Context, name string, options Options, stdou
 	if name == "lint" {
 		report := runLint(ctx, options)
 		if options.Output == "json" {
-			if err := diagnostics.RenderJSON(stdout, report); err != nil {
+			if err := reports.RenderJSON(stdout, report); err != nil {
 				fmt.Fprintf(stderr, "%s: render JSON report: %v\n", name, err)
 				return ExitInternal
 			}
-			return diagnostics.ExitCode(report, options.Strict)
+			return reports.ExitCode(report, options.Strict)
 		}
-		if err := diagnostics.RenderText(stdout, report); err != nil {
+		if err := reports.RenderText(stdout, report); err != nil {
 			fmt.Fprintf(stderr, "%s: render text report: %v\n", name, err)
 			return ExitInternal
 		}
-		return diagnostics.ExitCode(report, options.Strict)
+		return reports.ExitCode(report, options.Strict)
 	}
 
 	if name == "pending" {
@@ -137,16 +138,16 @@ func executeLeafCommand(ctx context.Context, name string, options Options, stdou
 				fmt.Fprintf(stderr, "%s: render JSON report: %v\n", name, err)
 				return ExitInternal
 			}
-			return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
+			return reports.ExitCode(reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
 		}
 		if err := renderPendingText(stdout, report); err != nil {
 			fmt.Fprintf(stderr, "%s: render text report: %v\n", name, err)
 			return ExitInternal
 		}
-		return diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
+		return reports.ExitCode(reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
 	}
 
-	report := diagnostics.NewReport("roadmapctl/"+name, options.Repo, "", nil)
+	report := reports.NewReport("roadmapctl/"+name, options.Repo, "", nil)
 	if name == "doctor" {
 		report = runDoctor(ctx, options)
 	}
@@ -154,15 +155,15 @@ func executeLeafCommand(ctx context.Context, name string, options Options, stdou
 		report = runCheck(ctx, options)
 	}
 	if options.Output == "json" {
-		if err := diagnostics.RenderJSON(stdout, report); err != nil {
+		if err := reports.RenderJSON(stdout, report); err != nil {
 			fmt.Fprintf(stderr, "%s: render JSON report: %v\n", name, err)
 			return ExitInternal
 		}
-		return diagnostics.ExitCode(report, options.Strict)
+		return reports.ExitCode(report, options.Strict)
 	}
-	if err := diagnostics.RenderText(stdout, report); err != nil {
+	if err := reports.RenderText(stdout, report); err != nil {
 		fmt.Fprintf(stderr, "%s: render text report: %v\n", name, err)
 		return ExitInternal
 	}
-	return diagnostics.ExitCode(report, options.Strict)
+	return reports.ExitCode(report, options.Strict)
 }

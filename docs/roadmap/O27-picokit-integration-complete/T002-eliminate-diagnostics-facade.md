@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T002: Eliminate internal/diagnostics facade (consolidate via picokit/diag + internal/reports)

@@ -12,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 )
 
 func TestResolveBinaryPrefersExplicitThenRootlineBinThenPath(t *testing.T) {
@@ -86,11 +87,11 @@ func TestMissingRootlineProducesEnvironmentDiagnostic(t *testing.T) {
 	if rootlineErr.Kind != ErrorMissingBinary {
 		t.Fatalf("Kind = %q, want %q", rootlineErr.Kind, ErrorMissingBinary)
 	}
-	if rootlineErr.ExitCode != diagnostics.ExitEnvironment {
-		t.Fatalf("ExitCode = %d, want %d", rootlineErr.ExitCode, diagnostics.ExitEnvironment)
+	if rootlineErr.ExitCode != diag.ExitEnvironment {
+		t.Fatalf("ExitCode = %d, want %d", rootlineErr.ExitCode, diag.ExitEnvironment)
 	}
 	diagnostic := rootlineErr.Diagnostic()
-	if diagnostic.ID != diagnostics.DiagnosticRootlineMissing || diagnostic.ExitCode != diagnostics.ExitEnvironment || diagnostic.Severity != diagnostics.SeverityError {
+	if diagnostic.ID != reports.DiagnosticRootlineMissing || diagnostic.ExitCode != diag.ExitEnvironment || diagnostic.Severity != diag.SeverityError {
 		t.Fatalf("Diagnostic() = %#v", diagnostic)
 	}
 }
@@ -303,7 +304,7 @@ func TestTimeoutProducesControlledEnvironmentError(t *testing.T) {
 	if !errors.As(err, &rootlineErr) {
 		t.Fatalf("error type = %T, want *Error", err)
 	}
-	if rootlineErr.Kind != ErrorTimeout || rootlineErr.ExitCode != diagnostics.ExitEnvironment {
+	if rootlineErr.Kind != ErrorTimeout || rootlineErr.ExitCode != diag.ExitEnvironment {
 		t.Fatalf("error = %#v", rootlineErr)
 	}
 }

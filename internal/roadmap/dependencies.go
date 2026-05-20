@@ -6,7 +6,8 @@ import (
 	"strings"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )
@@ -104,7 +105,7 @@ func validateDiagnostics(decoded map[string]any) []Diagnostic {
 	}
 	return []Diagnostic{{
 		ID:       DiagnosticRootlineValidateFailed,
-		Severity: diagnostics.SeverityError,
+		Severity: diag.SeverityError,
 		Message:  "rootline validation reported invalid roadmap records",
 		Details:  map[string]any{"invalid": invalid},
 	}}
@@ -115,7 +116,7 @@ func graphDiagnostics(cfg *config.Config, decoded map[string]any) []Diagnostic {
 	for _, cycle := range arrayValue(decoded["cycles"]) {
 		found = append(found, Diagnostic{
 			ID:       DiagnosticGraphCycle,
-			Severity: diagnostics.SeverityError,
+			Severity: diag.SeverityError,
 			Message:  "roadmap dependency graph contains a cycle",
 			Details:  map[string]any{"cycle": cycle},
 		})
@@ -129,8 +130,8 @@ func graphDiagnostics(cfg *config.Config, decoded map[string]any) []Diagnostic {
 			continue
 		}
 		found = append(found, Diagnostic{
-			ID:       diagnostics.DiagnosticInvalidBlockedBy,
-			Severity: diagnostics.SeverityError,
+			ID:       reports.DiagnosticInvalidBlockedBy,
+			Severity: diag.SeverityError,
 			Message:  "blocked_by link is broken or invalid",
 			Path:     stringField(link, "source"),
 			Details: map[string]any{
@@ -150,11 +151,11 @@ func rootlineOperationDiagnostic(operation string, err error) Diagnostic {
 		}
 		exitCode := rootlineErr.ExitCode
 		if operation == "validate" && rootlineErr.Kind == rootlinecli.ErrorExecution {
-			exitCode = diagnostics.ExitValidation
+			exitCode = diag.ExitValidation
 		}
 		return Diagnostic{
 			ID:       rootlineDiagnosticID(operation),
-			Severity: diagnostics.SeverityError,
+			Severity: diag.SeverityError,
 			Message:  rootlineErr.Message,
 			Path:     rootlineErr.Path,
 			Details: map[string]any{
@@ -167,10 +168,10 @@ func rootlineOperationDiagnostic(operation string, err error) Diagnostic {
 	}
 	return Diagnostic{
 		ID:       rootlineDiagnosticID(operation),
-		Severity: diagnostics.SeverityError,
+		Severity: diag.SeverityError,
 		Message:  err.Error(),
 		Details:  map[string]any{"operation": operation},
-		ExitCode: diagnostics.ExitEnvironment,
+		ExitCode: diag.ExitEnvironment,
 	}
 }
 

@@ -6,7 +6,8 @@ import (
 	"strings"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 )
 
 var windowsReservedNames = map[string]bool{
@@ -15,16 +16,16 @@ var windowsReservedNames = map[string]bool{
 	"LPT1": true, "LPT2": true, "LPT3": true, "LPT4": true, "LPT5": true, "LPT6": true, "LPT7": true, "LPT8": true, "LPT9": true,
 }
 
-func CheckFilenamePortability(roadmapRoot string) ([]diagnostics.Diagnostic, error) {
+func CheckFilenamePortability(roadmapRoot string) ([]diag.Diagnostic, error) {
 	root := filepath.Clean(roadmapRoot)
-	var found []diagnostics.Diagnostic
+	var found []diag.Diagnostic
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if !entry.IsDir() {
 			if reserved := reservedWindowsName(entry.Name()); reserved != "" {
-				found = append(found, lintNameDiagnostic(diagnostics.DiagnosticLintFilenameReserved, root, path, "roadmap filename is reserved on Windows", reserved))
+				found = append(found, lintNameDiagnostic(reports.DiagnosticLintFilenameReserved, root, path, "roadmap filename is reserved on Windows", reserved))
 			}
 			return nil
 		}
@@ -34,7 +35,7 @@ func CheckFilenamePortability(roadmapRoot string) ([]diagnostics.Diagnostic, err
 		}
 		found = append(found, diagnosticsForDir...)
 		if path != root && reservedWindowsName(entry.Name()) != "" {
-			found = append(found, lintNameDiagnostic(diagnostics.DiagnosticLintFilenameReserved, root, path, "roadmap directory name is reserved on Windows", reservedWindowsName(entry.Name())))
+			found = append(found, lintNameDiagnostic(reports.DiagnosticLintFilenameReserved, root, path, "roadmap directory name is reserved on Windows", reservedWindowsName(entry.Name())))
 		}
 		return nil
 	})
@@ -45,18 +46,18 @@ func CheckFilenamePortability(roadmapRoot string) ([]diagnostics.Diagnostic, err
 	return found, nil
 }
 
-func checkCaseCollisionsInDir(root string, dir string) ([]diagnostics.Diagnostic, error) {
+func checkCaseCollisionsInDir(root string, dir string) ([]diag.Diagnostic, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
 	seen := map[string]string{}
-	var found []diagnostics.Diagnostic
+	var found []diag.Diagnostic
 	for _, entry := range entries {
 		key := strings.ToLower(entry.Name())
 		path := filepath.Join(dir, entry.Name())
 		if first, ok := seen[key]; ok {
-			found = append(found, lintNameDiagnostic(diagnostics.DiagnosticLintFilenameCaseCollision, root, path, "roadmap entries collide on case-insensitive filesystems", first))
+			found = append(found, lintNameDiagnostic(reports.DiagnosticLintFilenameCaseCollision, root, path, "roadmap entries collide on case-insensitive filesystems", first))
 			continue
 		}
 		seen[key] = entry.Name()
@@ -64,25 +65,25 @@ func checkCaseCollisionsInDir(root string, dir string) ([]diagnostics.Diagnostic
 	return found, nil
 }
 
-func CheckSchemaCompatibility(cfg *config.Config, describe map[string]any) []diagnostics.Diagnostic {
-	var found []diagnostics.Diagnostic
+func CheckSchemaCompatibility(cfg *config.Config, describe map[string]any) []diag.Diagnostic {
+	var found []diag.Diagnostic
 	schema, _ := describe["schema"].(map[string]any)
 	for _, field := range []string{"estado", "tipo"} {
 		if _, ok := schema[field]; !ok {
-			found = append(found, lintSchemaDiagnostic(diagnostics.DiagnosticLintSchemaFieldMissing, "effective schema is missing a required field", field))
+			found = append(found, lintSchemaDiagnostic(reports.DiagnosticLintSchemaFieldMissing, "effective schema is missing a required field", field))
 		}
 	}
 	links, _ := describe["links"].(map[string]any)
 	rules, _ := links["rules"].(map[string]any)
 	if _, ok := rules[cfg.Fields.DependencyLink]; !ok {
-		found = append(found, lintSchemaDiagnostic(diagnostics.DiagnosticLintSchemaLinkMissing, "effective schema is missing required "+cfg.Fields.DependencyLink+" link rule", cfg.Fields.DependencyLink))
+		found = append(found, lintSchemaDiagnostic(reports.DiagnosticLintSchemaLinkMissing, "effective schema is missing required "+cfg.Fields.DependencyLink+" link rule", cfg.Fields.DependencyLink))
 	}
 	sortDiagnostics(found)
 	return found
 }
 
-func CheckOutcomeSchemaCompatibility(describe map[string]any) []diagnostics.Diagnostic {
-	var found []diagnostics.Diagnostic
+func CheckOutcomeSchemaCompatibility(describe map[string]any) []diag.Diagnostic {
+	var found []diag.Diagnostic
 	schema, _ := describe["schema"].(map[string]any)
 	if estado, ok := schema["estado"].(map[string]any); ok {
 		found = append(found, checkEstadoSchemaCompatibility(estado)...)
@@ -92,20 +93,20 @@ func CheckOutcomeSchemaCompatibility(describe map[string]any) []diagnostics.Diag
 	return found
 }
 
-func checkEstadoSchemaCompatibility(estado map[string]any) []diagnostics.Diagnostic {
+func checkEstadoSchemaCompatibility(estado map[string]any) []diag.Diagnostic {
 	required, _ := estado["required"].(bool)
 	requiredMatch, hasRequiredMatch := estado["required_match"].(map[string]any)
 	if required && !hasRequiredMatch {
-		return []diagnostics.Diagnostic{lintSchemaDiagnostic(diagnostics.DiagnosticLintSchemaOutcomeEstadoRequired, "effective schema requires estado globally; outcome README files must be able to omit estado", "estado.required")}
+		return []diag.Diagnostic{lintSchemaDiagnostic(reports.DiagnosticLintSchemaOutcomeEstadoRequired, "effective schema requires estado globally; outcome README files must be able to omit estado", "estado.required")}
 	}
 	if hasRequiredMatch && patternsIncludeOutcome(requiredMatch["patterns"]) {
-		return []diagnostics.Diagnostic{lintSchemaDiagnostic(diagnostics.DiagnosticLintSchemaOutcomeEstadoRequired, "effective schema requires estado for outcomes; outcome README files must be able to omit estado", "estado.required_match")}
+		return []diag.Diagnostic{lintSchemaDiagnostic(reports.DiagnosticLintSchemaOutcomeEstadoRequired, "effective schema requires estado for outcomes; outcome README files must be able to omit estado", "estado.required_match")}
 	}
 	return nil
 }
 
-func checkEstadoValidateCompatibility(describe map[string]any) []diagnostics.Diagnostic {
-	var found []diagnostics.Diagnostic
+func checkEstadoValidateCompatibility(describe map[string]any) []diag.Diagnostic {
+	var found []diag.Diagnostic
 	for _, value := range arrayValue(describe["validate"]) {
 		rule, ok := value.(map[string]any)
 		if !ok || stringValue(rule["field"]) != "estado" || stringValue(rule["rule"]) != "non_empty" {
@@ -114,7 +115,7 @@ func checkEstadoValidateCompatibility(describe map[string]any) []diagnostics.Dia
 		if validateRuleScoped(rule) {
 			continue
 		}
-		found = append(found, lintSchemaDiagnostic(diagnostics.DiagnosticLintSchemaOutcomeEstadoNonEmpty, "effective schema has global estado non_empty validation; outcome README files must be able to omit estado", "validate.estado.non_empty"))
+		found = append(found, lintSchemaDiagnostic(reports.DiagnosticLintSchemaOutcomeEstadoNonEmpty, "effective schema has global estado non_empty validation; outcome README files must be able to omit estado", "validate.estado.non_empty"))
 	}
 	return found
 }
@@ -167,10 +168,10 @@ func reservedWindowsName(name string) string {
 	return ""
 }
 
-func lintNameDiagnostic(id string, root string, path string, message string, target string) diagnostics.Diagnostic {
-	return diagnostics.Diagnostic{ID: id, Severity: diagnostics.SeverityError, Message: message, Path: relPath(root, path), Details: map[string]any{"target": target}}
+func lintNameDiagnostic(id string, root string, path string, message string, target string) diag.Diagnostic {
+	return diag.Diagnostic{ID: id, Severity: diag.SeverityError, Message: message, Path: relPath(root, path), Details: map[string]any{"target": target}}
 }
 
-func lintSchemaDiagnostic(id string, message string, target string) diagnostics.Diagnostic {
-	return diagnostics.Diagnostic{ID: id, Severity: diagnostics.SeverityError, Message: message, Path: ".stem", Details: map[string]any{"target": target, "schema_key": target}}
+func lintSchemaDiagnostic(id string, message string, target string) diag.Diagnostic {
+	return diag.Diagnostic{ID: id, Severity: diag.SeverityError, Message: message, Path: ".stem", Details: map[string]any{"target": target, "schema_key": target}}
 }

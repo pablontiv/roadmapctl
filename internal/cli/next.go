@@ -8,7 +8,8 @@ import (
 	"sort"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/roadmap"
 	"github.com/spf13/cobra"
 )
@@ -16,12 +17,12 @@ import (
 type nextReport struct {
 	Version     int                      `json:"version"`
 	Kind        string                   `json:"kind"`
-	Summary     diagnostics.Summary      `json:"summary"`
+	Summary     diag.Summary      `json:"summary"`
 	Root        string                   `json:"root"`
 	RoadmapRoot string                   `json:"roadmap_root"`
 	Ready       []nextTask               `json:"ready"`
 	Blocked     []nextTask               `json:"blocked"`
-	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
+	Diagnostics []diag.Diagnostic `json:"diagnostics"`
 }
 
 type nextTask struct {
@@ -44,7 +45,7 @@ func newNextCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCo
 		} else {
 			fmt.Fprintf(stdout, "%s\nstatus: %s\nready: %d\nblocked: %d\n", report.Kind, report.Summary.Status, len(report.Ready), len(report.Blocked))
 		}
-		*exitCode = diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
+		*exitCode = reports.ExitCode(reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
 		return nil
 	}}
 	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of ready tasks to return")
@@ -54,7 +55,7 @@ func newNextCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCo
 func runNext(ctx context.Context, options Options, limit int) nextReport {
 	cfg, err := config.Load(options.Repo)
 	if err != nil {
-		found := []diagnostics.Diagnostic{configDiagnostic(absoluteClean(options.Repo), err)}
+		found := []diag.Diagnostic{configDiagnostic(absoluteClean(options.Repo), err)}
 		return newNextReport(absoluteClean(options.Repo), "", nil, nil, found)
 	}
 	model, found := readModelForConfig(ctx, cfg, options)
@@ -91,7 +92,7 @@ func incompleteBlockers(model roadmap.ReadModel, task roadmap.Task) []string {
 	return blockers
 }
 
-func newNextReport(root string, roadmapRoot string, ready []nextTask, blocked []nextTask, found []diagnostics.Diagnostic) nextReport {
-	report := diagnostics.NewReport("roadmapctl/next", root, roadmapRoot, found)
+func newNextReport(root string, roadmapRoot string, ready []nextTask, blocked []nextTask, found []diag.Diagnostic) nextReport {
+	report := reports.NewReport("roadmapctl/next", root, roadmapRoot, found)
 	return nextReport{Version: report.Version, Kind: report.Kind, Summary: report.Summary, Root: report.Root, RoadmapRoot: report.RoadmapRoot, Ready: ready, Blocked: blocked, Diagnostics: report.Diagnostics}
 }

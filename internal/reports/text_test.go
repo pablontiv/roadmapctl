@@ -1,15 +1,17 @@
-package diagnostics
+package reports
 
 import (
 	"bytes"
 	"strings"
 	"testing"
+
+	diag "github.com/pablontiv/picokit/diag"
 )
 
 func TestRenderTextHandlesPathlessAndPathedDiagnostics(t *testing.T) {
-	report := NewReport("roadmapctl/check", "/repo", "/repo/docs/roadmap", []Diagnostic{
-		{ID: "RMC_INFO", Severity: SeverityInfo, Message: "info message"},
-		{ID: "RMC_WARN", Severity: SeverityWarning, Message: "warn message", Path: "docs/roadmap/T001-task.md"},
+	report := NewReport("roadmapctl/check", "/repo", "/repo/docs/roadmap", []diag.Diagnostic{
+		{ID: "RMC_INFO", Severity: diag.SeverityInfo, Message: "info message"},
+		{ID: "RMC_WARN", Severity: diag.SeverityWarning, Message: "warn message", Path: "docs/roadmap/T001-task.md"},
 	})
 
 	var out bytes.Buffer

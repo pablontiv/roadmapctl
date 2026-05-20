@@ -5,7 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )
 
@@ -144,16 +145,16 @@ func TestCheckRootlineDetectsOperationalStatusOutsideSchema(t *testing.T) {
 }
 
 func TestCheckRootlineMissingRootlineDiagnosticExit3(t *testing.T) {
-	client := &fakeRootlineClient{err: &rootlinecli.Error{Kind: rootlinecli.ErrorMissingBinary, Message: "missing rootline", ExitCode: diagnostics.ExitEnvironment}}
+	client := &fakeRootlineClient{err: &rootlinecli.Error{Kind: rootlinecli.ErrorMissingBinary, Message: "missing rootline", ExitCode: diag.ExitEnvironment}}
 
 	cfg := testDefaultConfig()
 	found, err := CheckRootline(context.Background(), cfg, client, RootlineCheckOptions{RoadmapRoot: "/repo/docs/roadmap", LeafFilter: "isIndex == false", AllowedStatuses: []string{"Pending"}})
 	if err != nil {
 		t.Fatalf("CheckRootline error = %v", err)
 	}
-	assertHasDiagnostic(t, found, diagnostics.DiagnosticRootlineMissing, "")
-	if got := diagnostics.ExitCode(diagnostics.NewReport("roadmapctl/check", "/repo", "/repo/docs/roadmap", found), false); got != diagnostics.ExitEnvironment {
-		t.Fatalf("ExitCode = %d, want %d", got, diagnostics.ExitEnvironment)
+	assertHasDiagnostic(t, found, reports.DiagnosticRootlineMissing, "")
+	if got := reports.ExitCode(reports.NewReport("roadmapctl/check", "/repo", "/repo/docs/roadmap", found), false); got != diag.ExitEnvironment {
+		t.Fatalf("ExitCode = %d, want %d", got, diag.ExitEnvironment)
 	}
 }
 
@@ -256,5 +257,5 @@ func (f *fakeRootlineClient) result(decoded map[string]any, operationErr error) 
 }
 
 func diagnosticsPackageInvalidBlockedBy() string {
-	return diagnostics.DiagnosticInvalidBlockedBy
+	return reports.DiagnosticInvalidBlockedBy
 }

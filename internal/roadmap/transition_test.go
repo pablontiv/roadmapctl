@@ -3,7 +3,7 @@ package roadmap
 import (
 	"testing"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 )
 
 func TestCanStartBlocksOnIncompleteDependencyWithCustomDoneLabels(t *testing.T) {
@@ -23,7 +23,7 @@ func TestCanStartBlocksOnIncompleteDependencyWithCustomDoneLabels(t *testing.T) 
 	if len(result.BlockingDependencies) != 1 || result.BlockingDependencies[0].Path != "O01/T001-prereq.md" || result.BlockingDependencies[0].Status != "Ready" {
 		t.Fatalf("BlockingDependencies = %#v", result.BlockingDependencies)
 	}
-	if len(result.Diagnostics) != 1 || result.Diagnostics[0].ID != diagnostics.DiagnosticTransitionDependencyBlocked {
+	if len(result.Diagnostics) != 1 || result.Diagnostics[0].ID != reports.DiagnosticTransitionDependencyBlocked {
 		t.Fatalf("Diagnostics = %#v", result.Diagnostics)
 	}
 }
@@ -51,11 +51,11 @@ func TestCanStartReportsAlreadyDoneAndNotActive(t *testing.T) {
 	}
 	roles := TransitionRoles{DoneStatuses: []string{"Done"}, ActiveStatuses: []string{"Ready"}, InProgressStatus: "Doing"}
 	alreadyDone := CanStart(model, roles, "done.md")
-	if alreadyDone.Allowed || alreadyDone.Diagnostics[0].ID != diagnostics.DiagnosticTransitionAlreadyDone {
+	if alreadyDone.Allowed || alreadyDone.Diagnostics[0].ID != reports.DiagnosticTransitionAlreadyDone {
 		t.Fatalf("alreadyDone = %#v", alreadyDone)
 	}
 	notActive := CanStart(model, roles, "hold.md")
-	if notActive.Allowed || notActive.Diagnostics[0].ID != diagnostics.DiagnosticTransitionNotActive {
+	if notActive.Allowed || notActive.Diagnostics[0].ID != reports.DiagnosticTransitionNotActive {
 		t.Fatalf("notActive = %#v", notActive)
 	}
 }
@@ -85,7 +85,7 @@ func TestCanCompleteRequiresExistingNonDoneTask(t *testing.T) {
 	}
 
 	missing := CanComplete(model, roles, "missing.md")
-	if missing.Allowed || len(missing.Diagnostics) != 1 || missing.Diagnostics[0].ID != diagnostics.DiagnosticTransitionTaskNotFound {
+	if missing.Allowed || len(missing.Diagnostics) != 1 || missing.Diagnostics[0].ID != reports.DiagnosticTransitionTaskNotFound {
 		t.Fatalf("missing = %#v", missing)
 	}
 }

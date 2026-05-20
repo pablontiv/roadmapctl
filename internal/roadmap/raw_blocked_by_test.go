@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 )
 
 func TestInvalidBlockedByDiagnosticCoversRawTargetCases(t *testing.T) {
@@ -41,7 +41,7 @@ func TestInvalidBlockedByDiagnosticCoversRawTargetCases(t *testing.T) {
 			if invalid != tt.wantInvalid {
 				t.Fatalf("invalid = %v, want %v; diagnostic=%#v", invalid, tt.wantInvalid, diagnostic)
 			}
-			if invalid && diagnostic.ID != diagnostics.DiagnosticInvalidBlockedBy {
+			if invalid && diagnostic.ID != reports.DiagnosticInvalidBlockedBy {
 				t.Fatalf("diagnostic = %#v", diagnostic)
 			}
 		})

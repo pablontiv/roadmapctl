@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 )
 
 const (
@@ -20,7 +21,7 @@ const (
 	DiagnosticInvalidOutcomeDir    = "RMC_STRUCTURE_INVALID_OUTCOME_DIR"
 )
 
-type Diagnostic = diagnostics.Diagnostic
+type Diagnostic = diag.Diagnostic
 
 var (
 	outcomeNamePattern = regexp.MustCompile(`^(O[0-9]{2})-.+`)
@@ -209,8 +210,8 @@ func isExplicitBlockedByTarget(target string) bool {
 
 func blockedByDiagnostic(root string, sourcePath string, target string, message string) Diagnostic {
 	return Diagnostic{
-		ID:       diagnostics.DiagnosticInvalidBlockedBy,
-		Severity: diagnostics.SeverityError,
+		ID:       reports.DiagnosticInvalidBlockedBy,
+		Severity: diag.SeverityError,
 		Message:  message,
 		Path:     relPath(root, sourcePath),
 		Details:  map[string]any{"target": target, "source": "raw-scan"},
@@ -218,13 +219,13 @@ func blockedByDiagnostic(root string, sourcePath string, target string, message 
 }
 
 func structureDiagnostic(id string, path string, message string) Diagnostic {
-	return Diagnostic{ID: id, Severity: diagnostics.SeverityError, Message: message, Path: path}
+	return Diagnostic{ID: id, Severity: diag.SeverityError, Message: message, Path: path}
 }
 
 func duplicateDiagnostic(root string, path string, id string, first string) Diagnostic {
 	return Diagnostic{
 		ID:       DiagnosticDuplicateID,
-		Severity: diagnostics.SeverityError,
+		Severity: diag.SeverityError,
 		Message:  "duplicate roadmap id in the same scope",
 		Path:     relPath(root, path),
 		Details: map[string]any{

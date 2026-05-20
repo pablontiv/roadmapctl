@@ -6,7 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 )
 
 var requiredTaskSections = []string{
@@ -20,9 +21,9 @@ var requiredTaskSections = []string{
 
 var listItemPattern = regexp.MustCompile(`^\s*(?:[-*+]\s+|[0-9]+[.)]\s+)`)
 
-func CheckTaskSections(roadmapRoot string) ([]diagnostics.Diagnostic, error) {
+func CheckTaskSections(roadmapRoot string) ([]diag.Diagnostic, error) {
 	root := filepath.Clean(roadmapRoot)
-	var found []diagnostics.Diagnostic
+	var found []diag.Diagnostic
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -44,7 +45,7 @@ func CheckTaskSections(roadmapRoot string) ([]diagnostics.Diagnostic, error) {
 	return found, nil
 }
 
-func checkTaskSections(root string, path string) ([]diagnostics.Diagnostic, error) {
+func checkTaskSections(root string, path string) ([]diag.Diagnostic, error) {
 	source, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -53,17 +54,17 @@ func checkTaskSections(root string, path string) ([]diagnostics.Diagnostic, erro
 	if err != nil {
 		return nil, err
 	}
-	var found []diagnostics.Diagnostic
+	var found []diag.Diagnostic
 	for _, section := range requiredTaskSections {
 		if !doc.HasHeading(section) {
-			found = append(found, lintTaskSectionDiagnostic(diagnostics.DiagnosticLintTaskSectionMissing, root, path, "task is missing a required section heading", section))
+			found = append(found, lintTaskSectionDiagnostic(reports.DiagnosticLintTaskSectionMissing, root, path, "task is missing a required section heading", section))
 		}
 	}
 	if section, ok := markdownSection(source, doc, "Criterios de Aceptación"); ok && !hasListItem(section) {
-		found = append(found, lintTaskSectionDiagnostic(diagnostics.DiagnosticLintAcceptanceCriteriaMissing, root, path, "task has no observable acceptance criteria entries", ""))
+		found = append(found, lintTaskSectionDiagnostic(reports.DiagnosticLintAcceptanceCriteriaMissing, root, path, "task has no observable acceptance criteria entries", ""))
 	}
 	if section, ok := markdownSection(source, doc, "Fuente de verdad"); ok && !hasListItem(section) {
-		found = append(found, lintTaskSectionDiagnostic(diagnostics.DiagnosticLintSourceOfTruthEmpty, root, path, "task source-of-truth section has no entries", ""))
+		found = append(found, lintTaskSectionDiagnostic(reports.DiagnosticLintSourceOfTruthEmpty, root, path, "task source-of-truth section has no entries", ""))
 	}
 	return found, nil
 }
@@ -99,11 +100,11 @@ func hasListItem(section string) bool {
 	return false
 }
 
-func lintTaskSectionDiagnostic(id string, root string, path string, message string, section string) diagnostics.Diagnostic {
+func lintTaskSectionDiagnostic(id string, root string, path string, message string, section string) diag.Diagnostic {
 	details := map[string]any{}
 	if section != "" {
 		details["target"] = section
 		details["section"] = section
 	}
-	return diagnostics.Diagnostic{ID: id, Severity: diagnostics.SeverityWarning, Message: message, Path: relPath(root, path), Details: details}
+	return diag.Diagnostic{ID: id, Severity: diag.SeverityWarning, Message: message, Path: relPath(root, path), Details: details}
 }

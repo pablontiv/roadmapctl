@@ -8,7 +8,8 @@ import (
 	"sort"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/roadmap"
 	"github.com/spf13/cobra"
 )
@@ -16,14 +17,14 @@ import (
 type decisionReport struct {
 	Version          int                      `json:"version"`
 	Kind             string                   `json:"kind"`
-	Summary          diagnostics.Summary      `json:"summary"`
+	Summary          diag.Summary      `json:"summary"`
 	Root             string                   `json:"root"`
 	RoadmapRoot      string                   `json:"roadmap_root"`
 	Recommendations  []decisionItem           `json:"recommendations"`
 	QuickWins        []decisionItem           `json:"quick_wins"`
 	CriticalBlockers []decisionItem           `json:"critical_blockers"`
 	Blocked          []nextTask               `json:"blocked"`
-	Diagnostics      []diagnostics.Diagnostic `json:"diagnostics"`
+	Diagnostics      []diag.Diagnostic `json:"diagnostics"`
 }
 
 type decisionItem struct {
@@ -47,7 +48,7 @@ func newDecisionCommand(options *Options, stdout io.Writer, stderr io.Writer, ex
 		} else {
 			fmt.Fprintf(stdout, "%s\nstatus: %s\nrecommendations: %d\nquick_wins: %d\nblocked: %d\n", report.Kind, report.Summary.Status, len(report.Recommendations), len(report.QuickWins), len(report.Blocked))
 		}
-		*exitCode = diagnostics.ExitCode(diagnostics.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
+		*exitCode = reports.ExitCode(reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics), options.Strict)
 		return nil
 	}}
 }
@@ -55,7 +56,7 @@ func newDecisionCommand(options *Options, stdout io.Writer, stderr io.Writer, ex
 func runDecision(ctx context.Context, options Options) decisionReport {
 	cfg, err := config.Load(options.Repo)
 	if err != nil {
-		found := []diagnostics.Diagnostic{configDiagnostic(absoluteClean(options.Repo), err)}
+		found := []diag.Diagnostic{configDiagnostic(absoluteClean(options.Repo), err)}
 		return newDecisionReport(absoluteClean(options.Repo), "", nil, nil, nil, nil, found)
 	}
 	model, found := readModelForConfig(ctx, cfg, options)
@@ -123,7 +124,7 @@ func sortDecisionItems(items []decisionItem) {
 	})
 }
 
-func newDecisionReport(root string, roadmapRoot string, recommendations []decisionItem, quickWins []decisionItem, criticalBlockers []decisionItem, blocked []nextTask, found []diagnostics.Diagnostic) decisionReport {
-	report := diagnostics.NewReport("roadmapctl/decision", root, roadmapRoot, found)
+func newDecisionReport(root string, roadmapRoot string, recommendations []decisionItem, quickWins []decisionItem, criticalBlockers []decisionItem, blocked []nextTask, found []diag.Diagnostic) decisionReport {
+	report := reports.NewReport("roadmapctl/decision", root, roadmapRoot, found)
 	return decisionReport{Version: report.Version, Kind: report.Kind, Summary: report.Summary, Root: report.Root, RoadmapRoot: report.RoadmapRoot, Recommendations: recommendations, QuickWins: quickWins, CriticalBlockers: criticalBlockers, Blocked: blocked, Diagnostics: report.Diagnostics}
 }

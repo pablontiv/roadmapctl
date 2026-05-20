@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 )
 
 func isCaseInsensitiveFS(t *testing.T) bool {
@@ -39,8 +39,8 @@ func TestCheckFilenamePortabilityReportsCaseCollisionAndReservedName(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintFilenameCaseCollision, "t001-task.md", "T001-task.md")
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintFilenameReserved, "CON.md", "CON")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintFilenameCaseCollision, "t001-task.md", "T001-task.md")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintFilenameReserved, "CON.md", "CON")
 }
 
 func TestCheckSchemaCompatibilityAllowsExtensionsAndRequiresCoreFields(t *testing.T) {
@@ -70,8 +70,8 @@ func TestCheckSchemaCompatibilityAllowsExtensionsAndRequiresCoreFields(t *testin
 
 	missing := map[string]any{"schema": map[string]any{"tipo": map[string]any{}}, "links": map[string]any{"rules": map[string]any{}}}
 	found := CheckSchemaCompatibility(cfg, missing)
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintSchemaFieldMissing, ".stem", "estado")
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintSchemaLinkMissing, ".stem", "blocked_by")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintSchemaFieldMissing, ".stem", "estado")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintSchemaLinkMissing, ".stem", "blocked_by")
 }
 
 func TestCheckOutcomeSchemaCompatibilityAllowsTaskScopedEstadoRequirement(t *testing.T) {
@@ -153,15 +153,15 @@ func TestCheckFilenamePortabilityDetectsReservedName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintFilenameReserved, "CON.md", "CON")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintFilenameReserved, "CON.md", "CON")
 }
 
 func TestLintNameDiagnosticFormat(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "sub", "file.md")
-	diag := lintNameDiagnostic(diagnostics.DiagnosticLintFilenameReserved, root, path, "test message", "CON")
-	if diag.ID != diagnostics.DiagnosticLintFilenameReserved {
-		t.Fatalf("lintNameDiagnostic ID = %q, want %s", diag.ID, diagnostics.DiagnosticLintFilenameReserved)
+	diag := lintNameDiagnostic(reports.DiagnosticLintFilenameReserved, root, path, "test message", "CON")
+	if diag.ID != reports.DiagnosticLintFilenameReserved {
+		t.Fatalf("lintNameDiagnostic ID = %q, want %s", diag.ID, reports.DiagnosticLintFilenameReserved)
 	}
 }
 

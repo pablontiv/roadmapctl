@@ -7,18 +7,19 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 )
 
 var taskFilenamePattern = regexp.MustCompile(`^T[0-9][0-9][0-9]-.+\.md$`)
 
-func CheckOutcomeTaskTables(roadmapRoot string) ([]diagnostics.Diagnostic, error) {
+func CheckOutcomeTaskTables(roadmapRoot string) ([]diag.Diagnostic, error) {
 	root := filepath.Clean(roadmapRoot)
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil, err
 	}
-	var found []diagnostics.Diagnostic
+	var found []diag.Diagnostic
 	for _, entry := range entries {
 		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), "O") {
 			continue
@@ -33,7 +34,7 @@ func CheckOutcomeTaskTables(roadmapRoot string) ([]diagnostics.Diagnostic, error
 	return found, nil
 }
 
-func checkOutcomeTaskTable(root string, outcomePath string) ([]diagnostics.Diagnostic, error) {
+func checkOutcomeTaskTable(root string, outcomePath string) ([]diag.Diagnostic, error) {
 	readmePath := filepath.Join(outcomePath, "README.md")
 	tasks, err := outcomeTaskFiles(outcomePath)
 	if err != nil {
@@ -56,27 +57,27 @@ func checkOutcomeTaskTable(root string, outcomePath string) ([]diagnostics.Diagn
 		return nil, nil
 	}
 	linked := map[string]bool{}
-	var found []diagnostics.Diagnostic
+	var found []diag.Diagnostic
 	for _, row := range table.Rows {
 		if len(row.Cells) == 0 || len(row.Cells[0].Links) == 0 {
-			found = append(found, lintTaskTableDiagnostic(diagnostics.DiagnosticLintTaskTableInvalidLink, root, readmePath, "task table row must link to a child task file", ""))
+			found = append(found, lintTaskTableDiagnostic(reports.DiagnosticLintTaskTableInvalidLink, root, readmePath, "task table row must link to a child task file", ""))
 			continue
 		}
 		for _, link := range row.Cells[0].Links {
 			target := normalizeTableTaskTarget(link.Destination)
 			if !validChildTaskLink(target) {
-				found = append(found, lintTaskTableDiagnostic(diagnostics.DiagnosticLintTaskTableInvalidLink, root, readmePath, "task table link must target a child TXXX markdown task", link.Destination))
+				found = append(found, lintTaskTableDiagnostic(reports.DiagnosticLintTaskTableInvalidLink, root, readmePath, "task table link must target a child TXXX markdown task", link.Destination))
 				continue
 			}
 			linked[target] = true
 			if !tasks[target] {
-				found = append(found, lintTaskTableDiagnostic(diagnostics.DiagnosticLintTaskTableStaleRow, root, readmePath, "task table row links to a missing child task", target))
+				found = append(found, lintTaskTableDiagnostic(reports.DiagnosticLintTaskTableStaleRow, root, readmePath, "task table row links to a missing child task", target))
 			}
 		}
 	}
 	for task := range tasks {
 		if !linked[task] {
-			found = append(found, lintTaskTableDiagnostic(diagnostics.DiagnosticLintTaskTableMissingRow, root, readmePath, "child task is missing from ## Tasks table", task))
+			found = append(found, lintTaskTableDiagnostic(reports.DiagnosticLintTaskTableMissingRow, root, readmePath, "child task is missing from ## Tasks table", task))
 		}
 	}
 	sortDiagnostics(found)
@@ -108,15 +109,15 @@ func validChildTaskLink(target string) bool {
 	return !strings.Contains(target, "/") && taskFilenamePattern.MatchString(target)
 }
 
-func lintTaskTableDiagnostic(id string, root string, readmePath string, message string, target string) diagnostics.Diagnostic {
+func lintTaskTableDiagnostic(id string, root string, readmePath string, message string, target string) diag.Diagnostic {
 	details := map[string]any{}
 	if target != "" {
 		details["target"] = target
 	}
-	return diagnostics.Diagnostic{ID: id, Severity: diagnostics.SeverityWarning, Message: message, Path: relPath(root, readmePath), Details: details}
+	return diag.Diagnostic{ID: id, Severity: diag.SeverityWarning, Message: message, Path: relPath(root, readmePath), Details: details}
 }
 
-func sortDiagnostics(found []diagnostics.Diagnostic) {
+func sortDiagnostics(found []diag.Diagnostic) {
 	sort.Slice(found, func(i int, j int) bool {
 		if found[i].Path != found[j].Path {
 			return found[i].Path < found[j].Path
@@ -128,7 +129,7 @@ func sortDiagnostics(found []diagnostics.Diagnostic) {
 	})
 }
 
-func detailTarget(diagnostic diagnostics.Diagnostic) string {
+func detailTarget(diagnostic diag.Diagnostic) string {
 	if diagnostic.Details == nil {
 		return ""
 	}

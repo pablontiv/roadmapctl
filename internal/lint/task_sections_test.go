@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 )
 
 func TestCheckTaskSectionsValidTaskPasses(t *testing.T) {
@@ -51,9 +51,9 @@ No bullets here.
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintTaskSectionMissing, "T001-bad.md", "Estado inicial esperado")
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintAcceptanceCriteriaMissing, "T001-bad.md", "")
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintSourceOfTruthEmpty, "T001-bad.md", "")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintTaskSectionMissing, "T001-bad.md", "Estado inicial esperado")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintAcceptanceCriteriaMissing, "T001-bad.md", "")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintSourceOfTruthEmpty, "T001-bad.md", "")
 }
 
 func fullTaskMarkdown() string {

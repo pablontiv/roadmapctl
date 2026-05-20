@@ -5,7 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 )
 
 func TestCheckOutcomeTaskTablesValidOutcomePasses(t *testing.T) {
@@ -45,8 +46,8 @@ func TestCheckOutcomeTaskTablesFindsMissingAndStaleRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintTaskTableMissingRow, "O01-work/README.md", "T002-second.md")
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintTaskTableStaleRow, "O01-work/README.md", "T999-stale.md")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintTaskTableMissingRow, "O01-work/README.md", "T002-second.md")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintTaskTableStaleRow, "O01-work/README.md", "T999-stale.md")
 }
 
 func TestCheckOutcomeTaskTablesNoMissingDiagnosticWhenTableAbsent(t *testing.T) {
@@ -60,7 +61,7 @@ func TestCheckOutcomeTaskTablesNoMissingDiagnosticWhenTableAbsent(t *testing.T) 
 		t.Fatal(err)
 	}
 	for _, d := range found {
-		if d.ID == diagnostics.DiagnosticLintTaskTableMissing {
+		if d.ID == reports.DiagnosticLintTaskTableMissing {
 			t.Fatalf("unexpected missing-table diagnostic: %#v", d)
 		}
 	}
@@ -81,7 +82,7 @@ func TestCheckOutcomeTaskTablesFindsinvalidTableLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertLintDiagnostic(t, found, diagnostics.DiagnosticLintTaskTableInvalidLink, "O01-invalid/README.md", "../O02-other/T001-first.md")
+	assertLintDiagnostic(t, found, reports.DiagnosticLintTaskTableInvalidLink, "O01-invalid/README.md", "../O02-other/T001-first.md")
 }
 
 func writeOutcome(t *testing.T, root string, name string, readme string, tasks []string) {
@@ -100,7 +101,7 @@ func writeOutcome(t *testing.T, root string, name string, readme string, tasks [
 	}
 }
 
-func assertLintDiagnostic(t *testing.T, found []diagnostics.Diagnostic, id string, path string, target string) {
+func assertLintDiagnostic(t *testing.T, found []diag.Diagnostic, id string, path string, target string) {
 	t.Helper()
 	for _, diagnostic := range found {
 		if diagnostic.ID != id || diagnostic.Path != path {

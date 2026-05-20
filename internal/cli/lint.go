@@ -4,26 +4,27 @@ import (
 	"context"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )
 
-func runLint(ctx context.Context, options Options) diagnostics.Report {
+func runLint(ctx context.Context, options Options) reports.Report {
 	repoRoot := absoluteClean(options.Repo)
 	cfg, err := config.Load(options.Repo)
 	if err != nil {
-		return diagnostics.NewReport("roadmapctl/lint", repoRoot, "", []diagnostics.Diagnostic{configDiagnostic(repoRoot, err)})
+		return reports.NewReport("roadmapctl/lint", repoRoot, "", []diag.Diagnostic{configDiagnostic(repoRoot, err)})
 	}
-	var found []diagnostics.Diagnostic
-	for _, check := range []func(string) ([]diagnostics.Diagnostic, error){
+	var found []diag.Diagnostic
+	for _, check := range []func(string) ([]diag.Diagnostic, error){
 		roadmaplint.CheckOutcomeTaskTables,
 		roadmaplint.CheckTaskSections,
 		roadmaplint.CheckFilenamePortability,
 	} {
 		checkDiagnostics, err := check(cfg.RoadmapRoot)
 		if err != nil {
-			found = append(found, diagnostics.Diagnostic{ID: "RMC_LINT_READ_FAILED", Severity: diagnostics.SeverityError, Message: err.Error(), ExitCode: diagnostics.ExitValidation})
+			found = append(found, diag.Diagnostic{ID: "RMC_LINT_READ_FAILED", Severity: diag.SeverityError, Message: err.Error(), ExitCode: diag.ExitValidation})
 			continue
 		}
 		found = append(found, checkDiagnostics...)
@@ -36,5 +37,5 @@ func runLint(ctx context.Context, options Options) diagnostics.Report {
 		found = append(found, roadmaplint.CheckSchemaCompatibility(cfg, describe.Decoded)...)
 		found = append(found, roadmaplint.CheckOutcomeSchemaCompatibility(describe.Decoded)...)
 	}
-	return diagnostics.NewReport("roadmapctl/lint", cfg.RepoRoot, cfg.RoadmapRoot, found)
+	return reports.NewReport("roadmapctl/lint", cfg.RepoRoot, cfg.RoadmapRoot, found)
 }

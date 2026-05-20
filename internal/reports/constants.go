@@ -1,4 +1,4 @@
-package diagnostics
+package reports
 
 const (
 	DiagnosticSingleFileFallback = "RMC_STRUCTURE_SINGLE_FILE_FALLBACK"

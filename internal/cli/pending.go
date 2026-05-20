@@ -9,20 +9,21 @@ import (
 	"sort"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/workspace"
 )
 
 type pendingReport struct {
 	Version     int                      `json:"version"`
 	Kind        string                   `json:"kind"`
-	Summary     diagnostics.Summary      `json:"summary"`
+	Summary     diag.Summary      `json:"summary"`
 	Root        string                   `json:"root"`
 	RoadmapRoot string                   `json:"roadmap_root"`
 	Count       int                      `json:"count"`
 	Tasks       []pendingTask            `json:"tasks,omitempty"`
 	Repos       []pendingRepo            `json:"repos,omitempty"`
-	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
+	Diagnostics []diag.Diagnostic `json:"diagnostics"`
 }
 
 type pendingRepo struct {
@@ -45,7 +46,7 @@ func runPending(ctx context.Context, options Options) pendingReport {
 	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		diagnostic := configDiagnostic(absoluteClean(options.Repo), err)
-		return newPendingReport(absoluteClean(options.Repo), "", nil, nil, []diagnostics.Diagnostic{diagnostic})
+		return newPendingReport(absoluteClean(options.Repo), "", nil, nil, []diag.Diagnostic{diagnostic})
 	}
 	tasks, found := pendingForConfig(ctx, cfg, options)
 	return newPendingReport(cfg.RepoRoot, cfg.RoadmapRoot, tasks, nil, found)
@@ -56,11 +57,11 @@ func runPendingWorkspace(ctx context.Context, options Options) pendingReport {
 	repos := workspace.MemberRoots(workspaceRoot)
 	seen := map[string]string{}
 	var pendingRepos []pendingRepo
-	var found []diagnostics.Diagnostic
+	var found []diag.Diagnostic
 	for _, repoRoot := range repos {
 		name := filepath.Base(repoRoot)
 		if first, ok := seen[name]; ok {
-			found = append(found, diagnostics.Diagnostic{ID: "RMC_WORKSPACE_REPO_AMBIGUOUS", Severity: diagnostics.SeverityError, Message: "multiple workspace repos share the same name", Path: relToRoot(workspaceRoot, repoRoot), Details: map[string]any{"name": name, "first": first}})
+			found = append(found, diag.Diagnostic{ID: "RMC_WORKSPACE_REPO_AMBIGUOUS", Severity: diag.SeverityError, Message: "multiple workspace repos share the same name", Path: relToRoot(workspaceRoot, repoRoot), Details: map[string]any{"name": name, "first": first}})
 			continue
 		}
 		seen[name] = relToRoot(workspaceRoot, repoRoot)
@@ -77,7 +78,7 @@ func runPendingWorkspace(ctx context.Context, options Options) pendingReport {
 	return newPendingReport(workspaceRoot, "", nil, pendingRepos, found)
 }
 
-func pendingForConfig(ctx context.Context, cfg *config.Config, options Options) ([]pendingTask, []diagnostics.Diagnostic) {
+func pendingForConfig(ctx context.Context, cfg *config.Config, options Options) ([]pendingTask, []diag.Diagnostic) {
 	model, found := readModelForConfig(ctx, cfg, options)
 	if len(found) > 0 {
 		return nil, found
@@ -93,8 +94,8 @@ func pendingForConfig(ctx context.Context, cfg *config.Config, options Options) 
 	return tasks, found
 }
 
-func newPendingReport(root string, roadmapRoot string, tasks []pendingTask, repos []pendingRepo, found []diagnostics.Diagnostic) pendingReport {
-	report := diagnostics.NewReport("roadmapctl/pending", root, roadmapRoot, found)
+func newPendingReport(root string, roadmapRoot string, tasks []pendingTask, repos []pendingRepo, found []diag.Diagnostic) pendingReport {
+	report := reports.NewReport("roadmapctl/pending", root, roadmapRoot, found)
 	count := len(tasks)
 	for _, repo := range repos {
 		count += repo.Count

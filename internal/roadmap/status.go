@@ -2,7 +2,7 @@ package roadmap
 
 import (
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	diag "github.com/pablontiv/picokit/diag"
 )
 
 func statusDiagnostics(decoded map[string]any, cfg *config.Config, configured []string, schemaStatuses []string, schemaTypes []string) []Diagnostic {
@@ -27,7 +27,7 @@ func statusDiagnostics(decoded map[string]any, cfg *config.Config, configured []
 		if status == "" || !allowedStatuses[status] {
 			found = append(found, Diagnostic{
 				ID:       DiagnosticStatusUnknown,
-				Severity: diagnostics.SeverityError,
+				Severity: diag.SeverityError,
 				Message:  "task " + cfg.Fields.Lifecycle + " is not allowed by Rootline schema",
 				Path:     path,
 				Details:  map[string]any{cfg.Fields.Lifecycle: status},
@@ -37,7 +37,7 @@ func statusDiagnostics(decoded map[string]any, cfg *config.Config, configured []
 		if tipo == "" || !allowedTypes[tipo] {
 			found = append(found, Diagnostic{
 				ID:       DiagnosticTypeUnknown,
-				Severity: diagnostics.SeverityError,
+				Severity: diag.SeverityError,
 				Message:  "record " + cfg.Fields.RecordType + " is not allowed by Rootline schema",
 				Path:     path,
 				Details:  map[string]any{cfg.Fields.RecordType: tipo},
@@ -66,7 +66,7 @@ func operationalStatusDiagnostics(statuses []OperationalStatus, schemaStatuses [
 		path := status.Path
 		found = append(found, Diagnostic{
 			ID:       DiagnosticConfigStatusSchemaMismatch,
-			Severity: diagnostics.SeverityError,
+			Severity: diag.SeverityError,
 			Message:  "configured operational status is not allowed by Rootline schema",
 			Path:     path,
 			Details:  map[string]any{"source": status.Source, "status": status.Value},

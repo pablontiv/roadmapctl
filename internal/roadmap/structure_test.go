@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 )
 
 func TestCheckStructureRejectsSingleSummaryFileFallback(t *testing.T) {
@@ -55,8 +55,8 @@ func TestCheckStructureDetectsBareBlockedByTarget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CheckStructure error = %v", err)
 	}
-	assertHasDiagnostic(t, found, diagnostics.DiagnosticInvalidBlockedBy, "O01-work/T001-task.md")
-	if !hasDiagnosticDetail(found, diagnostics.DiagnosticInvalidBlockedBy, "target", "T002-prereq.md") {
+	assertHasDiagnostic(t, found, reports.DiagnosticInvalidBlockedBy, "O01-work/T001-task.md")
+	if !hasDiagnosticDetail(found, reports.DiagnosticInvalidBlockedBy, "target", "T002-prereq.md") {
 		t.Fatalf("missing bare target detail in %#v", found)
 	}
 }

@@ -4,14 +4,14 @@ import (
 	"context"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/roadmap"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )
 
-func readModelForConfig(ctx context.Context, cfg *config.Config, options Options) (roadmap.ReadModel, []diagnostics.Diagnostic) {
+func readModelForConfig(ctx context.Context, cfg *config.Config, options Options) (roadmap.ReadModel, []diag.Diagnostic) {
 	client := rootlinecli.New(rootlinecli.Options{Binary: options.Rootline, Dir: cfg.RepoRoot, Timeout: options.Timeout})
-	var found []diagnostics.Diagnostic
+	var found []diag.Diagnostic
 	tree, err := client.Tree(ctx, cfg.RoadmapRoot, cfg.LeafFilter)
 	if err != nil {
 		found = append(found, rootlineDiagnostic(err))

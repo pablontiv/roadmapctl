@@ -4,27 +4,28 @@ import (
 	"context"
 
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/diagnostics"
+	"github.com/pablontiv/roadmapctl/internal/reports"
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/roadmap"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )
 
-func runCheck(ctx context.Context, options Options) diagnostics.Report {
+func runCheck(ctx context.Context, options Options) reports.Report {
 	repoRoot := absoluteClean(options.Repo)
 	cfg, err := config.Load(options.Repo)
 	if err != nil {
-		found := []diagnostics.Diagnostic{configDiagnostic(repoRoot, err)}
-		return diagnostics.NewReport("roadmapctl/check", repoRoot, "", found)
+		found := []diag.Diagnostic{configDiagnostic(repoRoot, err)}
+		return reports.NewReport("roadmapctl/check", repoRoot, "", found)
 	}
 
 	found := configWarnings(cfg)
 	structureDiagnostics, err := roadmap.CheckStructure(cfg, cfg.RoadmapRoot)
 	if err != nil {
-		found = append(found, diagnostics.Diagnostic{
+		found = append(found, diag.Diagnostic{
 			ID:       "RMC_STRUCTURE_ERROR",
-			Severity: diagnostics.SeverityError,
+			Severity: diag.SeverityError,
 			Message:  err.Error(),
-			ExitCode: diagnostics.ExitValidation,
+			ExitCode: diag.ExitValidation,
 		})
 	}
 	found = append(found, structureDiagnostics...)
@@ -41,17 +42,17 @@ func runCheck(ctx context.Context, options Options) diagnostics.Report {
 		OperationalStatuses: operationalStatuses(cfg),
 	})
 	if err != nil {
-		found = append(found, diagnostics.Diagnostic{
+		found = append(found, diag.Diagnostic{
 			ID:       "RMC_ROOTLINE_ERROR",
-			Severity: diagnostics.SeverityError,
+			Severity: diag.SeverityError,
 			Message:  err.Error(),
-			ExitCode: diagnostics.ExitEnvironment,
+			ExitCode: diag.ExitEnvironment,
 		})
 	} else {
 		found = append(found, rootlineDiagnostics...)
 	}
 
-	return diagnostics.NewReport("roadmapctl/check", cfg.RepoRoot, cfg.RoadmapRoot, found)
+	return reports.NewReport("roadmapctl/check", cfg.RepoRoot, cfg.RoadmapRoot, found)
 }
 
 func configuredStatuses(cfg *config.Config) []string {
