@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T003: Tests for bootstrap workspace mode (auto-detect, explicit flag, empty, single-repo regression)

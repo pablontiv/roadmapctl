@@ -356,3 +356,208 @@ func TestBootstrapWithoutFieldStillReturnsFullJSON(t *testing.T) {
 		t.Fatalf("full JSON should contain helpers field")
 	}
 }
+
+// mkWorkspaceMember creates a fake git repo with a minimal roadmap config
+// inside <root>/<name>/. It does not run `git init` — only the `.git`
+// directory needs to exist for workspace member detection.
+func mkWorkspaceMember(t *testing.T, root string, name string) string {
+	t.Helper()
+	repo := filepath.Join(root, name)
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatalf("mkdir .git: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(repo, "docs", "roadmap"), 0o755); err != nil {
+		t.Fatalf("mkdir docs/roadmap: %v", err)
+	}
+	cfg := `done_statuses = ["Completed", "Obsolete"]` + "\n" +
+		`active_statuses = ["Pending", "Specified", "In Progress"]` + "\n" +
+		`leaf_filter = "isIndex == false"` + "\n" +
+		`autonomy = "until_done"` + "\n" +
+		"[status_values]\n" +
+		`pending = "Pending"` + "\n" +
+		`specified = "Specified"` + "\n" +
+		`in_progress = "In Progress"` + "\n" +
+		`completed = "Completed"` + "\n" +
+		`blocked = "Blocked"` + "\n" +
+		`obsolete = "Obsolete"` + "\n"
+	if err := os.WriteFile(filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml"), []byte(cfg), 0o644); err != nil {
+		t.Fatalf("write .roadmapctl.toml: %v", err)
+	}
+	return repo
+}
+
+func TestBootstrapAutoDetectsWorkspaceWhenNoGitAtRoot(t *testing.T) {
+	root := t.TempDir()
+	mkWorkspaceMember(t, root, "alpha")
+	mkWorkspaceMember(t, root, "beta")
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "--repo", root, "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		ConfigSource string `json:"config_source"`
+		Repos        []struct {
+			Name string `json:"name"`
+		} `json:"repos"`
+		Summary struct {
+			Status string `json:"status"`
+		} `json:"summary"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if report.Summary.Status != "ok" {
+		t.Fatalf("status = %q, want ok", report.Summary.Status)
+	}
+	if report.ConfigSource != "workspace" {
+		t.Fatalf("config_source = %q, want workspace", report.ConfigSource)
+	}
+	if len(report.Repos) != 2 {
+		t.Fatalf("repos len = %d, want 2; got %#v", len(report.Repos), report.Repos)
+	}
+	if report.Repos[0].Name != "alpha" || report.Repos[1].Name != "beta" {
+		t.Fatalf("repo names = %v, want [alpha beta]", report.Repos)
+	}
+}
+
+func TestBootstrapHonorsExplicitWorkspaceFlag(t *testing.T) {
+	root := t.TempDir()
+	mkWorkspaceMember(t, root, "alpha")
+	mkWorkspaceMember(t, root, "beta")
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "--workspace", "--repo", root, "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap --workspace exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		ConfigSource string `json:"config_source"`
+		Repos        []struct {
+			Name string `json:"name"`
+		} `json:"repos"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if report.ConfigSource != "workspace" {
+		t.Fatalf("config_source = %q, want workspace", report.ConfigSource)
+	}
+	if len(report.Repos) != 2 {
+		t.Fatalf("repos len = %d, want 2", len(report.Repos))
+	}
+}
+
+func TestBootstrapWorkspaceEmptyEmitsDiagnostic(t *testing.T) {
+	root := t.TempDir()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "--repo", root, "--output", "json"}, &stdout, &stderr, "dev")
+	if code == 0 {
+		t.Fatalf("bootstrap on empty dir exit = 0, want non-zero; stdout=%q", stdout.String())
+	}
+	var report struct {
+		ConfigSource string `json:"config_source"`
+		Diagnostics  []struct {
+			ID string `json:"id"`
+		} `json:"diagnostics"`
+		Summary struct {
+			Status string `json:"status"`
+		} `json:"summary"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if report.Summary.Status != "error" {
+		t.Fatalf("status = %q, want error", report.Summary.Status)
+	}
+	if report.ConfigSource != "workspace" {
+		t.Fatalf("config_source = %q, want workspace", report.ConfigSource)
+	}
+	if len(report.Diagnostics) == 0 || report.Diagnostics[0].ID != "RMC_WORKSPACE_EMPTY" {
+		t.Fatalf("expected RMC_WORKSPACE_EMPTY as first diagnostic; got %#v", report.Diagnostics)
+	}
+	for _, d := range report.Diagnostics {
+		if d.ID == "RMC_CONFIG_MISSING" {
+			t.Fatalf("must not emit RMC_CONFIG_MISSING in empty workspace case; got %#v", report.Diagnostics)
+		}
+	}
+}
+
+func TestBootstrapWorkspaceMemberWithInvalidConfigIsSkipped(t *testing.T) {
+	root := t.TempDir()
+	good := mkWorkspaceMember(t, root, "alpha")
+	_ = good
+	// Create a second member with a broken TOML so config.Load fails for it.
+	bad := filepath.Join(root, "beta")
+	if err := os.MkdirAll(filepath.Join(bad, ".git"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(bad, "docs", "roadmap"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bad, "docs", "roadmap", ".roadmapctl.toml"), []byte("autonomy = \"invalid_value\"\n"), 0o644); err != nil {
+		t.Fatalf("write bad toml: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "--repo", root, "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap exit = %d, want 0 (good member loads); stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		Repos []struct {
+			Name string `json:"name"`
+		} `json:"repos"`
+		Diagnostics []struct {
+			ID       string `json:"id"`
+			Severity string `json:"severity"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if len(report.Repos) != 1 || report.Repos[0].Name != "alpha" {
+		t.Fatalf("expected only alpha to load; got %#v", report.Repos)
+	}
+	foundSkipped := false
+	for _, d := range report.Diagnostics {
+		if d.ID == "RMC_WORKSPACE_MEMBER_SKIPPED" {
+			foundSkipped = true
+			break
+		}
+	}
+	if !foundSkipped {
+		t.Fatalf("expected RMC_WORKSPACE_MEMBER_SKIPPED diagnostic; got %#v", report.Diagnostics)
+	}
+}
+
+func TestBootstrapSingleRepoUnaffected(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	var stdout, stderr bytes.Buffer
+	if code := Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev"); code != 0 {
+		t.Fatalf("init --apply exit = %d; stderr=%q", code, stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code := Execute([]string{"bootstrap", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("single-repo bootstrap exit = %d, want 0; stderr=%q", code, stderr.String())
+	}
+	var report struct {
+		ConfigSource string `json:"config_source"`
+		Repos        []any  `json:"repos"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if report.ConfigSource != "toml" {
+		t.Fatalf("config_source = %q, want toml (single-repo path must not be reclassified)", report.ConfigSource)
+	}
+	if len(report.Repos) != 0 {
+		t.Fatalf("repos should be empty for single-repo; got %#v", report.Repos)
+	}
+}
