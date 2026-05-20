@@ -108,8 +108,20 @@ git -C <repo_path> add -A   # warning: staging todo
 
 Derivar mensaje de commit según `commit_style`:
 
-- `conventional`: `<type>(<scope-corto>): <título-tarea>` — el `type` se infiere del prefijo de la task (`feat`, `fix`, `docs`, `chore`, etc.); el scope-corto es el código del Outcome (e.g. `O24`) o `direct`.
-- Cualquier otro valor o override explícito de `commit_message`: usar el texto directo.
+- `conventional`: `<type>(<scope-corto>): <título-tarea>` — derivar `<type>` desde el contenido de la task usando la tabla determinística:
+
+  | Si la task… | `<type>` |
+  |---|---|
+  | Solo toca `.md`/docs/skills, sin código ejecutable | `docs` |
+  | Agrega, bumpea o quita dependencias sin código fuente | `chore` |
+  | Mueve, renombra o reemplaza paquetes preservando la API pública | `refactor` |
+  | Agrega capability ejecutable nueva | `feat` |
+  | Corrige un bug puntual sin cambiar API | `fix` |
+  | No matchea ninguna categoría | `chore` ⚠️ (fallback — emitir warning visible en output) |
+
+  El `<scope-corto>` es el código del Outcome (`O24`, etc.) o `direct` para `direct-tasks`.
+
+- Cualquier otro valor de `commit_style` o override explícito vía `commit_message`: usar el texto directo. El override por `commit_message` siempre tiene precedencia sobre la tabla.
 
 ```bash
 git -C <repo_path> commit -m "$(cat <<'EOF'

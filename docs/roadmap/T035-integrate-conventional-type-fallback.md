@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T035: Integrate — mapeo determinístico de `<type>` para commit_style conventional
