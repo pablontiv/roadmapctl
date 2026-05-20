@@ -303,6 +303,22 @@ Para cada task o wave ordenada:
    ```
    Si `allowed=false`, `summary.status="error"`, o el comando sale non-zero, reportar diagnostics y detenerse.
 
+   **Cómputo determinístico de `is_last_in_scope`** (prohibido intuir o inferir desde el contador de sesión):
+
+   ```bash
+   roadmapctl next --repo <repo-path> --output json
+   ```
+
+   Filtrar `ready[]` por scope activo:
+   - Si `current_scope` es un Outcome (e.g. `O24-slug`): retener solo paths que comiencen con ese prefijo de directorio.
+   - Si `current_scope == "direct-tasks"`: retener paths que NO comiencen con ningún prefijo `O##`.
+
+   ```
+   is_last_in_scope = (ready[filtrado por scope] está vacío)
+   ```
+
+   Si `is_last_in_scope == true` y existen comandos en `outcome_close_verify`, ejecutarlos (paso 7).
+
    Si pasa, invocar el skill `/integrate`:
    ```
    Skill("integrate",
@@ -312,7 +328,7 @@ Para cada task o wave ordenada:
      repo_path=<repo-path>,
      config=<snapshot JSON con commit_style, auto_push, pr_mode, pr_merge_strategy, autonomy, base_branch>,
      commit_files=<archivos modificados por la task>,
-     is_last_in_scope=<true si ready[] post-completion está vacío para este scope>
+     is_last_in_scope=<valor recalculado — nunca intuido>
    )
    ```
 

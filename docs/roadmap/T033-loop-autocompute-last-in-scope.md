@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T033: Loop — cómputo determinístico de `is_last_in_scope` antes de /integrate
