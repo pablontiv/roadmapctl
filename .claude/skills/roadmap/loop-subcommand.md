@@ -87,6 +87,22 @@ Nota CI: `go test ./...` funciona sin rootline instalado — `TestMain` activa e
    roadmapctl pending --repo <repo-path> --output json
    ```
    - Si `summary.status != "ok"` o el comando sale non-zero: reportar diagnostics y parar.
+
+   **Cross-check de coherencia output↔filesystem**
+
+   Después de obtener `pending`, verificar que cada path reportado en `next.ready[]` y `pending.tasks[]` exista como archivo tracked en git:
+
+   ```bash
+   git ls-files <roadmap_root>/<path>
+   ```
+
+   El comando debe retornar el path exacto. Si para algún path el output está vacío (no tracked) o difiere del slug reportado, el toolchain puede estar stale (binario construido desde un commit anterior).
+
+   - Emitir mensaje `STALE TOOLCHAIN OUTPUT` listando los slugs sospechosos y los archivos reales más cercanos (comparar contra `git ls-files <roadmap_root>/` para identificar slugs actuales).
+   - Proponer acción: "Refrescar herramientas (recargar shell, `make install`, `go build`) y reintentar el loop."
+   - **Detener el loop antes de Fase 2.** No ejecutar tasks con datos potencialmente incorrectos.
+   - El skill **no intenta reconstruir ningún binario** — esa responsabilidad queda en el operador.
+
 3. Aplicar `--filter` por path sobre `ready[]` si existe.
 4. Mantener el orden determinístico devuelto por `roadmapctl next`; no hacer topological sort manual.
 5. Aplicar `effective_max` si es mayor que cero.

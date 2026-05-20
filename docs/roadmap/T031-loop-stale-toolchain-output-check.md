@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T031: Loop — cross-check de coherencia output↔filesystem en discovery
