@@ -130,7 +130,20 @@ commit_hash=$(git -C <repo_path> rev-parse HEAD)
 git -C <repo_path> push -u origin <branch>
 ```
 
-Si el push es rechazado (exit ≠ 0):
+Si el push es rechazado (exit ≠ 0), diferenciar la causa según stderr:
+
+### Rechazo por pre-push hook
+
+Si stderr contiene las palabras `hook` o `pre-push`:
+
+- **Prohibido** usar `--no-verify` o `--force-with-lease` automáticamente. El hook es del proyecto; el skill respeta su decisión.
+- Intentar parsear stderr buscando paths o nombres de archivo mencionados como requeridos. Heurística: líneas que contienen un path-like (segmento con `/` o extensión de archivo) junto a un verbo de coordinación (`update`, `change`, `required`, `not updated`, `missing`).
+- Si se detectan paths candidatos: emitir diagnostic informativo listando esos paths y proponer al caller un commit complementario que los cubra dentro del mismo push range. Permitir un reintento de push después de ese commit.
+- Si no se puede parsear nada estructurado: emitir `INTEGRATE_HOOK_REJECTED` con el mensaje literal del hook y detenerse. El operador decide cómo proceder.
+
+### Rechazo por divergencia con remote
+
+Si stderr NO contiene `hook` ni `pre-push` (remote tiene commits adelante):
 
 - `manual` / `supervised`: emitir `RMC_INTEGRATE_PUSH_REJECTED`, reportar al usuario y detenerse. No reintentar.
 - `until_done`: intentar rebase y reintentar una vez:
@@ -202,7 +215,8 @@ Registrar `{number, url, scope, status: "merged"}` para el caller.
 | ID | Causa | Acción recomendada |
 |----|-------|-------------------|
 | `RMC_INTEGRATE_NOOP` | `git status --porcelain` vacío; nada que commitear | Verificar que `roadmapctl transition complete --apply` fue ejecutado y los cambios fueron staged antes de invocar integrate |
-| `RMC_INTEGRATE_PUSH_REJECTED` | Push rechazado (remote tiene commits adelante) | Sincronizar con `git pull --rebase origin <branch>` manualmente y reinvocar |
+| `INTEGRATE_HOOK_REJECTED` | Pre-push hook del proyecto exige cambios coordinados que no fueron incluidos en el commit | Leer el mensaje literal del hook, identificar los paths requeridos, crear un commit complementario sobre esos paths y reinvocar integrate |
+| `RMC_INTEGRATE_PUSH_REJECTED` | Push rechazado por divergencia con remote (remote tiene commits adelante) | Sincronizar con `git pull --rebase origin <branch>` manualmente y reinvocar |
 | `RMC_INTEGRATE_GH_AUTH` | `gh auth status` falla | Ejecutar `gh auth login` y reinvocar |
 | `RMC_INTEGRATE_NO_GIT` | `git` no encontrado en PATH | Instalar git o verificar entorno |
 | `RMC_INTEGRATE_NO_GH` | `gh` no encontrado en PATH | Instalar GitHub CLI (`gh`) o degradar a `pr_mode=false` |

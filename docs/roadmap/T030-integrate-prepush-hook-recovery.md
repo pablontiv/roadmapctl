@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T030: Integrate — recuperación cuando el pre-push hook rechaza el push
