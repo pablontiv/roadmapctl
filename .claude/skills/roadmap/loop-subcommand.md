@@ -47,6 +47,20 @@ El loop opera en un repo a la vez.
 
 ### Preflight obligatorio roadmapctl
 
+**Check de árbol de skills (ejecutar primero, antes de doctor/check)**
+
+```bash
+git status --porcelain .claude/skills/
+```
+
+Si la salida NO está vacía (cualquier `M`, `A`, `D`, `??` que no esté en `.gitignore`), **detener el loop** antes de continuar. Listar los archivos en estado dirty y ofrecer al operador tres acciones:
+
+- **(a) Commit standalone**: crear un commit con los cambios actuales. Mensaje sugerido: `chore(skills): integrar cambios pendientes de sesión anterior`.
+- **(b) Git stash**: `git stash push .claude/skills/ -m "skills-pendientes"`. Para reaplicar después: `git stash pop`.
+- **(c) Descartar**: `git restore .claude/skills/<archivo>` por cada archivo dirty.
+
+El loop no continúa hasta que el operador resuelva y el check vuelva a dar output vacío. **Este check aplica solo a `.claude/skills/`** — no bloquea por cambios en otras rutas (`dist/`, `docs/roadmap/`, código fuente, etc.).
+
 Antes de consultar o ejecutar tasks pendientes:
 
 ```bash

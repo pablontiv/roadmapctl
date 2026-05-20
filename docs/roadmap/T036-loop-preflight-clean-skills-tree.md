@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T036: Loop — preflight bloquea si `.claude/skills/` tiene cambios uncommitted
