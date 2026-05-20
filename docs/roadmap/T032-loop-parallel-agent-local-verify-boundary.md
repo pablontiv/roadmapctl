@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T032: Loop — frontera de verificación local/global para agentes paralelos

@@ -190,6 +190,21 @@ Si `parallel == true`, ejecutar cada wave despachando llamadas paralelas al tool
 
 Si dos tasks de la misma wave producen conflicto al integrar, tratar como dependencia faltante según el modo de autonomía — no usar worktrees para forzar el merge.
 
+### Frontera de verificación: agente paralelo vs. loop principal
+
+Cuando una task es ejecutada por un Agent dispatch paralelo, el agente debe **limitar sus ACs verificables a comandos locales** a sus archivos. No debe ejecutar verificaciones globales:
+
+| Alcance | Ejemplos | Quién lo ejecuta |
+|---------|----------|-----------------|
+| **Local** (permitido al agente) | `grep`/`find` sobre el path tocado; lint sobre el paquete tocado; tests sobre el paquete tocado; `wc -l`/`ls` sobre archivos producidos | El agente paralelo |
+| **Global** (prohibido al agente) | `go build ./...`; `go test ./...`; `golangci-lint run ./...`; cualquier comando que cubre todo el repo | El loop principal en paso 6 (re-verificación post-wave) |
+
+Durante una wave, el árbol puede estar **transitoriamente roto** si los agentes tocan imports cruzados — incluso cuando sus fuentes de verdad son disjuntas. Eso no es falla del scope del agente y el agente no debe reportarlo como error de sus ACs.
+
+**Toda verificación global** (build, test suite, lint completo) es responsabilidad exclusiva del loop principal en el paso 6 de re-verificación directa (regla T026). El agente paralelo no la duplica ni la reporta.
+
+**Instrucción para el prompt del agente paralelo:** "Limita tus ACs verificables a comandos locales a tus archivos. No ejecutes builds, test suites ni lints globales del repo — esas verificaciones las hace el loop principal después de que todos los agentes de la wave terminaron."
+
 ### Pre-dispatch: serializar tasks con `## Fuente de verdad` solapada
 
 Antes de despachar la wave en paralelo, leer la sección `## Fuente de verdad` de cada task de `ready[]`. Si dos o más tasks declaran el mismo path como fuente de verdad, **serializarlas dentro de la wave** — ejecutar una, integrar, recalcular `roadmapctl next`, ejecutar la siguiente. Esta es ordenación de ejecución, no una dependencia estructural del roadmap: no agregar `blocked_by`, no mutar el grafo.
