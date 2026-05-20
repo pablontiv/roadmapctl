@@ -16,8 +16,19 @@ import (
 	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 	"github.com/pablontiv/roadmapctl/internal/templates"
+	"github.com/pablontiv/roadmapctl/internal/workspace"
 	"github.com/spf13/cobra"
 )
+
+const ErrWorkspaceEmpty = "RMC_WORKSPACE_EMPTY"
+
+type bootstrapRepoEntry struct {
+	Name         string `json:"name"`
+	Root         string `json:"root"`
+	RoadmapRoot  string `json:"roadmap_root"`
+	ConfigPath   string `json:"config_path"`
+	ConfigSource string `json:"config_source"`
+}
 
 type bootstrapReport struct {
 	Version     int                      `json:"version"`
@@ -66,6 +77,7 @@ type bootstrapConfigReport struct {
 	CompactAfterTaskCommit bool                     `json:"compact_after_task_commit"`
 	PRMode                 bool                     `json:"pr_mode"`
 	Helpers                contextHelpers           `json:"helpers"`
+	Repos                  []bootstrapRepoEntry     `json:"repos,omitempty"`
 	Diagnostics            []diagnostics.Diagnostic `json:"diagnostics"`
 }
 
@@ -243,6 +255,9 @@ func bootstrapSchemaCompatibilityDiagnostics(ctx context.Context, options Option
 
 func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigReport {
 	root := absoluteClean(options.Repo)
+	if options.Workspace || workspace.IsWorkspaceRoot(root) {
+		return buildBootstrapWorkspaceConfig(ctx, root, options)
+	}
 	cfg, err := config.Load(options.Repo)
 	if err != nil {
 		diagnostic := configDiagnostic(root, err)
@@ -278,6 +293,65 @@ func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigR
 
 	found = append(found, bootstrapSchemaCompatibilityDiagnostics(ctx, options, cfg.RepoRoot, cfg.RoadmapRoot)...)
 	return newBootstrapConfigReport(cfg.RepoRoot, cfg.RoadmapRoot, relToRoot(cfg.RepoRoot, cfg.ConfigPath), configSource(cfg), rootlineVersion, cfg, found)
+}
+
+func buildBootstrapWorkspaceConfig(ctx context.Context, root string, options Options) bootstrapConfigReport {
+	members := workspace.MemberRoots(root)
+	var repos []bootstrapRepoEntry
+	var found []diagnostics.Diagnostic
+	for _, member := range members {
+		cfg, err := config.Load(member)
+		if err != nil {
+			found = append(found, diagnostics.Diagnostic{
+				ID:       "RMC_WORKSPACE_MEMBER_SKIPPED",
+				Severity: diagnostics.SeverityInfo,
+				Message:  "workspace member skipped: " + err.Error(),
+				Path:     relToRoot(root, member),
+			})
+			continue
+		}
+		repos = append(repos, bootstrapRepoEntry{
+			Name:         filepath.Base(cfg.RepoRoot),
+			Root:         cfg.RepoRoot,
+			RoadmapRoot:  cfg.RoadmapRoot,
+			ConfigPath:   relToRoot(cfg.RepoRoot, cfg.ConfigPath),
+			ConfigSource: configSource(cfg),
+		})
+	}
+
+	rootlineVersion := ""
+	if len(repos) > 0 {
+		client := rootlinecli.New(rootlinecli.Options{Binary: options.Rootline, Dir: root, Timeout: options.Timeout})
+		if version, err := client.Version(ctx); err != nil {
+			found = append(found, rootlineDiagnostic(err))
+		} else {
+			rootlineVersion = strings.TrimSpace(string(version.Stdout))
+		}
+	}
+
+	if len(repos) == 0 {
+		found = append(found, diagnostics.Diagnostic{
+			ID:       ErrWorkspaceEmpty,
+			Severity: diagnostics.SeverityError,
+			Message:  "workspace root detected but no member has a valid roadmap config",
+			Path:     root,
+			ExitCode: diagnostics.ExitValidation,
+		})
+	}
+
+	report := diagnostics.NewReport("roadmapctl/bootstrap", root, "", found)
+	return bootstrapConfigReport{
+		Version:         report.Version,
+		Kind:            report.Kind,
+		Summary:         report.Summary,
+		Root:            report.Root,
+		RoadmapRoot:     "",
+		ConfigPath:      "",
+		ConfigSource:    "workspace",
+		RootlineVersion: rootlineVersion,
+		Repos:           repos,
+		Diagnostics:     report.Diagnostics,
+	}
 }
 
 func newBootstrapConfigReport(root string, roadmapRoot string, configPath string, configSource string, rootlineVersion string, cfg *config.Config, found []diagnostics.Diagnostic) bootstrapConfigReport {

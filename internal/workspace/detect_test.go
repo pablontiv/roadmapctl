@@ -38,31 +38,29 @@ func TestIsWorkspaceRoot_RootHasGit_ReturnsFalse(t *testing.T) {
 	}
 }
 
-func TestIsWorkspaceRoot_NoMembers_ReturnsFalse(t *testing.T) {
+func TestIsWorkspaceRoot_NoGitNoMembers_ReturnsTrue(t *testing.T) {
 	root := t.TempDir()
-	if workspace.IsWorkspaceRoot(root) {
-		t.Fatalf("expected false on empty root")
+	if !workspace.IsWorkspaceRoot(root) {
+		t.Fatalf("expected true: no .git at root and no docs/roadmap means workspace mode (downstream handles empty case)")
 	}
 }
 
-func TestIsWorkspaceRoot_MembersWithoutConfig_ReturnsFalse(t *testing.T) {
+func TestIsWorkspaceRoot_NoGitButHasRoadmapDir_ReturnsFalse(t *testing.T) {
 	root := t.TempDir()
-	mkdirAll(t, filepath.Join(root, "alpha", ".git"))
-	mkdirAll(t, filepath.Join(root, "beta", ".git"))
-
+	mkdirAll(t, filepath.Join(root, "docs", "roadmap"))
 	if workspace.IsWorkspaceRoot(root) {
-		t.Fatalf("expected false when no member has a roadmap config")
+		t.Fatalf("expected false: docs/roadmap present means single-repo even without .git")
 	}
 }
 
-func TestIsWorkspaceRoot_AtLeastOneMemberConfigured_ReturnsTrue(t *testing.T) {
+func TestIsWorkspaceRoot_NoGitWithMembers_ReturnsTrue(t *testing.T) {
 	root := t.TempDir()
 	mkdirAll(t, filepath.Join(root, "alpha", ".git"))
 	mkdirAll(t, filepath.Join(root, "beta", ".git"))
 	writeFile(t, filepath.Join(root, "beta", "docs", "roadmap", ".roadmapctl.toml"), "")
 
 	if !workspace.IsWorkspaceRoot(root) {
-		t.Fatalf("expected true when at least one member has docs/roadmap/.roadmapctl.toml")
+		t.Fatalf("expected true when root has no .git")
 	}
 }
 

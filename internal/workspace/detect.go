@@ -11,41 +11,40 @@ import (
 	"sort"
 )
 
-// MemberRoots returns the absolute paths of directories under root that
-// contain a .git entry (file or directory), excluding root itself.
-// Results are sorted lexicographically. Walk errors are silently ignored
-// so that an unreadable subtree never aborts member discovery.
+// MemberRoots returns the absolute paths of immediate subdirectories of
+// root that contain a .git entry (file or directory). Root itself is
+// excluded even if it has a .git. Results are sorted lexicographically.
+// Read errors are silently ignored so that an unreadable subdirectory
+// never aborts member discovery.
 func MemberRoots(root string) []string {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
 		absRoot = root
 	}
-	var repos []string
-	_ = filepath.WalkDir(absRoot, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry == nil {
-			return nil
-		}
-		if entry.Name() != ".git" {
-			return nil
-		}
-		parent := filepath.Dir(path)
-		if parent != absRoot {
-			repos = append(repos, parent)
-		}
-		if entry.IsDir() {
-			return filepath.SkipDir
-		}
+	entries, err := os.ReadDir(absRoot)
+	if err != nil {
 		return nil
-	})
+	}
+	var repos []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		candidate := filepath.Join(absRoot, entry.Name())
+		if _, err := os.Stat(filepath.Join(candidate, ".git")); err == nil {
+			repos = append(repos, candidate)
+		}
+	}
 	sort.Strings(repos)
 	return repos
 }
 
-// IsWorkspaceRoot reports whether root looks like a roadmap workspace
-// root: root has no .git of its own, and at least one member (returned
-// by MemberRoots) contains docs/roadmap/.roadmapctl.toml. The member
-// config presence is checked with os.Stat to avoid pulling the config
-// loader into this package.
+// IsWorkspaceRoot reports whether root should be treated as a roadmap
+// workspace root. A directory qualifies when it has neither a .git of
+// its own nor a docs/roadmap/ directory at its top level — i.e. it is
+// not itself a roadmap-bearing single repo. Downstream callers then
+// enumerate MemberRoots to distinguish "populated workspace" from
+// "empty workspace".
 func IsWorkspaceRoot(root string) bool {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
@@ -54,10 +53,8 @@ func IsWorkspaceRoot(root string) bool {
 	if _, err := os.Stat(filepath.Join(absRoot, ".git")); err == nil {
 		return false
 	}
-	for _, member := range MemberRoots(absRoot) {
-		if _, err := os.Stat(filepath.Join(member, "docs", "roadmap", ".roadmapctl.toml")); err == nil {
-			return true
-		}
+	if info, err := os.Stat(filepath.Join(absRoot, "docs", "roadmap")); err == nil && info.IsDir() {
+		return false
 	}
-	return false
+	return true
 }
