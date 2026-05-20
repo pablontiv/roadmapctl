@@ -3,28 +3,31 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/sync-roadmap-skill.sh [--install|--check] [--skill NAME]
+Usage: scripts/sync-roadmap-skill.sh [--install|--check] [--skill NAME|--all]
 
-Synchronize a canonical skill from this repository to the user scope.
+Synchronize canonical skills from this repository to the user scope.
 
 Modes:
-  --install  Copy .claude/skills/NAME to ~/.claude/skills/NAME. (default)
-  --check    Verify source and installed skill match without modifying files.
+  --install  Copy skill(s) to ~/.claude/skills/. (default)
+  --check    Verify source and installed skill(s) match without modifying files.
 
 Options:
   --skill NAME  Skill directory name to sync (default: roadmap).
+  --all         Sync all skill directories under .claude/skills/ that contain SKILL.md.
 
-The script only reads .claude/skills/NAME and only writes that skill's
-folder in ~/.claude/skills/NAME. It does not touch other user-scope skills.
+The script only reads .claude/skills/ and only writes to ~/.claude/skills/.
+It does not touch other user-scope skills.
 USAGE
 }
 
 MODE="install"
 SKILL_NAME="roadmap"
+ALL_SKILLS=false
 while [ "$#" -gt 0 ]; do
   case "${1:-}" in
     --install) MODE="install"; shift ;;
     --check)   MODE="check";   shift ;;
+    --all)     ALL_SKILLS=true; shift ;;
     --skill)
       if [ -z "${2:-}" ]; then
         echo "roadmapctl: --skill requires a name" >&2; usage >&2; exit 2
@@ -37,10 +40,7 @@ done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-SKILL_SRC="$REPO_ROOT/.claude/skills/$SKILL_NAME"
 SKILLS_DEST="$HOME/.claude/skills"
-SKILL_DEST="$SKILLS_DEST/$SKILL_NAME"
 TMP_DIR=""
 BACKUP_DIR=""
 
@@ -54,70 +54,83 @@ cleanup() {
 }
 trap cleanup EXIT
 
-require_source() {
-  if [ ! -d "$SKILL_SRC" ]; then
-    echo "roadmapctl: $SKILL_NAME skill source not found: $SKILL_SRC" >&2
-    exit 1
-  fi
-  if [ ! -f "$SKILL_SRC/SKILL.md" ]; then
-    echo "roadmapctl: $SKILL_NAME skill source missing SKILL.md: $SKILL_SRC" >&2
-    exit 1
-  fi
-}
+sync_one_skill() {
+  local skill_name="$1"
+  local skill_src="$REPO_ROOT/.claude/skills/$skill_name"
+  local skill_dest="$SKILLS_DEST/$skill_name"
 
-check_sync() {
-  if [ ! -d "$SKILL_DEST" ]; then
-    echo "roadmapctl: installed $SKILL_NAME skill not found: $SKILL_DEST" >&2
+  if [ ! -d "$skill_src" ]; then
+    echo "roadmapctl: $skill_name skill source not found: $skill_src" >&2
     return 1
   fi
-  diff -qr "$SKILL_SRC" "$SKILL_DEST" >/dev/null
+  if [ ! -f "$skill_src/SKILL.md" ]; then
+    echo "roadmapctl: $skill_name skill source missing SKILL.md: $skill_src" >&2
+    return 1
+  fi
+
+  check_one() {
+    if [ ! -d "$skill_dest" ]; then
+      echo "roadmapctl: installed $skill_name skill not found: $skill_dest" >&2
+      return 1
+    fi
+    diff -qr "$skill_src" "$skill_dest" >/dev/null
+  }
+
+  case "$MODE" in
+    check)
+      if check_one; then
+        echo "roadmapctl: $skill_name skill source and installed copy match"
+        echo "roadmapctl: source: $skill_src"
+        echo "roadmapctl: installed: $skill_dest"
+      else
+        echo "roadmapctl: $skill_name skill source and installed copy differ" >&2
+        echo "roadmapctl: source: $skill_src" >&2
+        echo "roadmapctl: installed: $skill_dest" >&2
+        diff -qr "$skill_src" "$skill_dest" >&2 || true
+        return 1
+      fi
+      ;;
+    install)
+      mkdir -p "$SKILLS_DEST"
+      TMP_DIR="$(mktemp -d "$SKILLS_DEST/.${skill_name}-sync.XXXXXX")"
+      cp -R "$skill_src"/. "$TMP_DIR"/
+
+      if [ -e "$skill_dest" ]; then
+        BACKUP_DIR="$(mktemp -d "$SKILLS_DEST/.${skill_name}-backup.XXXXXX")"
+        mv "$skill_dest" "$BACKUP_DIR/$skill_name"
+      fi
+
+      mv "$TMP_DIR" "$skill_dest"
+      TMP_DIR=""
+
+      if ! check_one; then
+        echo "roadmapctl: installed $skill_name skill did not match source; restoring previous copy" >&2
+        rm -rf "$skill_dest"
+        if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR/$skill_name" ]; then
+          mv "$BACKUP_DIR/$skill_name" "$skill_dest"
+        fi
+        return 1
+      fi
+
+      if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
+        rm -rf "$BACKUP_DIR"
+        BACKUP_DIR=""
+      fi
+
+      echo "roadmapctl: installed $skill_name skill"
+      echo "roadmapctl: source: $skill_src"
+      echo "roadmapctl: installed: $skill_dest"
+      ;;
+  esac
 }
 
-require_source
-
-case "$MODE" in
-  check)
-    if check_sync; then
-      echo "roadmapctl: $SKILL_NAME skill source and installed copy match"
-      echo "roadmapctl: source: $SKILL_SRC"
-      echo "roadmapctl: installed: $SKILL_DEST"
-    else
-      echo "roadmapctl: $SKILL_NAME skill source and installed copy differ" >&2
-      echo "roadmapctl: source: $SKILL_SRC" >&2
-      echo "roadmapctl: installed: $SKILL_DEST" >&2
-      diff -qr "$SKILL_SRC" "$SKILL_DEST" >&2 || true
-      exit 1
-    fi
-    ;;
-  install)
-    mkdir -p "$SKILLS_DEST"
-    TMP_DIR="$(mktemp -d "$SKILLS_DEST/.${SKILL_NAME}-sync.XXXXXX")"
-    cp -R "$SKILL_SRC"/. "$TMP_DIR"/
-
-    if [ -e "$SKILL_DEST" ]; then
-      BACKUP_DIR="$(mktemp -d "$SKILLS_DEST/.${SKILL_NAME}-backup.XXXXXX")"
-      mv "$SKILL_DEST" "$BACKUP_DIR/$SKILL_NAME"
-    fi
-
-    mv "$TMP_DIR" "$SKILL_DEST"
-    TMP_DIR=""
-
-    if ! check_sync; then
-      echo "roadmapctl: installed $SKILL_NAME skill did not match source; restoring previous copy" >&2
-      rm -rf "$SKILL_DEST"
-      if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR/$SKILL_NAME" ]; then
-        mv "$BACKUP_DIR/$SKILL_NAME" "$SKILL_DEST"
-      fi
-      exit 1
-    fi
-
-    if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
-      rm -rf "$BACKUP_DIR"
-      BACKUP_DIR=""
-    fi
-
-    echo "roadmapctl: installed $SKILL_NAME skill"
-    echo "roadmapctl: source: $SKILL_SRC"
-    echo "roadmapctl: installed: $SKILL_DEST"
-    ;;
-esac
+if [ "$ALL_SKILLS" = true ]; then
+  failed=0
+  for skill_dir in "$REPO_ROOT/.claude/skills"/*/; do
+    [ -f "${skill_dir}SKILL.md" ] || continue
+    sync_one_skill "$(basename "$skill_dir")" || failed=1
+  done
+  exit "$failed"
+else
+  sync_one_skill "$SKILL_NAME"
+fi

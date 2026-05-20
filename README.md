@@ -285,14 +285,15 @@ The git hooks in `.githooks/pre-push` and `.githooks/post-merge` keep the user-s
 
 ```bash
 git config core.hooksPath .githooks
-scripts/install-user.sh
-scripts/sync-roadmap-skill.sh --check
-scripts/sync-roadmap-skill.sh --check --skill retrospective
-scripts/sync-roadmap-skill.sh --install --skill integrate
+scripts/install-user.sh                              # installs all skills + rebuilds binary
+scripts/sync-roadmap-skill.sh --check --all          # verify all skills match source
+scripts/sync-roadmap-skill.sh --install --all        # install all skills
+scripts/sync-roadmap-skill.sh --install --skill NAME # install a single skill
 ```
 
-`scripts/sync-roadmap-skill.sh` accepts `--skill NAME` to sync any skill under `.claude/skills/`
-(default: `roadmap`). `install-user.sh` syncs all registered skills automatically.
+`scripts/sync-roadmap-skill.sh` accepts `--all` to sync every skill directory under `.claude/skills/`
+that contains a `SKILL.md`, or `--skill NAME` for a specific skill. `install-user.sh` uses `--all`
+and syncs every skill automatically — no per-skill registration needed.
 
 ---
 
