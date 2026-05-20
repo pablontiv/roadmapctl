@@ -31,6 +31,7 @@ Intro.
 	table := doc.TableBySection("Tasks")
 	if table == nil {
 		t.Fatalf("missing Tasks table in %#v", doc.Tables)
+		return
 	}
 	if table.StartLine != 7 || len(table.Headers) != 2 || table.Headers[0] != "Task" || table.Headers[1] != "Description" {
 		t.Fatalf("table = %#v", table)
