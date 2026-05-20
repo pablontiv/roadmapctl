@@ -1,5 +1,5 @@
 ---
-source: pablontiv/praxis
+source: pablontiv/roadmapctl
 name: roadmap
 description: |
   Usar cuando el usuario sabe QUÉ construir y necesita planificar CÓMO —
