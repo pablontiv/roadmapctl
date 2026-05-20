@@ -71,8 +71,6 @@ roadmapctl check --repo <repo-path> --output json --strict
 
 Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de seleccionar o ejecutar tasks. Reportar comando, exit code y diagnostic IDs si hubo JSON. No ejecutar tasks ni mutar estados.
 
-**Staged async auto-update** — `internal/updater` implementa el patrón staged async: `FetchAndStage` descarga en background la versión más nueva a `~/.cache/roadmapctl/staged/<version>/`; `ApplyStagedIfAvailable` detecta el binario staged en la siguiente invocación, lo reemplaza atómicamente (os.Rename en Unix, copy+swap en Windows) y re-exec (syscall.Exec en Unix). El CLI wiring está en `internal/cli/cli.go`: `updater.CurrentVersion = version`, `ApplyStagedIfAvailable()`, y `go FetchAndStage(version)`. Errores de red y permisos son silenciosos. Para desactivar: `ROADMAPCTL_NO_UPDATE=1`. Cobertura del paquete: 85.4%. Gosec: `httpClient.Do(req)` requiere `//nolint:gosec` (G704 SSRF taint); `isNewer` no usa range loop sobre dos arrays para evitar falso positivo G602. SA5011 (staticcheck nil-deref): tras `if ptr == nil { t.Fatalf(...) }` añadir `return` inalcanzable para que staticcheck infiera que la rama nil no cae al código siguiente.
-
 **Rootline binary staleness** — Cuando el loop ejecuta tasks en el repo `rootline` (o en repos que modifican `cmd/rootline/` o `internal/`), verificar que el binario instalado refleja los cambios recientes. Si el binario es stale, `roadmapctl next` puede devolver JSON formato v1 (sin `frontmatter` map) produciendo títulos vacíos y otros fallos silenciosos.
 
 ```bash

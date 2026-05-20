@@ -2,6 +2,8 @@
 
 roadmapctl updates itself automatically using a **staged async** pattern: the new binary is downloaded in the background during run N, and applied at the start of run N+1. The update is transparent — no prompts, no interruptions, no downtime.
 
+The implementation lives upstream in [`github.com/pablontiv/picokit/autoupdate`](https://pkg.go.dev/github.com/pablontiv/picokit/autoupdate); roadmapctl wires it from `internal/cli/cli.go` via `autoupdate.New("pablontiv/roadmapctl", "roadmapctl", "ROADMAPCTL_NO_UPDATE")`.
+
 ## Flow per Invocation
 
 ```
