@@ -17,3 +17,12 @@ PI_SKIP_VERSION_CHECK=1 pi --no-extensions --skill .claude/skills/roadmap/SKILL.
 La evidencia debe mostrar que `roadmapctl doctor` y `roadmapctl check` fueron requeridos y pasaron antes de loop/materialización, sin modificar archivos.
 
 Antes de hacer push, `golangci-lint run ./...` debe reportar 0 issues (CI lint gate).
+
+El coverage gate usa `pkcov` con floors por paquete en `.coverage-floors.toml` (mínimo global: 85%):
+
+```bash
+go test ./... -coverprofile=coverage.out
+go run github.com/pablontiv/picokit/cmd/pkcov check
+```
+
+O equivalentemente: `just coverage-check`.

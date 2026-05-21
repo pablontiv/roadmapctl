@@ -50,7 +50,9 @@ jobs:
 
       - name: Coverage gate
         shell: bash
-        run: ./scripts/check-coverage.sh
+        run: |
+          go test ./... -coverprofile=coverage.out
+          go run github.com/pablontiv/picokit/cmd/pkcov check
 
       - name: Roadmapctl smoke
         shell: bash

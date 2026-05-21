@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T005: Crear .coverage-floors.toml + reemplazar bash con pkcov
