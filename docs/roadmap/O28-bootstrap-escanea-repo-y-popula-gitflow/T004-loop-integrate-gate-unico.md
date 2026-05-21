@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T004: loop-subcommand.md — declarar gate único y ampliar config snapshot

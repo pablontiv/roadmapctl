@@ -322,6 +322,8 @@ Para cada task o wave ordenada:
 
 9. **Integrate**
 
+   **/integrate es la única puerta a `git` y `gh` desde el loop. El loop NO ejecuta `git commit/push` ni `gh pr create/merge` directamente bajo ninguna condición, ni siquiera para `pr_mode=false`. Saltarlo es un bug del flujo.**
+
    Gate del modelo — ejecutar **solo** después de que ACs e invariantes pasaron:
    ```bash
    roadmapctl transition complete <task.md> --apply --repo <repo-path> --output json
@@ -351,7 +353,7 @@ Para cada task o wave ordenada:
      scope=<current_scope>,
      previous_scope=<previous_scope>,
      repo_path=<repo-path>,
-     config=<snapshot JSON con commit_style, auto_push, pr_mode, pr_merge_strategy, autonomy, base_branch>,
+     config=<snapshot JSON con commit_style, auto_push, pr_mode, branch_style, pr_title_style, pr_body_style, autonomy, base_branch>,
      commit_files=<archivos modificados por la task>,
      is_last_in_scope=<valor recalculado — nunca intuido>
    )
