@@ -54,6 +54,11 @@ Diagnostics relevantes:
 - `RMC_WORKSPACE_EMPTY` (error) — el path es workspace root pero ningún miembro tiene config válido.
 - `RMC_WORKSPACE_MEMBER_SKIPPED` (info) — miembro inválido, ignorado.
 
+## Diagnósticos gitflow
+
+- `RMC_GITFLOW_NOT_CONFIGURED` (info) — los campos `[gitflow]` (`branch_style`, `pr_title_style`, `pr_body_style`) están vacíos. El skill puede detectar esto para ofrecer el wizard de adopción de gitflow.
+- `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` (warning) — `pr_merge_strategy` está seteado en el TOML; migrar a `[gitflow]` fields.
+
 Cada repo mantiene su propio roadmap bajo `<repo>/docs/roadmap/`. El skill opera por repo:
 
 - `/roadmap loop` se invoca sobre un repo a la vez. Usar `--repo <name>` (resuelto contra `repos[].name`) o ejecutar dentro del repo.
