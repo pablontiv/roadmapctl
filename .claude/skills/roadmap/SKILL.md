@@ -71,6 +71,7 @@ Si sale non-zero, detenerse. No auto-fix, no fallback. Verificación del skill: 
 | vacío / `pending` | [pending-subcommand.md](pending-subcommand.md) |
 | `decision` / `next` | [decision-tree-subcommand.md](decision-tree-subcommand.md) |
 | `plan` | [plan-subcommand.md](plan-subcommand.md) |
+| `bootstrap [--repo]` | [bootstrap-subcommand.md](bootstrap-subcommand.md) |
 | `loop [--filter] [--max]` | [loop-subcommand.md](loop-subcommand.md) |
 | texto libre | [autonomous-mode.md](autonomous-mode.md) |
 
@@ -81,11 +82,12 @@ Solo workspace mode: `--repo <name>` resuelve un repo. Single-repo: se ignora.
 ## Regla de dispatch
 
 1. Vacío → `pending`.
-2. `pending`, `loop`, `plan` → subcomando directo.
+2. `pending`, `loop`, `plan`, `bootstrap` → subcomando directo.
 3. `decision`/`next`/priorización → `decision-tree`.
 4. Estado/progreso/pendientes → `pending`.
 5. "crea las tareas"/"materializa"/"genera archivos" → `plan`.
-6. Texto libre sin pedir archivos → modo autónomo.
+6. `bootstrap` → bootstrap subcommand.
+7. Texto libre sin pedir archivos → modo autónomo.
 
 Ambigüedad: "descompón/planifica" = propuesta (no escribe); "crea/materializa" = `plan`. Si no hay plan suficiente, preguntar antes de escribir.
 

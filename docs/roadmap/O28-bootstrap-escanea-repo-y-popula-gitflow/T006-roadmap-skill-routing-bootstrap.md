@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T006: SKILL.md — agregar routing para subcomando bootstrap
