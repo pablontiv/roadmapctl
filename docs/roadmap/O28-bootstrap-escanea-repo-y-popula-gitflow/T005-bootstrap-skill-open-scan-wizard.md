@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T005: bootstrap-reference.md + nuevo bootstrap-subcommand.md

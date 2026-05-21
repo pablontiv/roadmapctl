@@ -59,6 +59,27 @@ Diagnostics relevantes:
 - `RMC_GITFLOW_NOT_CONFIGURED` (info) — los campos `[gitflow]` (`branch_style`, `pr_title_style`, `pr_body_style`) están vacíos. El skill puede detectar esto para ofrecer el wizard de adopción de gitflow.
 - `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` (warning) — `pr_merge_strategy` está seteado en el TOML; migrar a `[gitflow]` fields.
 
+## Wizard de adopción gitflow (RMC_GITFLOW_NOT_CONFIGURED)
+
+Cuando bootstrap devuelve `RMC_GITFLOW_NOT_CONFIGURED`, el skill debe ejecutar el wizard de adopción:
+
+1. **Escaneo abierto del repo**: El LLM decide qué leer según lo que encuentra — cualquier combinación de `.md`, `CLAUDE.md`, `AGENTS.md`, `git log`, `gh pr list --state merged`, `gh pr list --state closed`, branch protection, CI workflows (`.github/workflows/`), código fuente, o cualquier otro artefacto relevante. No hay lista fija de comandos; el LLM usa su criterio para entender las convenciones del proyecto.
+
+2. **Redactar propuesta de TOML**: Con la información recopilada, el LLM propone valores para los 3 style fields:
+   - `branch_style`: descripción de la convención de branches
+   - `pr_title_style`: descripción del formato de PR titles
+   - `pr_body_style`: descripción del template de PR body (o "no aplica" si pr_mode=false)
+   
+   Los campos determinísticos (`done_statuses`, `active_statuses`, etc.) se deducen del TOML existente o se usan defaults.
+
+3. **Wizard pre-llenado**: Presentar cada campo al usuario para confirmar, editar o saltar. No escribir hasta que el usuario confirme el bloque completo.
+
+4. **Escribir el TOML**: Solo tras confirmación final, actualizar `<roadmap-root>/.roadmapctl.toml` con los 3 style fields bajo `[gitflow]`.
+
+5. **Re-ejecutar bootstrap**: Invocar `roadmapctl bootstrap --repo <repo-path> --output json` y continuar desde el JSON actualizado.
+
+El subcomando `/roadmap bootstrap` fuerza re-escaneo on-demand aunque el TOML ya tenga valores, sobrescribiendo los style fields si el usuario lo confirma.
+
 Cada repo mantiene su propio roadmap bajo `<repo>/docs/roadmap/`. El skill opera por repo:
 
 - `/roadmap loop` se invoca sobre un repo a la vez. Usar `--repo <name>` (resuelto contra `repos[].name`) o ejecutar dentro del repo.
