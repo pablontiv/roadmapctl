@@ -118,3 +118,55 @@ func TestMemberRoots_HandlesGitFile(t *testing.T) {
 		t.Fatalf("expected to detect .git file (worktree/submodule); got %v", got)
 	}
 }
+
+func TestMemberRoots_IgnoresNonDirectories(t *testing.T) {
+	root := t.TempDir()
+	mkdirAll(t, filepath.Join(root, "alpha", ".git"))
+	// Create a file (not dir) that would be skipped
+	writeFile(t, filepath.Join(root, "regular_file"), "")
+
+	got := workspace.MemberRoots(root)
+	if len(got) != 1 || filepath.Base(got[0]) != "alpha" {
+		t.Fatalf("expected to ignore non-directories; got %v", got)
+	}
+}
+
+func TestMemberRoots_IgnoresDirsWithoutGit(t *testing.T) {
+	root := t.TempDir()
+	mkdirAll(t,
+		filepath.Join(root, "alpha", ".git"),
+		filepath.Join(root, "beta"),  // no .git
+		filepath.Join(root, "gamma", ".git"),
+	)
+
+	got := workspace.MemberRoots(root)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 members (alpha and gamma); got %d (%v)", len(got), got)
+	}
+	bases := []string{filepath.Base(got[0]), filepath.Base(got[1])}
+	if bases[0] != "alpha" || bases[1] != "gamma" {
+		t.Fatalf("expected [alpha, gamma]; got %v", bases)
+	}
+}
+
+func TestMemberRoots_UnreadableSubdir_SilentlyIgnored(t *testing.T) {
+	root := t.TempDir()
+	mkdirAll(t,
+		filepath.Join(root, "alpha", ".git"),
+		filepath.Join(root, "unreadable"),
+	)
+	// Make unreadable dir inaccessible (requires non-Windows)
+	if err := os.Chmod(filepath.Join(root, "unreadable"), 0o000); err != nil {
+		t.Skipf("cannot chmod to 0o000: %v", err)
+		return
+	}
+	defer func() {
+		_ = os.Chmod(filepath.Join(root, "unreadable"), 0o700) //nolint:gosec
+	}()
+
+	// MemberRoots should ignore the unreadable dir and still find alpha
+	got := workspace.MemberRoots(root)
+	if len(got) != 1 || filepath.Base(got[0]) != "alpha" {
+		t.Fatalf("expected [alpha] ignoring unreadable dir; got %v", got)
+	}
+}
