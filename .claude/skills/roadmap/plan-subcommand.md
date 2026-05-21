@@ -93,12 +93,50 @@ Si cualquier comando sale non-zero: detenerse, reportar exit code y diagnostics.
 > Si el `.stem` tiene campos custom no reconocidos, bootstrap emite `RMC_BOOTSTRAP_REPAIR_UNSUPPORTED_STEM`
 > y no modifica nada — escalar al usuario en ese caso.
 
-**3.3 Escritura en paralelo**
+**3.3 Escritura en paralelo — Model de Dispatch de Agents**
 
-Crear directorios padre si aplican, luego escribir con Write tool en paralelo:
+Ejecutar la materialización del plan mediante un modelo de waves + Agent dispatch:
 
-- `OXX-slug/README.md`: frontmatter `tipo: outcome` + título + descripción/contexto (SIN `## Criterios de Aceptación` ni `## Tasks`). Ver template en `outcome-guide.md`.
-- `OXX-slug/TXXX-slug.md`: frontmatter `estado: Specified` + título + descripción + `## Criterios de Aceptación` + contexto + scope + hard blockers si aplican. Ver template en `task-guide.md`.
+**Wave 0: Materialización de Outcomes (Coordinador)**
+
+- El coordinador escribe los `OXX-slug/README.md` directamente.
+- Alternativa: si hay múltiples Outcomes con gran volumen, despatchar 1 Agent para materializarlos todos.
+- Los Outcomes deben existir antes de crear Tasks (precondición estructural).
+- Template: frontmatter `tipo: outcome` + título + descripción/contexto (SIN `## Criterios de Aceptación` ni `## Tasks`). Ver `outcome-guide.md`.
+
+**Wave 1+: Materialización de Tasks (Agents en paralelo)**
+
+- Particionar el conjunto de Tasks en subsets: ~3-5 archivos por Agent, o 1 Agent por Outcome + sus Tasks asociadas.
+- Despatchar N Agents en paralelo, cada uno responsable por un subset disjunto de Task files.
+- Cada Agent recibe en su prompt:
+  - Lista de `(path, contenido_completo)` — el contenido está completamente decidido por el coordinador.
+  - No recalculan contenido; materializan exactamente como se especifica.
+  - Template de prompt:
+
+```
+Eres un agente de materialización del roadmap. Escribe los siguientes archivos exactamente como se indica.
+
+Para cada archivo:
+  - Path: <path relativo al repo>
+  - Contenido: <contenido completo del archivo>
+
+Instrucciones:
+- Escribe cada archivo con la herramienta Write. Usa paths absolutos: /home/shared/<repo>/<path>
+- Confirma cada archivo escrito con "✓ <path>"
+- No interpretes ni modifiques el contenido
+- Si un archivo ya existe con contenido idéntico, escríbelo igualmente
+- No hagas nada más: solo escribe los archivos listados
+
+Archivos a escribir:
+[LISTA DE ARCHIVOS CON CONTENIDO]
+```
+
+- Cada Agent hace **1 Write call por archivo** de su subset.
+- El coordinador espera a que todos los Agents terminen.
+
+**Post-Wave: Validación y Postcheck global (Coordinador)**
+
+- Ver secciones 3.4 y 3.5.
 
 **3.4 Validación por archivo**
 

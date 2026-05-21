@@ -43,11 +43,11 @@ Si no se puede crear esa estructura, detenerse. No fallback a markdown libre.
 
 ## Invariante de escritura segura
 
-El skill es el único writer vía Write tool, después de aprobación explícita y preflight pasado.
+El skill es el coordinador de la materialización — responsable de la corrección del proceso, no el único escritor. Después de aprobación explícita y preflight pasado, puede escribir directamente o despachar Agents coordinados para escritura paralela.
 
 Prohibido: heredocs/cat> en shell para múltiples archivos; loops con `rootline new`; escribir sin aprobación; escribir si `roadmapctl doctor` o `check --strict` retornan non-zero.
 
-Permitido: Write tool por archivo canónico tras aprobación y preflight exitoso.
+Permitido: Write tool por archivo canónico tras aprobación y preflight exitoso. Permitido: despachar Agents coordinados para escritura paralela tras aprobación y preflight exitoso.
 
 ## Bootstrap
 

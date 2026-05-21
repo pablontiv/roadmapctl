@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T002: Actualizar sección 3.3 de `plan-subcommand.md` — despacho paralelo de Agents

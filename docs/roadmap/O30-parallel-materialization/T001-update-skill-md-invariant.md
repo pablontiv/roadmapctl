@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T001: Actualizar invariante de escritura en `SKILL.md`

@@ -20,9 +20,9 @@ Para cada task, completar campos requeridos: slug, título, descripción, preser
 
 Después de que el usuario aprueba explícitamente el árbol visual propuesto:
 
-1. El skill escribe archivos `.md` directamente usando Write tool.
+1. El skill coordina la materialización despachando Agents para escritura paralela.
 2. Cada Task crea un archivo `TXXX-task-slug.md` con template definido abajo.
-3. El skill puede escribir archivos en paralelo si los parents (Outcomes) ya existen o fueron creados en el mismo batch.
+3. El skill orquesta waves: Wave 0 crea los Outcome README.md directamente; Wave 1+ despacha Agents con subsets de Task files pre-calculados. Cada Agent escribe su subset con Write tool.
 4. Tras escribir, ejecutar `rootline validate <path>` sobre cada archivo crítico.
 5. Ejecutar `roadmapctl check --strict` tras escribir todos los archivos para postcheck obligatorio.
 

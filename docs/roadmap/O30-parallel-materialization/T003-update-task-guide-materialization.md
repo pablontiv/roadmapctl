@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T003: Actualizar paso 3 de `task-guide.md` — modelo de materialización por Agent dispatch
