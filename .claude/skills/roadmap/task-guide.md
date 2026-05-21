@@ -117,6 +117,7 @@ Antes de finalizar una task, verificar:
 1. ¿Cabe en una sesión?
 2. ¿Contiene todo el contexto?
 3. ¿Los ACs son pass/fail?
+   - ¿Evitan conteos absolutos derivados del estado pre-cambio? (ver sección "Criterios de Aceptación: predicados estructurales")
 4. Si declara `blocked_by`, ¿hay respuesta concreta a "qué fallaría objetivamente si ejecuto esta task antes"?
 5. ¿Los links `blocked_by` son paths relativos explícitos y no orden/contexto blando?
 6. ¿Lista fuentes de verdad?
@@ -136,3 +137,17 @@ Al especificar un flag de extracción (e.g. `--field <key>`, `--select <key>`), 
 3. **No-escalares**: si el campo es array u object, especificar comportamiento: serializado JSON, error, o separador. No dejar ambiguo.
 
 Si la spec omite estos puntos, la implementación producirá contratos implícitos que requieren corrección post-entrega.
+
+## Criterios de Aceptación: predicados estructurales, no conteos absolutos
+
+Un AC con un conteo absoluto derivado del estado pre-cambio (e.g. "el grep retorna exactamente N matches", "exactamente N callsites importan X", "el archivo tiene N líneas") se vuelve inválido cuando el cambio incluye un split, consolidación o desambiguación natural que altera la cuenta — aun cuando la intención de la task se cumplió correctamente.
+
+Preferir predicados estructurales:
+
+| En vez de… | Usar… |
+|---|---|
+| "el grep retorna exactamente 26 matches del símbolo nuevo" | "el grep retorna 0 matches del símbolo viejo" + "todo callsite que usa el símbolo nuevo compila/typechequea" |
+| "exactamente 7 archivos importan X" | "ningún archivo importa la API obsoleta" + "los archivos que importan X siguen pasando sus tests" |
+| "el archivo tiene 142 líneas" | "el archivo no contiene la sección obsoleta `<...>`" + "contiene la nueva sección `<...>`" |
+
+Regla: un AC debe seguir siendo cierto bajo cualquier refactor incidental que preserve la intención. Si un AC numérico se rompe sólo porque el split fue más limpio de lo previsto, el AC estaba mal redactado.
