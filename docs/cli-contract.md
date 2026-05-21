@@ -100,7 +100,10 @@ Config keys:
 | `active_statuses` | list(string) | `["Pending", "Specified", "In Progress"]` | Status values listed by active/pending workflows. |
 | `leaf_filter` | string | `isIndex == false` | Rootline expression selecting leaf records. |
 | `outcome_close_verify` | list(string) | `[]` | Optional commands for outcome close checks. |
-| `pr_merge_strategy` | enum string | `squash` | Preferred PR merge strategy (`squash`, `merge`, `rebase`). |
+| `pr_merge_strategy` | enum string | `squash` | **Deprecated.** Preferred PR merge strategy (`squash`, `merge`, `rebase`). Use `[gitflow]` fields instead; setting this field emits `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED`. |
+| `[gitflow].branch_style` | string | `""` | Natural-language description of branch naming convention. |
+| `[gitflow].pr_title_style` | string | `""` | Natural-language description of PR title style. |
+| `[gitflow].pr_body_style` | string | `""` | Natural-language description of PR body style. |
 | `commit_style` | enum string | `conventional` | Commit message style. |
 | `auto_push` | bool | `true` | Whether loop workflows push after commits. |
 | `required_code_coverage` | float | `85.0` | Minimum required Go coverage percentage used by release/coverage tooling; valid range is `0..100`. |
@@ -338,6 +341,7 @@ Areas in the MVP:
 - `RMC_STRUCTURE_*`
 - `RMC_GRAPH_*`
 - `RMC_STATUS_*`
+- `RMC_GITFLOW_*`
 - `RMC_LINT_*` (planned `lint` command)
 
 IDs are part of the machine-readable contract. Messages may change; IDs should not change without a report version bump or compatibility note.
@@ -349,6 +353,7 @@ IDs are part of the machine-readable contract. Messages may change; IDs should n
 | `RMC_STRUCTURE_SINGLE_FILE_FALLBACK` | error | `check` | A file such as `*-tasks.md` appears to represent multiple tasks instead of canonical `TXXX-*.md` files. |
 | `RMC_ENV_ROOTLINE_MISSING` | error | `doctor`, `check` | Rootline executable could not be found via `--rootline`, `ROOTLINE_BIN`, or PATH. |
 | `RMC_GRAPH_INVALID_BLOCKED_BY` | error | `check` | A `blocked_by` link is broken, not explicit relative syntax, or does not resolve to a task file. |
+| `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` | warning | `bootstrap`, `transition`, `check` | `pr_merge_strategy` is set in `.roadmapctl.toml`; migrate to `[gitflow]` fields (`branch_style`, `pr_title_style`, `pr_body_style`). |
 
 Additional MVP diagnostics should reuse the same convention, for example:
 
