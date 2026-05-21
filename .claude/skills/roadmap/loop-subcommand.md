@@ -4,6 +4,16 @@
 
 Ejecutar tasks pendientes usando la configuración efectiva devuelta por `roadmapctl bootstrap`. El loop acepta solo `--filter`, `--max` y el flag global `--repo` (workspace mode).
 
+## Fase 1: Bootstrap y detección gitflow
+
+Ejecutar bootstrap obligatoriamente para detectar configuración y diagnostics:
+
+```bash
+roadmapctl bootstrap --repo <repo-path> --output json
+```
+
+Si bootstrap devuelve diagnóstico `RMC_GITFLOW_NOT_CONFIGURED`: ejecutar wizard de adopción gitflow (ver [bootstrap-reference.md](bootstrap-reference.md) sección "Wizard de adopción gitflow") → re-ejecutar bootstrap → continuar con el loop normal.
+
 Ruta normal autosuficiente: este archivo contiene el procedimiento operativo completo. No leer `common-logic.md` ni documentación de integración para ejecutar el loop; esos documentos son referencia de mantenimiento/troubleshooting.
 
 ## Opciones CLI permitidas

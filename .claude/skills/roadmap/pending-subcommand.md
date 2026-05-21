@@ -1,8 +1,20 @@
 # /roadmap pending
 
+> Referencias obligatorias antes de ejecutar: [bootstrap-reference.md](bootstrap-reference.md)
+
 Vista filtrada de trabajo pendiente. Muestra tasks pendientes usando `roadmapctl` como capa determinística de roadmap.
 
 Ruta normal autosuficiente: usar el `roadmapctl bootstrap` ya obtenido en bootstrap y luego `roadmapctl pending`. No leer `common-logic.md`, documentación de integración ni archivos Rootline para este flujo. No ejecutar `roadmapctl doctor`/`check`: pending es read-only y `roadmapctl pending` es la fuente canónica.
+
+## Fase 1: Bootstrap y detección gitflow
+
+Ejecutar bootstrap obligatoriamente para detectar configuración y diagnostics:
+
+```bash
+roadmapctl bootstrap --repo <repo-path> --output json
+```
+
+Si bootstrap devuelve diagnóstico `RMC_GITFLOW_NOT_CONFIGURED`: ejecutar wizard de adopción gitflow (ver [bootstrap-reference.md](bootstrap-reference.md) sección "Wizard de adopción gitflow") → re-ejecutar bootstrap → continuar con el flujo normal del subcomando.
 
 ## Workspace mode
 

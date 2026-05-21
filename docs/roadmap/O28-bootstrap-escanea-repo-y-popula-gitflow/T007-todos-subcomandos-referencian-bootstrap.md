@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T007: Consolidar detección RMC_GITFLOW_NOT_CONFIGURED en todos los subcomandos

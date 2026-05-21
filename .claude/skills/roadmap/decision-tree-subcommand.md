@@ -1,6 +1,20 @@
 # /roadmap — Árbol de Decisión
 
+> Referencias obligatorias antes de ejecutar: [bootstrap-reference.md](bootstrap-reference.md)
+
 Generar un árbol de decisión que muestre recomendaciones ejecutables, quick wins, dependencias y bloqueos usando `roadmapctl` como fuente determinística.
+
+## Fase 1: Bootstrap y detección gitflow
+
+Ejecutar bootstrap obligatoriamente para detectar configuración y diagnostics:
+
+```bash
+roadmapctl bootstrap --repo <repo-path> --output json
+```
+
+Si bootstrap devuelve diagnóstico `RMC_GITFLOW_NOT_CONFIGURED`: ejecutar wizard de adopción gitflow (ver [bootstrap-reference.md](bootstrap-reference.md) sección "Wizard de adopción gitflow") → re-ejecutar bootstrap → continuar con el flujo normal del subcomando.
+
+---
 
 Ruta normal autosuficiente: usar el `roadmapctl bootstrap` ya obtenido en bootstrap y luego `roadmapctl decision` o `roadmapctl next`. No leer `common-logic.md`, documentación de integración ni archivos Rootline para este flujo. No ejecutar `roadmapctl doctor`/`check`: decision/next son read-only y sus comandos son la fuente canónica.
 
