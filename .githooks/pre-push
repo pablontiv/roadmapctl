@@ -54,6 +54,17 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       exit 1
     fi
   fi
+
+  # Check coverage floors if any Go source files changed (skip docs-only pushes).
+  if git diff --name-only "$range" -- '*.go' 2>/dev/null | grep -q .; then
+    echo "Checking coverage..."
+    if ! just coverage-check > /tmp/roadmapctl-cov.log 2>&1; then
+      cat /tmp/roadmapctl-cov.log
+      echo "Coverage below threshold. Run: just coverage-check"
+      exit 1
+    fi
+    echo "Coverage check passed."
+  fi
 done
 
 # Install the user-scope skill and rebuild the user-scope roadmapctl binary.

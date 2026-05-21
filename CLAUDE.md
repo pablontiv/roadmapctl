@@ -64,3 +64,15 @@ titulo := stringField(fields, "titulo")  // correct
 ## Extracted Packages (no longer in this repo)
 
 The diff utility was extracted upstream into `github.com/pablontiv/picokit/diff` (O25-T003). roadmapctl has no remaining callers — verified by O27-T003 — and intentionally does not depend on `picokit/diff`. If a future feature needs structural diff, import `picokit/diff` directly rather than re-introducing a local copy.
+
+## Coverage
+
+roadmapctl cumple coverage-spec v1.0 (see `picokit/docs/coverage-spec.md`).
+
+Per-package floors (mínimo 85%) declarados en `.coverage-floors.toml`.
+
+Comandos:
+- `just coverage` — genera informe de cobertura
+- `just coverage-check` — verifica floors (usada también por pre-push hook)
+
+El pre-push hook bloquea pushes que bajan la cobertura por debajo del floor cuando cambian archivos `*.go`.
