@@ -151,3 +151,5 @@ Preferir predicados estructurales:
 | "el archivo tiene 142 líneas" | "el archivo no contiene la sección obsoleta `<...>`" + "contiene la nueva sección `<...>`" |
 
 Regla: un AC debe seguir siendo cierto bajo cualquier refactor incidental que preserve la intención. Si un AC numérico se rompe sólo porque el split fue más limpio de lo previsto, el AC estaba mal redactado.
+
+**ACs con `grep` literal son contratos léxicos, no semánticos.** Si el AC dice `grep "coordinador"`, la cadena "coordinador" debe aparecer literalmente en el archivo — "coordina" (verbo) no satisface el AC aunque describa el mismo concepto. Al ejecutar, verificar la cadena exacta del AC; al redactar, elegir la cadena que el texto necesariamente contendrá.

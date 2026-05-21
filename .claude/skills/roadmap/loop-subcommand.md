@@ -225,7 +225,7 @@ Durante una wave, el árbol puede estar **transitoriamente roto** si los agentes
 
 **Toda verificación global** (build, test suite, lint completo) es responsabilidad exclusiva del loop principal en el paso 6 de re-verificación directa (regla T026). El agente paralelo no la duplica ni la reporta.
 
-**Instrucción para el prompt del agente paralelo:** "Limita tus ACs verificables a comandos locales a tus archivos. No ejecutes builds, test suites ni lints globales del repo — esas verificaciones las hace el loop principal después de que todos los agentes de la wave terminaron."
+**Instrucción para el prompt del agente paralelo:** "Limita tus ACs verificables a comandos locales a tus archivos. No ejecutes builds, test suites ni lints globales del repo — esas verificaciones las hace el loop principal después de que todos los agentes de la wave terminaron. **Prohibido ejecutar `git commit` o `git push` directamente** — solo modifica archivos; el loop hace el commit vía `/integrate` tras verificar ACs."
 
 ### Pre-dispatch: serializar tasks con `## Fuente de verdad` solapada
 
