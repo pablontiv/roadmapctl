@@ -354,6 +354,7 @@ IDs are part of the machine-readable contract. Messages may change; IDs should n
 | `RMC_ENV_ROOTLINE_MISSING` | error | `doctor`, `check` | Rootline executable could not be found via `--rootline`, `ROOTLINE_BIN`, or PATH. |
 | `RMC_GRAPH_INVALID_BLOCKED_BY` | error | `check` | A `blocked_by` link is broken, not explicit relative syntax, or does not resolve to a task file. |
 | `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` | warning | `bootstrap`, `transition`, `check` | `pr_merge_strategy` is set in `.roadmapctl.toml`; migrate to `[gitflow]` fields (`branch_style`, `pr_title_style`, `pr_body_style`). |
+| `RMC_GITFLOW_NOT_CONFIGURED` | info | `bootstrap` | `[gitflow]` section is absent or all three style fields are empty; run `/roadmap bootstrap` to configure. |
 
 Additional MVP diagnostics should reuse the same convention, for example:
 

@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T010: Actualizar docs/cli-contract.md y CHANGELOG.md
