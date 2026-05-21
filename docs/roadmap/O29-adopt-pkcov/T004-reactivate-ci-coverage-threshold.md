@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T004: Reactivar coverage-threshold en CI (0 → 85)
