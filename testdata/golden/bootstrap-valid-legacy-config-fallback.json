@@ -6,11 +6,18 @@
   ],
   "auto_push": true,
   "autonomy": "until_done",
+  "branch_style": "",
   "commit_style": "conventional",
   "compact_after_task_commit": true,
   "config_path": "docs/roadmap/.roadmapctl.toml",
   "config_source": "toml",
-  "diagnostics": [],
+  "diagnostics": [
+    {
+      "id": "RMC_GITFLOW_NOT_CONFIGURED",
+      "message": "gitflow style fields not configured; run bootstrap wizard to populate [gitflow] section",
+      "severity": "info"
+    }
+  ],
   "done_statuses": [
     "Completed",
     "Obsolete"
@@ -24,8 +31,10 @@
   "loop_max_tasks": 0,
   "outcome_close_verify": [],
   "parallel": true,
+  "pr_body_style": "",
   "pr_merge_strategy": "squash",
   "pr_mode": false,
+  "pr_title_style": "",
   "required_code_coverage": 85,
   "roadmap_root": "<fixture:valid-legacy-config-fallback>/docs/roadmap",
   "root": "<fixture:valid-legacy-config-fallback>",
@@ -40,7 +49,7 @@
   },
   "summary": {
     "errors": 0,
-    "infos": 0,
+    "infos": 1,
     "status": "ok",
     "warnings": 0
   },

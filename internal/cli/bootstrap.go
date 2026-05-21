@@ -77,6 +77,9 @@ type bootstrapConfigReport struct {
 	Autonomy               string                   `json:"autonomy"`
 	CompactAfterTaskCommit bool                     `json:"compact_after_task_commit"`
 	PRMode                 bool                     `json:"pr_mode"`
+	BranchStyle            string                   `json:"branch_style"`
+	PRTitleStyle           string                   `json:"pr_title_style"`
+	PRBodyStyle            string                   `json:"pr_body_style"`
 	Helpers                contextHelpers           `json:"helpers"`
 	Repos                  []bootstrapRepoEntry     `json:"repos,omitempty"`
 	Diagnostics            []diag.Diagnostic `json:"diagnostics"`
@@ -382,10 +385,24 @@ func newBootstrapConfigReport(root string, roadmapRoot string, configPath string
 		result.Autonomy = cfg.Autonomy
 		result.CompactAfterTaskCommit = cfg.CompactAfterTaskCommit
 		result.PRMode = cfg.PRMode
+		result.BranchStyle = cfg.Gitflow.BranchStyle
+		result.PRTitleStyle = cfg.Gitflow.PrTitleStyle
+		result.PRBodyStyle = cfg.Gitflow.PrBodyStyle
 		result.Helpers = contextHelpers{
 			WhereLeaf:    cfg.LeafFilter,
 			WhereNotDone: statusWhere("not", cfg.DoneStatuses),
 			WhereActive:  statusWhere("", cfg.ActiveStatuses),
+		}
+
+		// Check if gitflow fields are configured and emit diagnostic if not
+		if cfg.Gitflow.BranchStyle == "" && cfg.Gitflow.PrTitleStyle == "" && cfg.Gitflow.PrBodyStyle == "" {
+			result.Diagnostics = append(result.Diagnostics, diag.Diagnostic{
+				ID:       "RMC_GITFLOW_NOT_CONFIGURED",
+				Severity: diag.SeverityInfo,
+				Message:  "gitflow style fields not configured; run bootstrap wizard to populate [gitflow] section",
+			})
+			// Recalculate summary with the new diagnostic
+			result.Summary = reports.NewReport(result.Kind, root, result.RoadmapRoot, result.Diagnostics).Summary
 		}
 	}
 	return result

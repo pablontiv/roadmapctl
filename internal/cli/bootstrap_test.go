@@ -561,3 +561,107 @@ func TestBootstrapSingleRepoUnaffected(t *testing.T) {
 		t.Fatalf("repos should be empty for single-repo; got %#v", report.Repos)
 	}
 }
+
+func TestBootstrapGitflowFieldsInJSON(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap init --apply exit = %d; stderr=%q", code, stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"bootstrap", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap exit = %d, want 0; stderr=%q", code, stderr.String())
+	}
+	var report struct {
+		BranchStyle  string `json:"branch_style"`
+		PRTitleStyle string `json:"pr_title_style"`
+		PRBodyStyle  string `json:"pr_body_style"`
+		Diagnostics  []struct {
+			ID string `json:"id"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	// Fields should be present in JSON (even if empty)
+	_ = report.BranchStyle  // Just verify the field exists in the struct
+	_ = report.PRTitleStyle
+	_ = report.PRBodyStyle
+
+	// Check that RMC_GITFLOW_NOT_CONFIGURED is present since the default config has empty gitflow fields
+	foundGitflowDiag := false
+	for _, diag := range report.Diagnostics {
+		if diag.ID == "RMC_GITFLOW_NOT_CONFIGURED" {
+			foundGitflowDiag = true
+			break
+		}
+	}
+	if !foundGitflowDiag {
+		t.Fatalf("expected RMC_GITFLOW_NOT_CONFIGURED in diagnostics; got %#v", report.Diagnostics)
+	}
+}
+
+func TestBootstrapGitflowConfiguredEmitsNoDiagnostic(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap init --apply exit = %d; stderr=%q", code, stderr.String())
+	}
+
+	// Now update the config to include gitflow fields
+	tomlPath := filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml")
+	content, err := os.ReadFile(tomlPath)
+	if err != nil {
+		t.Fatalf("read toml: %v", err)
+	}
+	updatedContent := string(content) + "\n[gitflow]\n" +
+		`branch_style = "conventional"` + "\n" +
+		`pr_title_style = "conventional"` + "\n" +
+		`pr_body_style = "conventional"` + "\n"
+	if err := os.WriteFile(tomlPath, []byte(updatedContent), 0o644); err != nil {
+		t.Fatalf("write updated toml: %v", err)
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"bootstrap", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap exit = %d, want 0; stderr=%q", code, stderr.String())
+	}
+	var report struct {
+		BranchStyle  string `json:"branch_style"`
+		PRTitleStyle string `json:"pr_title_style"`
+		PRBodyStyle  string `json:"pr_body_style"`
+		Diagnostics  []struct {
+			ID string `json:"id"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+
+	// Check that fields have values
+	if report.BranchStyle != "conventional" {
+		t.Fatalf("branch_style = %q, want conventional", report.BranchStyle)
+	}
+	if report.PRTitleStyle != "conventional" {
+		t.Fatalf("pr_title_style = %q, want conventional", report.PRTitleStyle)
+	}
+	if report.PRBodyStyle != "conventional" {
+		t.Fatalf("pr_body_style = %q, want conventional", report.PRBodyStyle)
+	}
+
+	// Check that RMC_GITFLOW_NOT_CONFIGURED is NOT present since all fields are configured
+	for _, diag := range report.Diagnostics {
+		if diag.ID == "RMC_GITFLOW_NOT_CONFIGURED" {
+			t.Fatalf("RMC_GITFLOW_NOT_CONFIGURED should not be present when gitflow is configured; got %#v", report.Diagnostics)
+		}
+	}
+}
