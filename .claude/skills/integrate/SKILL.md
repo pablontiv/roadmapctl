@@ -5,7 +5,7 @@ description: |
   Invocar cuando el caller (típicamente /roadmap loop) necesita integrar una task
   completada. También invocable ad-hoc cuando el usuario pide "integrate", "commit
   y push", "crear PR", "mergear PR del scope", o "gitflow".
-argument-hint: "task_path=<path> scope=<scope> previous_scope=<scope> repo_path=<path> pr_mode=<bool> commit_style=<style> auto_push=<bool> pr_merge_strategy=<strategy> autonomy=<mode> [commit_files=<files>] [commit_message=<msg>] [is_last_in_scope=<bool>]"
+argument-hint: "task_path=<path> scope=<scope> previous_scope=<scope> repo_path=<path> pr_mode=<bool> commit_style=<style> auto_push=<bool> branch_style=<style> pr_title_style=<style> pr_body_style=<style> autonomy=<mode> [commit_files=<files>] [commit_message=<msg>] [is_last_in_scope=<bool>]"
 allowed-tools:
   - Bash
   - Read
@@ -25,7 +25,11 @@ Invocable por `/roadmap loop` (paso 9) y ad-hoc por el usuario.
 | `scope` | string | Outcome activo o `direct-tasks` (e.g. `O24-slug`, `direct-tasks`) |
 | `previous_scope` | string | Scope anterior; vacío si es la primera task del loop |
 | `repo_path` | string | Path absoluto al repo (e.g. `/home/shared/myrepo`) |
-| `config` | JSON | Objeto con seis campos de `roadmapctl bootstrap`: `commit_style`, `auto_push`, `pr_mode`, `pr_merge_strategy`, `autonomy`, `base_branch` |
+| `config` | JSON | Objeto con campos de `roadmapctl bootstrap`: `commit_style`, `auto_push`, `pr_mode`, `branch_style`, `pr_title_style`, `pr_body_style`, `autonomy`, `base_branch` |
+| `branch_style` | string | Estilo de nombre de branch (ej: `feat/<scope>`, `<scope>`, etc.). Si vacío, fallback a `feat/<scope>` |
+| `pr_title_style` | string | Plantilla para título de PR (generado por LLM desde `commit_style` y scope) |
+| `pr_body_style` | string | Plantilla para body de PR (generado por LLM) |
+| `base_branch` | string | Rama base para PR (ej: `main`, `master`) |
 | `commit_files[]` | string[] | (opcional) Lista de archivos a `git add`; si omitido, usar `-A` con warning |
 | `commit_message` | string | (opcional) Override del mensaje de commit; si omitido, derivar desde `commit_style` y `task_path` |
 | `is_last_in_scope` | bool | (opcional) `true` si esta es la última task del scope actual; activa merge de PR |
@@ -77,7 +81,9 @@ Si `scope_changed == true` y `pr_mode == true`:
   ```
 - Si existe PR previo abierto, registrar en diagnostics como informativo (`PR anterior abierto para <previous_scope>: #N`). No cerrarlo automáticamente aquí; el caller decide según `autonomy`.
 
-## Fase 2: Branch setup (si `pr_mode == true`)
+## Fase 2: Branch setup
+
+Fase 2 corre siempre. Branch local por scope es invariante. `pr_mode` solo controla si Fase 5 y Fase 6 se ejecutan.
 
 1. Detectar branch actual:
    ```bash
@@ -85,18 +91,16 @@ Si `scope_changed == true` y `pr_mode == true`:
    ```
 
 2. Derivar branch target:
-   - Scope = Outcome: `feat/<scope>` (e.g. `feat/O24-slug`)
-   - Scope = `direct-tasks`: `feat/direct-roadmap-tasks`
+   - LLM lee `branch_style` del config snapshot y genera nombre de branch a partir de ese valor.
+   - Si `branch_style` está vacío, usar fallback: `feat/<scope>` (e.g. `feat/O24-slug` para Outcome, `feat/direct-roadmap-tasks` para `direct-tasks`)
 
 3. Si el branch actual difiere del target:
    ```bash
    git -C <repo_path> fetch origin <base_branch>
    git -C <repo_path> checkout <base_branch>
    git -C <repo_path> pull --ff-only
-   git -C <repo_path> checkout -B feat/<scope>
+   git -C <repo_path> checkout -B <branch_target>
    ```
-
-Si `pr_mode == false`, omitir esta fase; commitear en el branch actual.
 
 ## Fase 3: Commit
 
@@ -108,20 +112,10 @@ git -C <repo_path> add -A   # warning: staging todo
 
 Derivar mensaje de commit según `commit_style`:
 
-- `conventional`: `<type>(<scope-corto>): <título-tarea>` — derivar `<type>` desde el contenido de la task usando la tabla determinística:
-
-  | Si la task… | `<type>` |
-  |---|---|
-  | Solo toca `.md`/docs/skills, sin código ejecutable | `docs` |
-  | Agrega, bumpea o quita dependencias sin código fuente | `chore` |
-  | Mueve, renombra o reemplaza paquetes preservando la API pública | `refactor` |
-  | Agrega capability ejecutable nueva | `feat` |
-  | Corrige un bug puntual sin cambiar API | `fix` |
-  | No matchea ninguna categoría | `chore` ⚠️ (fallback — emitir warning visible en output) |
-
-  El `<scope-corto>` es el código del Outcome (`O24`, etc.) o `direct` para `direct-tasks`.
-
-- Cualquier otro valor de `commit_style` o override explícito vía `commit_message`: usar el texto directo. El override por `commit_message` siempre tiene precedencia sobre la tabla.
+- LLM genera commit message desde `commit_style` usando conocimiento de training, sin tabla local.
+- Si `commit_style` es `conventional`: LLM genera `<type>(<scope-corto>): <título-tarea>` analizando el contenido de la task (docs, chore, refactor, feat, fix) según convención.
+- El `<scope-corto>` es el código del Outcome (`O24`, etc.) o `direct` para `direct-tasks`.
+- Override explícito vía `commit_message`: usar el texto directo. El override por `commit_message` siempre tiene precedencia.
 
 ```bash
 git -C <repo_path> commit -m "$(cat <<'EOF'
@@ -180,21 +174,12 @@ Si no existe, crear:
 ```bash
 gh pr create \
   --base <base_branch> \
-  --head feat/<scope> \
-  --title "<commit_style-title para el scope>" \
-  --body "$(cat <<'EOF'
-## Scope
-<scope>
-
-## Cambios
-- Lista de tasks completadas con sus commits
-
-## Verificación
-- ACs: passed
-- Invariantes preservadas
-EOF
-)"
+  --head <branch_target> \
+  --title "<LLM-generated desde pr_title_style>" \
+  --body "<LLM-generated desde pr_body_style>"
 ```
+
+LLM genera PR title desde `pr_title_style` y body desde `pr_body_style`, incluyendo contexto de scope y lista de tasks completadas.
 
 Registrar número de PR en `INTEGRATE_RESULT.pr`.
 
@@ -210,8 +195,9 @@ Por `autonomy`:
 - `supervised`: preguntar antes de mergear.
 - `until_done`: ejecutar auto-merge si branch protection lo permite:
   ```bash
-  gh pr merge <pr_number> --auto --<pr_merge_strategy> --delete-branch
+  gh pr merge <pr_number> --auto
   ```
+  GitHub decide la merge strategy desde sus branch protection rules.
 
 Post-merge cleanup:
 

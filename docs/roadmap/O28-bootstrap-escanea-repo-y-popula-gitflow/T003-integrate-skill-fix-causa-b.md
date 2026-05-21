@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T003: integrate/SKILL.md — eliminar bug Causa B y migrar a style fields
