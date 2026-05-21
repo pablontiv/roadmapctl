@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T001: Agregar campos de estilo gitflow al Config struct

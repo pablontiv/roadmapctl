@@ -18,6 +18,8 @@ const (
 
 	DefaultDependencyLink = "blocked_by"
 
+	DiagnosticGitflowPRMergeStrategyDeprecated = "RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED"
+
 	roadmapRootDir = "docs/roadmap"
 )
 
@@ -58,6 +60,7 @@ type Config struct {
 	CommitStyle          string
 	AutoPush             bool
 	RequiredCodeCoverage float64
+	Gitflow              GitflowConfig
 
 	LoopMaxTasks           int
 	Parallel               bool
@@ -88,6 +91,12 @@ type FieldsConfig struct {
 	OutcomeValue   string `json:"outcome_value"`
 	DisplayName    string `json:"display_name"`
 	DependencyLink string `json:"dependency_link"`
+}
+
+type GitflowConfig struct {
+	BranchStyle   string `json:"branch_style"`
+	PrTitleStyle  string `json:"pr_title_style"`
+	PrBodyStyle   string `json:"pr_body_style"`
 }
 
 func Load(repo string) (*Config, error) {
@@ -143,6 +152,7 @@ type tomlConfig struct {
 	PRMode                 *bool            `toml:"pr_mode"`
 	StatusValues           tomlStatusValues `toml:"status_values"`
 	Fields                 tomlFieldsConfig `toml:"fields"`
+	Gitflow                tomlGitflowConfig `toml:"gitflow"`
 }
 
 type tomlFieldsConfig struct {
@@ -163,6 +173,12 @@ type tomlStatusValues struct {
 	Obsolete   string `toml:"obsolete"`
 }
 
+type tomlGitflowConfig struct {
+	BranchStyle   string `toml:"branch_style"`
+	PrTitleStyle  string `toml:"pr_title_style"`
+	PrBodyStyle   string `toml:"pr_body_style"`
+}
+
 func loadTOMLConfig(cfg *Config, path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -172,14 +188,14 @@ func loadTOMLConfig(cfg *Config, path string) error {
 	if err := toml.Unmarshal(data, &decoded); err != nil {
 		return &Error{Code: ErrConfigParse, Message: "parse roadmapctl TOML: " + err.Error(), Path: path, ExitCode: 2, Cause: err}
 	}
-	applyTOMLConfig(cfg, decoded)
+	applyTOMLConfig(cfg, decoded, path)
 	if err := validateConfig(cfg, path); err != nil {
 		return err
 	}
 	return nil
 }
 
-func applyTOMLConfig(cfg *Config, decoded tomlConfig) {
+func applyTOMLConfig(cfg *Config, decoded tomlConfig, path string) {
 	if decoded.DoneStatuses != nil {
 		cfg.DoneStatuses = append([]string(nil), decoded.DoneStatuses...)
 	}
@@ -194,6 +210,11 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig) {
 	}
 	if decoded.PRMergeStrategy != "" {
 		cfg.PRMergeStrategy = decoded.PRMergeStrategy
+		cfg.Warnings = append(cfg.Warnings, Warning{
+			Code:    DiagnosticGitflowPRMergeStrategyDeprecated,
+			Message: "pr_merge_strategy is deprecated; use [gitflow] fields instead",
+			Path:    path,
+		})
 	}
 	if decoded.CommitStyle != "" {
 		cfg.CommitStyle = decoded.CommitStyle
@@ -254,6 +275,15 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig) {
 	}
 	if decoded.Fields.DependencyLink != "" {
 		cfg.Fields.DependencyLink = decoded.Fields.DependencyLink
+	}
+	if decoded.Gitflow.BranchStyle != "" {
+		cfg.Gitflow.BranchStyle = decoded.Gitflow.BranchStyle
+	}
+	if decoded.Gitflow.PrTitleStyle != "" {
+		cfg.Gitflow.PrTitleStyle = decoded.Gitflow.PrTitleStyle
+	}
+	if decoded.Gitflow.PrBodyStyle != "" {
+		cfg.Gitflow.PrBodyStyle = decoded.Gitflow.PrBodyStyle
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -304,5 +305,54 @@ lifecycle = "custom_status"
 	}
 	if loaded.Fields.DependencyLink != "blocked_by" {
 		t.Fatalf("Fields.DependencyLink = %q, want default blocked_by", loaded.Fields.DependencyLink)
+	}
+}
+
+func TestGitflowConfigParsesFields(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `[gitflow]
+branch_style = "test-branch"
+pr_title_style = "test-title"
+pr_body_style = "test-body"
+`)
+
+	loaded, err := Load(repo)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if loaded.Gitflow.BranchStyle != "test-branch" {
+		t.Fatalf("Gitflow.BranchStyle = %q, want test-branch", loaded.Gitflow.BranchStyle)
+	}
+	if loaded.Gitflow.PrTitleStyle != "test-title" {
+		t.Fatalf("Gitflow.PrTitleStyle = %q, want test-title", loaded.Gitflow.PrTitleStyle)
+	}
+	if loaded.Gitflow.PrBodyStyle != "test-body" {
+		t.Fatalf("Gitflow.PrBodyStyle = %q, want test-body", loaded.Gitflow.PrBodyStyle)
+	}
+}
+
+func TestPRMergeStrategyDeprecatedWarning(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `pr_merge_strategy = "squash"
+`)
+
+	loaded, err := Load(repo)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if len(loaded.Warnings) != 1 {
+		t.Fatalf("Warnings count = %d, want 1", len(loaded.Warnings))
+	}
+	warning := loaded.Warnings[0]
+	if warning.Code != DiagnosticGitflowPRMergeStrategyDeprecated {
+		t.Fatalf("Warning.Code = %q, want %q", warning.Code, DiagnosticGitflowPRMergeStrategyDeprecated)
+	}
+	if !strings.Contains(warning.Message, "deprecated") {
+		t.Fatalf("Warning.Message = %q, want to contain 'deprecated'", warning.Message)
+	}
+	if loaded.PRMergeStrategy != "squash" {
+		t.Fatalf("PRMergeStrategy = %q, want squash", loaded.PRMergeStrategy)
 	}
 }
