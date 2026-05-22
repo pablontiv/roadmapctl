@@ -21,14 +21,38 @@ Fuente de configuración:
 | `status-values.obsolete` | `'Obsolete'` | `<status-obsolete>` |
 | `leaf-filter` | `'isIndex == false'` | `<where-leaf>` |
 | `outcome-close-verify` | `[]` | `<outcome-close-cmds>` |
-| `commit-style` | `'conventional'` | `<commit-style>` |
-| `auto-push` | `true` | `<auto-push>` |
 | `required-code-coverage` | `85.0` | `<required-code-coverage>` |
 | `loop-max-tasks` | `0` | `<loop-max-tasks>` |
 | `parallel` | `true` | `<parallel>` |
 | `autonomy` | `'until_done'` | `<autonomy>` |
 | `compact-after-task-commit` | `true` | `<compact-after-task-commit>` |
-| `pr-mode` | `false` | `<pr-mode>` |
+| `gitflow.branch_mode` | `'direct_push'` | `<branch-mode>` |
+| `gitflow.pr_create` | `'never'` | `<pr-create>` |
+| `gitflow.commit_style` | `'conventional'` | `<commit-style>` |
+| `gitflow.auto_push` | `true` | `<auto-push>` |
+| `gitflow.base_branch` | `''` | `<base-branch>` |
+| `gitflow.branch_style` | `''` | `<branch-style>` |
+| `gitflow.pr_title_style` | `''` | `<pr-title-style>` |
+| `gitflow.pr_body_style` | `''` | `<pr-body-style>` |
+
+TOML schema canónico:
+
+```toml
+# DEPRECATED (still parsed for migration):
+# commit_style = "conventional"
+# auto_push = true
+# pr_mode = false
+
+[gitflow]
+base_branch    = "master"
+branch_mode    = "direct_push"    # direct_push | scope_branch
+branch_style   = ""               # required when branch_mode=scope_branch
+pr_create      = "never"          # never | manual | auto
+pr_title_style = ""               # required when pr_create=auto
+pr_body_style  = ""               # required when pr_create=auto
+commit_style   = "conventional"
+auto_push      = true
+```
 
 ## Helpers
 

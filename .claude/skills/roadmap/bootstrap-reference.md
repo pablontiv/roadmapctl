@@ -28,7 +28,8 @@ Usar el JSON devuelto como fuente de verdad para:
 - `<where-leaf>` = `helpers.where_leaf`
 - `<where-not-done>` = `helpers.where_not_done`
 - `<where-active>` = `helpers.where_active`
-- status/config operacional = campos `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `commit_style`, `auto_push`, `required_code_coverage`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode` y cualquier campo adicional expuesto
+- status/config operacional = campos `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `required_code_coverage`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit` y el objeto `gitflow` con `branch_mode`, `pr_create`, `commit_style`, `auto_push`, `base_branch`, `branch_style`, `pr_title_style`, `pr_body_style`
+- `missing_settings`, `empty_settings`, `invalid_settings` — arrays de dot-path keys con campos no configurados, vacíos o inválidos respectivamente (e.g. `"gitflow.base_branch"`)
 
 Nota: `required_code_coverage` aplica vía `pkcov` (picokit ≥ v0.4.0) con coverage-spec v1.1 (auto-discovery de packages). Los repos del ecosistema declaran floors en `.coverage-floors.toml`; `just coverage-check` es el gate local.
 
@@ -58,28 +59,25 @@ Diagnostics relevantes:
 
 ## Diagnósticos gitflow
 
-- `RMC_GITFLOW_NOT_CONFIGURED` (info) — los campos `[gitflow]` (`branch_style`, `pr_title_style`, `pr_body_style`) están vacíos. El skill puede detectar esto para ofrecer el wizard de adopción de gitflow.
+- `RMC_CONFIG_DEPRECATED_TOPLEVEL` (warning) — campos `commit_style`, `auto_push`, o `pr_mode` están definidos en top-level; migrar a `[gitflow]`.
+- Los campos faltantes/vacíos/inválidos se reportan en `missing_settings`, `empty_settings`, `invalid_settings` (no como diagnostics individuales).
 
-## Wizard de adopción gitflow (RMC_GITFLOW_NOT_CONFIGURED)
+## Wizard de adopción gitflow
 
-Cuando bootstrap devuelve `RMC_GITFLOW_NOT_CONFIGURED`, el skill debe ejecutar el wizard de adopción:
+Cuando `missing_settings` o `empty_settings` contienen campos de `gitflow`, el skill ejecuta el wizard:
 
-1. **Escaneo abierto del repo**: El LLM decide qué leer según lo que encuentra — cualquier combinación de `.md`, `CLAUDE.md`, `AGENTS.md`, `git log`, `gh pr list --state merged`, `gh pr list --state closed`, branch protection, CI workflows (`.github/workflows/`), código fuente, o cualquier otro artefacto relevante. No hay lista fija de comandos; el LLM usa su criterio para entender las convenciones del proyecto.
+1. **Escaneo abierto del repo**: leer CLAUDE.md, git log, gh pr list, .github/workflows/, etc.
+2. **Preguntar campos en orden** (uno por vez, solo si ausentes o vacíos en `missing_settings`/`empty_settings`):
+   - `base_branch` — siempre requerido
+   - `branch_mode` — menú: `direct_push` | `scope_branch`
+   - `branch_style` — solo si `branch_mode=scope_branch`; inferir de historial de branches y pre-llenar
+   - `pr_create` — menú: `never` | `manual` | `auto`; `auto` solo disponible con `branch_mode=scope_branch`
+   - `pr_title_style`, `pr_body_style` — solo si `pr_create=auto`; inferir de PRs mergeados
+3. **Dry-run TOML**: presentar el bloque `[gitflow]` propuesto para confirmación.
+4. **Escribir solo tras confirmación**: actualizar `<roadmap-root>/.roadmapctl.toml`.
+5. **Re-ejecutar bootstrap**: invocar `roadmapctl bootstrap --repo <repo> --output json` y continuar desde el JSON actualizado.
 
-2. **Redactar propuesta de TOML**: Con la información recopilada, el LLM propone valores para los 3 style fields:
-   - `branch_style`: descripción de la convención de branches
-   - `pr_title_style`: descripción del formato de PR titles
-   - `pr_body_style`: descripción del template de PR body (o "no aplica" si pr_mode=false)
-   
-   Los campos determinísticos (`done_statuses`, `active_statuses`, etc.) se deducen del TOML existente o se usan defaults.
-
-3. **Wizard pre-llenado**: Presentar cada campo al usuario para confirmar, editar o saltar. No escribir hasta que el usuario confirme el bloque completo.
-
-4. **Escribir el TOML**: Solo tras confirmación final, actualizar `<roadmap-root>/.roadmapctl.toml` con los 3 style fields bajo `[gitflow]`.
-
-5. **Re-ejecutar bootstrap**: Invocar `roadmapctl bootstrap --repo <repo-path> --output json` y continuar desde el JSON actualizado.
-
-El subcomando `/roadmap bootstrap` fuerza re-escaneo on-demand aunque el TOML ya tenga valores, sobrescribiendo los style fields si el usuario lo confirma.
+Campos ya configurados (no en `missing_settings` ni `empty_settings`) se muestran para confirmación, no se re-preguntan, salvo que el usuario invoque `/roadmap bootstrap` explícitamente para forzar re-configuración.
 
 Cada repo mantiene su propio roadmap bajo `<repo>/docs/roadmap/`. El skill opera por repo:
 
