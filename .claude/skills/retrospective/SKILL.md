@@ -45,7 +45,7 @@ Al inicio, determinar contexto disponible:
 git log <checkpoint_commit>..HEAD --oneline
 
 # Estado actual del roadmap
-roadmapctl pending --repo <repo-path> --roadmap-root <roadmap-root> --output json 2>/dev/null
+roadmapctl pending --repo <repo-path> --output json 2>/dev/null
 ```
 
 ### Manual
@@ -115,23 +115,40 @@ Señales a buscar:
 
 ## Fase 3 — Verificación pre-propuesta
 
-Antes de proponer, grep en los artefactos candidatos para confirmar que la corrección
+Antes de proponer, buscar en los artefactos candidatos para confirmar que la corrección
 no existe ya:
 
 ```bash
-grep -r "<keyword>" .claude/skills/ .claude/rules/ 2>/dev/null | head -10
+rg -n "<keyword>" .claude/skills/ .claude/rules/ 2>/dev/null | head -10
 ```
 
-Esto previene proponer reglas que ya existen o duplicar retrospectivas anteriores.
+Si `rg` no está disponible, usar `grep -r` como fallback. Esto previene proponer reglas
+que ya existen o duplicar retrospectivas anteriores.
+
+### Clasificación de scope
+
+Antes de poner una propuesta en la tabla, clasificar `Scope` y `Repo destino`:
+
+- **local**: el artefacto pertenece al repo actual. Incluye `CLAUDE.md`, `AGENTS.md`,
+  `.claude/rules/`, docs locales y roadmap local. También aplica a skills cuyo
+  `SKILL.md` no tiene `source:` o cuyo `source:` coincide con el repo actual.
+- **upstream-skill**: el artefacto está bajo `.claude/skills/<skill>/...` y el
+  frontmatter de `.claude/skills/<skill>/SKILL.md` tiene `source:` apuntando a otro
+  repo. `Repo destino` debe ser ese `source:` (por ejemplo `pablontiv/roadmapctl`).
+
+Para candidatos bajo `.claude/skills/<skill>/...`, leer siempre el frontmatter de
+`.claude/skills/<skill>/SKILL.md` antes de proponer. Si el scope es `upstream-skill`
+y existe un clone local en `/home/shared/<repo-name>`, materializar la corrección en
+ese repo fuente, no en la copia instalada del usuario ni en el repo del proyecto actual.
 
 ## Fase 4 — Tabla de propuestas (output final)
 
 Presentar tabla de correcciones propuestas, estructurada como spec para `/roadmap plan`:
 
-| # | Tipo | Artefacto | Sección | Cambio propuesto | Previene error # |
-|---|------|-----------|---------|-----------------|-----------------|
-| 1 | Comprensión | `.claude/skills/roadmap/loop-subcommand.md` | Fase 3.X | Aclarar que Y debe hacerse antes de Z | E2 |
-| 2 | AC | `docs/roadmap/O01/TXXX-task.md` | Criterios de Aceptación | Especificar condición exacta del AC | E1 |
+| # | Tipo | Scope | Repo destino | Artefacto | Sección | Cambio propuesto | Previene error # |
+|---|------|-------|--------------|-----------|---------|-----------------|-----------------|
+| 1 | Comprensión | upstream-skill | `pablontiv/roadmapctl` | `.claude/skills/roadmap/loop-subcommand.md` | Fase 3.X | Aclarar que Y debe hacerse antes de Z | E2 |
+| 2 | AC | local | repo actual | `docs/roadmap/O01/TXXX-task.md` | Criterios de Aceptación | Especificar condición exacta del AC | E1 |
 
 **El skill termina aquí.** Para materializar correcciones:
 ```
@@ -139,11 +156,14 @@ Presentar tabla de correcciones propuestas, estructurada como spec para `/roadma
 /roadmap loop  → ejecuta las correcciones
 ```
 
+Las propuestas `upstream-skill` deben planearse y ejecutarse en `Repo destino`.
+No corregirlas editando copias instaladas en user-scope ni mezclándolas en el repo actual.
+
 ## Mapeo de artefactos por tipo de error
 
 | Tipo de Error | Artefacto candidato |
 |---------------|---------------------|
-| Instrucción de skill incorrecta / ambigua | `.claude/skills/<skill>/SKILL.md` o subcomando |
+| Instrucción de skill incorrecta / ambigua | `.claude/skills/<skill>/SKILL.md` o subcomando; clasificar `local` vs `upstream-skill` desde frontmatter `source:` |
 | Regla operativa mal aplicada | `.claude/rules/<rule>.md` |
 | AC de task incompleto o ambiguo | `<roadmap-root>/<outcome>/<task>.md` sección ACs |
 | Criterio de completitud del outcome | `<roadmap-root>/<outcome>/README.md` |
