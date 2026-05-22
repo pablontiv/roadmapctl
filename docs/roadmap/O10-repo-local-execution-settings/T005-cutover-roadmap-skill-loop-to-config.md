@@ -25,7 +25,7 @@ The user wants behavior settings fixed locally per repo. The skill must stop adv
 **In**:
 1. Update .claude/skills/roadmap/SKILL.md bootstrap/config sections to treat legacy as migration input handled by roadmapctl, not fallback for implemented flows.
 2. Update .claude/skills/roadmap/loop-subcommand.md to keep only --filter and --max, and to define config-driven loop_max_tasks, parallel, autonomy, compact_after_task_commit, and pr_mode behavior.
-3. Update .claude/skills/roadmap/pr-workflow.md so PR mode comes from pr_mode config and merge behavior follows autonomy plus pr_merge_strategy.
+3. Update .claude/skills/roadmap/pr-workflow.md so PR mode comes from pr_mode config.
 4. Document opportunistic parallel waves using blocked_by/roadmapctl next as the only dependency source.
 5. Document compact_roadmap_context with /compact fallback after durable commit/push/PR bookkeeping.
 6. Update materialization-related skill language so roadmapctl-owned batch apply is allowed while direct multi-file skill writes remain forbidden.

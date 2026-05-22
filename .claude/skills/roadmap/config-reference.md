@@ -21,7 +21,6 @@ Fuente de configuración:
 | `status-values.obsolete` | `'Obsolete'` | `<status-obsolete>` |
 | `leaf-filter` | `'isIndex == false'` | `<where-leaf>` |
 | `outcome-close-verify` | `[]` | `<outcome-close-cmds>` |
-| `pr-merge-strategy` | `'squash'` | `<pr-merge-strategy>` |
 | `commit-style` | `'conventional'` | `<commit-style>` |
 | `auto-push` | `true` | `<auto-push>` |
 | `required-code-coverage` | `85.0` | `<required-code-coverage>` |

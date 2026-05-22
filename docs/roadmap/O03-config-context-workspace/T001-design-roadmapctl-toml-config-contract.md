@@ -21,7 +21,7 @@ Decisión aprobada: mover la config local desde `.claude/roadmap.local.md` a `<r
 ## Alcance
 
 **In**:
-1. Definir keys TOML: `done_statuses`, `active_statuses`, `leaf_filter`, `outcome_close_verify`, `pr_merge_strategy`, `commit_style`, `auto_push`, `[status_values]`.
+1. Definir keys TOML: `done_statuses`, `active_statuses`, `leaf_filter`, `outcome_close_verify`, `commit_style`, `auto_push`, `[status_values]`.
 2. Decidir si `roadmap_root` existe en TOML o solo se infiere.
 3. Definir defaults, precedence y diagnostics.
 4. Documentar legacy fallback y conflicto.

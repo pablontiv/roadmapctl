@@ -30,7 +30,7 @@ The skill must not parse TOML or legacy config. It needs the new config values f
 
 ## Estado inicial esperado
 
-internal/cli/context.go exposes status values, done/active statuses, and helpers, but omits auto_push, commit_style, pr_merge_strategy, outcome_close_verify, and the new loop execution settings.
+internal/cli/context.go exposes status values, done/active statuses, and helpers, but omits auto_push, commit_style, outcome_close_verify, and the new loop execution settings.
 
 ## Especificación Técnica
 
@@ -39,7 +39,7 @@ Prefer a nested JSON object named execution or operational_config only if all ca
 ## Criterios de Aceptación
 
 - go test ./internal/cli -run 'TestContext|TestCheckGoldenJSONFixtures' passes after golden updates.
-- roadmapctl context --output json includes loop_max_tasks, parallel, autonomy, compact_after_task_commit, pr_mode, auto_push, commit_style, pr_merge_strategy, and outcome_close_verify for a single repo.
+- roadmapctl context --output json includes loop_max_tasks, parallel, autonomy, compact_after_task_commit, pr_mode, auto_push, commit_style, and outcome_close_verify for a single repo.
 - roadmapctl context --workspace --output json includes the same operational settings for each repo entry.
 
 ## Fuente de verdad

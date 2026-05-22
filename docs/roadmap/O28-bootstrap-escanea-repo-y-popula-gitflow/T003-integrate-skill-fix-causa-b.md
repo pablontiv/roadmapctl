@@ -41,7 +41,7 @@ Todo eso debe reemplazarse por generación LLM desde los style fields del TOML.
 6. Fase 6: `gh pr merge --auto` sin `--squash`, `--rebase`, `--merge`, `--delete-branch`
 7. Eliminar tabla determinística de tipos de commit
 8. Eliminar toda mención de trailers (`Co-authored-by`, `Signed-off-by`)
-9. Config snapshot en el frontmatter/inputs: agregar `branch_style`, `pr_title_style`, `pr_body_style`, `base_branch`; remover `pr_merge_strategy`
+9. Config snapshot en el frontmatter/inputs: agregar `branch_style`, `pr_title_style`, `pr_body_style`, `base_branch`
 
 **Out**:
 - No modificar loop-subcommand.md (T004)
@@ -58,7 +58,7 @@ Todo eso debe reemplazarse por generación LLM desde los style fields del TOML.
 - El archivo no contiene `Co-authored-by` ni `Signed-off-by`
 - El archivo no contiene `--squash` ni `--delete-branch` en el comando `gh pr merge`
 - Fase 2 no contiene condición `if pr_mode`; el texto dice que corre siempre
-- Inputs del skill incluyen `branch_style`, `pr_title_style`, `pr_body_style`; no incluyen `pr_merge_strategy`
+- Inputs del skill incluyen `branch_style`, `pr_title_style`, `pr_body_style`
 
 ## Fuente de verdad
 

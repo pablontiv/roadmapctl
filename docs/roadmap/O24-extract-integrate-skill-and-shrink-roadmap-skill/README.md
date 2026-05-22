@@ -12,7 +12,7 @@ incluso para subcomandos como `pending` que solo necesitan ~40.
 
 Al terminar este Outcome existirá un skill aparte `/integrate` que encapsula
 toda la prosa de gitflow per-task — branch por scope, commit con `commit_style`,
-push si `auto_push`, `gh pr create/merge` según `pr_mode`/`autonomy`/`pr_merge_strategy`,
+push si `auto_push`, `gh pr create/merge` según `pr_mode`/`autonomy`,
 cleanup post-merge — y será invocable tanto desde el paso 9 de `/roadmap loop`
 como ad-hoc. En paralelo, `SKILL.md` del skill `/roadmap` quedará ≤ 100 líneas
 gracias a progressive disclosure: bootstrap detallado, tabla completa de config

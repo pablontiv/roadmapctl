@@ -100,10 +100,6 @@ Config keys:
 | `[status_values].blocked` | string | `Blocked` | Operational blocked role value. |
 | `[status_values].obsolete` | string | `Obsolete` | Operational obsolete role value. |
 
-`pr_merge_strategy` is deprecated. If present, bootstrap/check may emit
-`RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED`; use `[gitflow]` style fields
-instead.
-
 ## Bootstrap
 
 `bootstrap` is the agent context API:
@@ -252,7 +248,6 @@ Important IDs include:
 | `RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED` | error | `.stem` requires `estado` for Outcome README records. |
 | `RMC_LINT_SCHEMA_OUTCOME_ESTADO_NON_EMPTY` | error | `.stem` has a global non-empty status rule incompatible with Outcome README files. |
 | `RMC_GITFLOW_NOT_CONFIGURED` | info | `[gitflow]` style fields are absent or empty. |
-| `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` | warning | Deprecated `pr_merge_strategy` is present. |
 | `RMC_BOOTSTRAP_REPAIR_UNSUPPORTED_STEM` | error | Automatic `.stem` repair is not safe for this schema. |
 
 Rootline operation diagnostics use `details.kind` when known, with values such

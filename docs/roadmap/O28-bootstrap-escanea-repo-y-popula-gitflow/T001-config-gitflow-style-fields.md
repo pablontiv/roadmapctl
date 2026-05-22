@@ -21,13 +21,11 @@ El TOML de `.roadmapctl.toml` necesita 3 nuevos campos bajo `[gitflow]`:
 
 El binario actualmente ignora campos desconocidos. Hay que agregarlos al struct `Config` y a la serialización TOML para que `roadmapctl bootstrap --output json` los devuelva en el JSON y el skill `/integrate` los reciba en su config snapshot.
 
-`pr_merge_strategy` (campo existente) queda deprecated: si está presente en el TOML, el bootstrap debe emitir `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` en diagnostics como warning (no error).
 
 ## Alcance
 
 **In**:
 1. Agregar `BranchStyle string`, `PrTitleStyle string`, `PrBodyStyle string` al struct `Config` en `internal/config/config.go`, parseables desde `[gitflow]` del TOML
-2. Agregar lógica de warning `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` si `PRMergeStrategy != ""`
 3. Tests unitarios en `internal/config/config_test.go`
 
 **Out**:
@@ -45,7 +43,6 @@ El binario actualmente ignora campos desconocidos. Hay que agregarlos al struct 
 
 - `grep -n 'BranchStyle\|PrTitleStyle\|PrBodyStyle' internal/config/config.go` retorna las 3 definiciones
 - TOML con `[gitflow]\nbranch_style = "test"` parseado correctamente: `config.BranchStyle == "test"`
-- TOML con `pr_merge_strategy = "squash"` → `roadmapctl bootstrap` emite `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` en diagnostics (severity warning)
 - `go test ./internal/config/... -count=1` sale exit 0
 - `golangci-lint run ./...` sale exit 0
 

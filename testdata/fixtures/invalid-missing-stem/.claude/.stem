@@ -19,9 +19,6 @@ schema:
     type: string
   outcome-close-verify:
     type: list
-  pr-merge-strategy:
-    type: enum
-    values: [squash, merge, rebase]
   commit-style:
     type: enum
     values: [conventional]

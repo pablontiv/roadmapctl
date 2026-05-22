@@ -37,7 +37,6 @@ Defaults:
 Existing fields remain in the same config:
 
 ```toml
-pr_merge_strategy = "squash"
 commit_style = "conventional"
 auto_push = true
 ```
@@ -91,7 +90,7 @@ No heuristic file/scope dependency inference is required for deciding parallel e
 
 ### PR mode
 
-`pr_mode` replaces `--pr`. Existing `pr_merge_strategy` and `auto_push` continue to control merge strategy and push behavior.
+`pr_mode` replaces `--pr`. Existing `auto_push` continues to control push behavior.
 
 ### Context compaction
 

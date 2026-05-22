@@ -93,7 +93,7 @@ las references.
 
 - AC1: `wc -l .claude/skills/roadmap/SKILL.md` retorna ≤ 100 líneas (sin contar líneas vacías de la cuenta).
 - AC2: `test -f .claude/skills/roadmap/bootstrap-reference.md` retorna 0; el archivo contiene secciones "Paso 0", "Fuente primaria de contexto", "Workspace mode", "Single-repo mode", y el template YAML mínimo. Verificar con `grep -c "Workspace mode" .claude/skills/roadmap/bootstrap-reference.md` ≥ 1.
-- AC3: `test -f .claude/skills/roadmap/config-reference.md` retorna 0; el archivo contiene la tabla de config (verificar con `grep -c "Config key" config-reference.md` ≥ 1 y `grep -c "pr-merge-strategy" config-reference.md` ≥ 1).
+- AC3: `test -f .claude/skills/roadmap/config-reference.md` retorna 0; el archivo contiene la tabla de config (verificar con `grep -c "Config key" config-reference.md` ≥ 1).
 - AC4: `test -f .claude/skills/roadmap/verification-reference.md` retorna 0; contiene los dos comandos `pi --no-extensions --skill`. Verificar `grep -c "pi --no-extensions" verification-reference.md` ≥ 2.
 - AC5: SKILL.md retiene los textos exactos "Invariante de materialización", "Invariante de escritura segura", "Routing por subcomando" y "Regla de dispatch". Verificar con 4 `grep -c` separados, cada uno ≥ 1.
 - AC6: cada subcomando que escribe/muta declara explícitamente cargar `bootstrap-reference.md`. Verificar: `grep -l "bootstrap-reference.md" .claude/skills/roadmap/plan-subcommand.md .claude/skills/roadmap/loop-subcommand.md` lista los dos archivos.

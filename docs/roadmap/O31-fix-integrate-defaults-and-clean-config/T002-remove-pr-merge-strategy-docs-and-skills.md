@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T002: Eliminar `pr_merge_strategy` de skills, docs e históricos

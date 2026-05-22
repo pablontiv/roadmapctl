@@ -24,7 +24,7 @@ tipo: task
 Hoy `loop-subcommand.md` paso 9 (~30 líneas) y `pr-workflow.md` (97 líneas)
 prescriben gitflow per-task: commit + push + opcional creación/merge de PR. La
 prescripción depende de seis campos de `roadmapctl bootstrap`: `commit_style`,
-`auto_push`, `pr_mode`, `pr_merge_strategy`, `autonomy`, y `base_branch` (este
+`auto_push`, `pr_mode`, `autonomy`, y `base_branch` (este
 último derivado de `git symbolic-ref refs/remotes/origin/HEAD`).
 
 Variables canónicas que el caller mantiene hoy en el loop: `prs_created`,
@@ -56,7 +56,7 @@ condiciones lo invocan), `argument-hint` describiendo inputs canónicos,
    - Fase 3 "Commit": `git add <commit_files>` (o `-A` fallback con warning), `git commit -m "<mensaje>"` con mensaje derivado de `commit_style` (`conventional` → `<type>(<scope-corto>): <título>`) o override de `commit_message`. Capturar `commit_hash = git rev-parse HEAD`.
    - Fase 4 "Push": si `auto_push==true`, `git push -u origin <branch>`. Manejo de push rejected según `autonomy` (manual/supervised parar; until_done rebase y reintentar 1 vez).
    - Fase 5 "PR (si `pr_mode==true && auto_push==true`)": `gh pr list --head feat/<scope> --state open` para detectar; `gh pr create --base <base_branch> --head feat/<scope>` con body heredoc si no existe.
-   - Fase 6 "Merge (si `pr_mode==true && is_last_in_scope==true`)": `gh pr merge <n> --auto --<pr_merge_strategy> --delete-branch` según autonomy (manual/supervised preguntan; until_done auto-merge). Post-merge: `git checkout <base_branch> && git pull --ff-only`.
+   - Fase 6 "Merge (si `pr_mode==true && is_last_in_scope==true`)": `gh pr merge <n> --auto --delete-branch` según autonomy (manual/supervised preguntan; until_done auto-merge). Post-merge: `git checkout <base_branch> && git pull --ff-only`.
    - Sección "Errores comunes" tabulando diagnostics `RMC_INTEGRATE_NOOP`, `RMC_INTEGRATE_PUSH_REJECTED`, `RMC_INTEGRATE_GH_AUTH`, `RMC_INTEGRATE_NO_GIT`, `RMC_INTEGRATE_NO_GH` con causa y acción.
    - Sección "Verificación al modificar este skill" con los dos comandos `pi --skill` de los AC4-AC5.
 2. Verificar que `scripts/sync-roadmap-skill.sh --install --skill integrate` sincroniza el nuevo skill a `~/.claude/skills/integrate/` sin tocar otros skills.
@@ -70,7 +70,7 @@ condiciones lo invocan), `argument-hint` describiendo inputs canónicos,
 
 - `.claude/skills/integrate/` no existe en `git ls-files`.
 - `scripts/sync-roadmap-skill.sh` ya soporta `--skill NAME` (verificado).
-- Bootstrap del repo retorna `commit_style=conventional`, `auto_push=true`, `pr_mode=false`, `autonomy=until_done`, `pr_merge_strategy=squash`.
+- Bootstrap del repo retorna `commit_style=conventional`, `auto_push=true`, `pr_mode=false`, `autonomy=until_done`.
 
 ## Criterios de Aceptación
 

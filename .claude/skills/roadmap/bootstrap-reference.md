@@ -28,7 +28,7 @@ Usar el JSON devuelto como fuente de verdad para:
 - `<where-leaf>` = `helpers.where_leaf`
 - `<where-not-done>` = `helpers.where_not_done`
 - `<where-active>` = `helpers.where_active`
-- status/config operacional = campos `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `pr_merge_strategy`, `commit_style`, `auto_push`, `required_code_coverage`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode` y cualquier campo adicional expuesto
+- status/config operacional = campos `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `commit_style`, `auto_push`, `required_code_coverage`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode` y cualquier campo adicional expuesto
 
 Para el schema completo de `estado`, llamar `rootline describe` directamente si se necesita.
 
@@ -57,7 +57,6 @@ Diagnostics relevantes:
 ## Diagnósticos gitflow
 
 - `RMC_GITFLOW_NOT_CONFIGURED` (info) — los campos `[gitflow]` (`branch_style`, `pr_title_style`, `pr_body_style`) están vacíos. El skill puede detectar esto para ofrecer el wizard de adopción de gitflow.
-- `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` (warning) — `pr_merge_strategy` está seteado en el TOML; migrar a `[gitflow]` fields.
 
 ## Wizard de adopción gitflow (RMC_GITFLOW_NOT_CONFIGURED)
 
@@ -108,7 +107,6 @@ status-values:
   obsolete: 'Obsolete'
 leaf-filter: 'isIndex == false'
 outcome-close-verify: []
-pr-merge-strategy: 'squash'
 commit-style: 'conventional'
 auto-push: true
 ---

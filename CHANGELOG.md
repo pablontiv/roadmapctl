@@ -20,7 +20,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Rel
 
 ### Deprecated (O28)
 
-- `pr_merge_strategy` TOML field: now emits `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` warning; use `[gitflow]` fields
+- Removed `pr_merge_strategy` TOML field and `RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED` diagnostic. Merge strategy is now controlled exclusively by GitHub branch protection rules. No fallback or migration path — consumers must delete the field from their `.roadmapctl.toml` if present.
 
 ### Added (Previous)
 
