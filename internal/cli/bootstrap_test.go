@@ -578,31 +578,32 @@ func TestBootstrapGitflowFieldsInJSON(t *testing.T) {
 		t.Fatalf("bootstrap exit = %d, want 0; stderr=%q", code, stderr.String())
 	}
 	var report struct {
-		BranchStyle  string `json:"branch_style"`
-		PRTitleStyle string `json:"pr_title_style"`
-		PRBodyStyle  string `json:"pr_body_style"`
-		Diagnostics  []struct {
-			ID string `json:"id"`
-		} `json:"diagnostics"`
+		Gitflow struct {
+			BranchMode  string `json:"branch_mode"`
+			PrCreate    string `json:"pr_create"`
+			CommitStyle string `json:"commit_style"`
+			AutoPush    bool   `json:"auto_push"`
+		} `json:"gitflow"`
+		MissingSettings []string `json:"missing_settings"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
 		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
 	}
-	// Fields should be present in JSON (even if empty)
-	_ = report.BranchStyle // Just verify the field exists in the struct
-	_ = report.PRTitleStyle
-	_ = report.PRBodyStyle
-
-	// Check that RMC_GITFLOW_NOT_CONFIGURED is present since the default config has empty gitflow fields
-	foundGitflowDiag := false
-	for _, diag := range report.Diagnostics {
-		if diag.ID == "RMC_GITFLOW_NOT_CONFIGURED" {
-			foundGitflowDiag = true
-			break
+	if report.Gitflow.BranchMode != "direct_push" {
+		t.Fatalf("gitflow.branch_mode = %q, want direct_push", report.Gitflow.BranchMode)
+	}
+	if report.Gitflow.CommitStyle != "conventional" {
+		t.Fatalf("gitflow.commit_style = %q, want conventional", report.Gitflow.CommitStyle)
+	}
+	// base_branch is empty in default config → should appear in missing_settings
+	foundMissing := false
+	for _, s := range report.MissingSettings {
+		if s == "gitflow.base_branch" {
+			foundMissing = true
 		}
 	}
-	if !foundGitflowDiag {
-		t.Fatalf("expected RMC_GITFLOW_NOT_CONFIGURED in diagnostics; got %#v", report.Diagnostics)
+	if !foundMissing {
+		t.Fatalf("expected gitflow.base_branch in missing_settings; got %v", report.MissingSettings)
 	}
 }
 
@@ -636,32 +637,101 @@ func TestBootstrapGitflowConfiguredEmitsNoDiagnostic(t *testing.T) {
 		t.Fatalf("bootstrap exit = %d, want 0; stderr=%q", code, stderr.String())
 	}
 	var report struct {
-		BranchStyle  string `json:"branch_style"`
-		PRTitleStyle string `json:"pr_title_style"`
-		PRBodyStyle  string `json:"pr_body_style"`
-		Diagnostics  []struct {
-			ID string `json:"id"`
-		} `json:"diagnostics"`
+		Gitflow struct {
+			BranchStyle  string `json:"branch_style"`
+			PrTitleStyle string `json:"pr_title_style"`
+			PrBodyStyle  string `json:"pr_body_style"`
+		} `json:"gitflow"`
+		MissingSettings []string `json:"missing_settings"`
+		EmptySettings   []string `json:"empty_settings"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
 		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
 	}
 
-	// Check that fields have values
-	if report.BranchStyle != "conventional" {
-		t.Fatalf("branch_style = %q, want conventional", report.BranchStyle)
+	// Check that gitflow style fields have values
+	if report.Gitflow.BranchStyle != "conventional" {
+		t.Fatalf("gitflow.branch_style = %q, want conventional", report.Gitflow.BranchStyle)
 	}
-	if report.PRTitleStyle != "conventional" {
-		t.Fatalf("pr_title_style = %q, want conventional", report.PRTitleStyle)
+	if report.Gitflow.PrTitleStyle != "conventional" {
+		t.Fatalf("gitflow.pr_title_style = %q, want conventional", report.Gitflow.PrTitleStyle)
 	}
-	if report.PRBodyStyle != "conventional" {
-		t.Fatalf("pr_body_style = %q, want conventional", report.PRBodyStyle)
+	if report.Gitflow.PrBodyStyle != "conventional" {
+		t.Fatalf("gitflow.pr_body_style = %q, want conventional", report.Gitflow.PrBodyStyle)
 	}
 
-	// Check that RMC_GITFLOW_NOT_CONFIGURED is NOT present since all fields are configured
-	for _, diag := range report.Diagnostics {
-		if diag.ID == "RMC_GITFLOW_NOT_CONFIGURED" {
-			t.Fatalf("RMC_GITFLOW_NOT_CONFIGURED should not be present when gitflow is configured; got %#v", report.Diagnostics)
+	// No empty_settings for style fields since they're all set
+	for _, s := range report.EmptySettings {
+		if s == "gitflow.branch_style" || s == "gitflow.pr_title_style" || s == "gitflow.pr_body_style" {
+			t.Fatalf("style field %q should not be in empty_settings", s)
+		}
+	}
+}
+
+func TestBootstrapJSONIncludesGitflowObject(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	var stdout, stderr bytes.Buffer
+	Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+
+	stdout.Reset()
+	stderr.Reset()
+	code := Execute([]string{"bootstrap", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
+	if code != 0 {
+		t.Fatalf("bootstrap exit = %d, want 0; stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var report struct {
+		Gitflow struct {
+			BranchMode  string `json:"branch_mode"`
+			PrCreate    string `json:"pr_create"`
+			CommitStyle string `json:"commit_style"`
+			AutoPush    bool   `json:"auto_push"`
+		} `json:"gitflow"`
+		MissingSettings []string `json:"missing_settings"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
+	}
+	if report.Gitflow.BranchMode != "direct_push" {
+		t.Fatalf("gitflow.branch_mode = %q, want direct_push", report.Gitflow.BranchMode)
+	}
+	if report.Gitflow.PrCreate != "never" {
+		t.Fatalf("gitflow.pr_create = %q, want never", report.Gitflow.PrCreate)
+	}
+	if report.Gitflow.CommitStyle != "conventional" {
+		t.Fatalf("gitflow.commit_style = %q, want conventional", report.Gitflow.CommitStyle)
+	}
+	if !report.Gitflow.AutoPush {
+		t.Fatal("gitflow.auto_push = false, want true")
+	}
+	found := false
+	for _, s := range report.MissingSettings {
+		if s == "gitflow.base_branch" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing_settings should include gitflow.base_branch, got %v", report.MissingSettings)
+	}
+}
+
+func TestBootstrapJSONDoesNotIncludeLegacyFlatFields(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepo(t, repo)
+	var stdout, stderr bytes.Buffer
+	Execute([]string{"bootstrap", "init", "--repo", repo, "--apply", "--output", "json"}, &stdout, &stderr, "dev")
+
+	stdout.Reset()
+	stderr.Reset()
+	Execute([]string{"bootstrap", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
+
+	var raw map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &raw); err != nil {
+		t.Fatalf("stdout invalid JSON: %v", err)
+	}
+	for _, legacy := range []string{"pr_mode", "commit_style", "auto_push", "branch_style", "pr_title_style", "pr_body_style"} {
+		if _, found := raw[legacy]; found {
+			t.Fatalf("bootstrap JSON still contains legacy flat field %q", legacy)
 		}
 	}
 }

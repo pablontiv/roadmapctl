@@ -4,10 +4,7 @@
     "Specified",
     "In Progress"
   ],
-  "auto_push": true,
   "autonomy": "until_done",
-  "branch_style": "",
-  "commit_style": "conventional",
   "compact_after_task_commit": true,
   "config_path": "docs/roadmap/.roadmapctl.toml",
   "config_source": "toml",
@@ -17,17 +14,22 @@
       "message": "top-level commit_style, auto_push, pr_mode are deprecated; move them under [gitflow]",
       "path": "docs/roadmap/.roadmapctl.toml",
       "severity": "warning"
-    },
-    {
-      "id": "RMC_GITFLOW_NOT_CONFIGURED",
-      "message": "gitflow style fields not configured; run bootstrap wizard to populate [gitflow] section",
-      "severity": "info"
     }
   ],
   "done_statuses": [
     "Completed",
     "Obsolete"
   ],
+  "gitflow": {
+    "auto_push": true,
+    "base_branch": "",
+    "branch_mode": "direct_push",
+    "branch_style": "",
+    "commit_style": "conventional",
+    "pr_body_style": "",
+    "pr_create": "never",
+    "pr_title_style": ""
+  },
   "helpers": {
     "where_active": "estado in [\"Pending\", \"Specified\", \"In Progress\"]",
     "where_leaf": "isIndex == false",
@@ -35,11 +37,11 @@
   },
   "kind": "roadmapctl/bootstrap",
   "loop_max_tasks": 0,
+  "missing_settings": [
+    "gitflow.base_branch"
+  ],
   "outcome_close_verify": [],
   "parallel": true,
-  "pr_body_style": "",
-  "pr_mode": false,
-  "pr_title_style": "",
   "required_code_coverage": 85,
   "roadmap_root": "<fixture:valid-legacy-config-fallback>/docs/roadmap",
   "root": "<fixture:valid-legacy-config-fallback>",
@@ -54,7 +56,7 @@
   },
   "summary": {
     "errors": 0,
-    "infos": 1,
+    "infos": 0,
     "status": "warning",
     "warnings": 1
   },

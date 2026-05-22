@@ -55,33 +55,42 @@ type contextHelpers struct {
 	WhereActive  string `json:"where_active"`
 }
 
+type bootstrapGitflowReport struct {
+	BaseBranch   string `json:"base_branch"`
+	BranchMode   string `json:"branch_mode"`
+	BranchStyle  string `json:"branch_style"`
+	PrCreate     string `json:"pr_create"`
+	PrTitleStyle string `json:"pr_title_style"`
+	PrBodyStyle  string `json:"pr_body_style"`
+	CommitStyle  string `json:"commit_style"`
+	AutoPush     bool   `json:"auto_push"`
+}
+
 type bootstrapConfigReport struct {
-	Version                int                  `json:"version"`
-	Kind                   string               `json:"kind"`
-	Summary                diag.Summary         `json:"summary"`
-	Root                   string               `json:"root"`
-	RoadmapRoot            string               `json:"roadmap_root"`
-	ConfigPath             string               `json:"config_path"`
-	ConfigSource           string               `json:"config_source"`
-	RootlineVersion        string               `json:"rootline_version"`
-	StatusValues           config.StatusValues  `json:"status_values"`
-	DoneStatuses           []string             `json:"done_statuses"`
-	ActiveStatuses         []string             `json:"active_statuses"`
-	OutcomeCloseVerify     []string             `json:"outcome_close_verify"`
-	CommitStyle            string               `json:"commit_style"`
-	AutoPush               bool                 `json:"auto_push"`
-	RequiredCodeCoverage   float64              `json:"required_code_coverage"`
-	LoopMaxTasks           int                  `json:"loop_max_tasks"`
-	Parallel               bool                 `json:"parallel"`
-	Autonomy               string               `json:"autonomy"`
-	CompactAfterTaskCommit bool                 `json:"compact_after_task_commit"`
-	PRMode                 bool                 `json:"pr_mode"`
-	BranchStyle            string               `json:"branch_style"`
-	PRTitleStyle           string               `json:"pr_title_style"`
-	PRBodyStyle            string               `json:"pr_body_style"`
-	Helpers                contextHelpers       `json:"helpers"`
-	Repos                  []bootstrapRepoEntry `json:"repos,omitempty"`
-	Diagnostics            []diag.Diagnostic    `json:"diagnostics"`
+	Version                int                    `json:"version"`
+	Kind                   string                 `json:"kind"`
+	Summary                diag.Summary           `json:"summary"`
+	Root                   string                 `json:"root"`
+	RoadmapRoot            string                 `json:"roadmap_root"`
+	ConfigPath             string                 `json:"config_path"`
+	ConfigSource           string                 `json:"config_source"`
+	RootlineVersion        string                 `json:"rootline_version"`
+	StatusValues           config.StatusValues    `json:"status_values"`
+	DoneStatuses           []string               `json:"done_statuses"`
+	ActiveStatuses         []string               `json:"active_statuses"`
+	OutcomeCloseVerify     []string               `json:"outcome_close_verify"`
+	RequiredCodeCoverage   float64                `json:"required_code_coverage"`
+	LoopMaxTasks           int                    `json:"loop_max_tasks"`
+	Parallel               bool                   `json:"parallel"`
+	Autonomy               string                 `json:"autonomy"`
+	CompactAfterTaskCommit bool                   `json:"compact_after_task_commit"`
+	Gitflow                bootstrapGitflowReport `json:"gitflow"`
+	MissingSettings        []string               `json:"missing_settings,omitempty"`
+	EmptySettings          []string               `json:"empty_settings,omitempty"`
+	InvalidSettings        []string               `json:"invalid_settings,omitempty"`
+	Helpers                contextHelpers         `json:"helpers"`
+	Repos                  []bootstrapRepoEntry   `json:"repos,omitempty"`
+	Diagnostics            []diag.Diagnostic      `json:"diagnostics"`
 }
 
 func newBootstrapCommand(options *Options, stdin io.Reader, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
@@ -375,35 +384,47 @@ func newBootstrapConfigReport(root string, roadmapRoot string, configPath string
 		result.DoneStatuses = append([]string(nil), cfg.DoneStatuses...)
 		result.ActiveStatuses = append([]string(nil), cfg.ActiveStatuses...)
 		result.OutcomeCloseVerify = append([]string{}, cfg.OutcomeCloseVerify...)
-		result.CommitStyle = cfg.Gitflow.CommitStyle
-		result.AutoPush = cfg.Gitflow.AutoPush
 		result.RequiredCodeCoverage = cfg.RequiredCodeCoverage
 		result.LoopMaxTasks = cfg.LoopMaxTasks
 		result.Parallel = cfg.Parallel
 		result.Autonomy = cfg.Autonomy
 		result.CompactAfterTaskCommit = cfg.CompactAfterTaskCommit
-		result.PRMode = cfg.Gitflow.PrCreate != "never"
-		result.BranchStyle = cfg.Gitflow.BranchStyle
-		result.PRTitleStyle = cfg.Gitflow.PrTitleStyle
-		result.PRBodyStyle = cfg.Gitflow.PrBodyStyle
+		result.Gitflow = bootstrapGitflowReport{
+			BaseBranch:   cfg.Gitflow.BaseBranch,
+			BranchMode:   cfg.Gitflow.BranchMode,
+			BranchStyle:  cfg.Gitflow.BranchStyle,
+			PrCreate:     cfg.Gitflow.PrCreate,
+			PrTitleStyle: cfg.Gitflow.PrTitleStyle,
+			PrBodyStyle:  cfg.Gitflow.PrBodyStyle,
+			CommitStyle:  cfg.Gitflow.CommitStyle,
+			AutoPush:     cfg.Gitflow.AutoPush,
+		}
 		result.Helpers = contextHelpers{
 			WhereLeaf:    cfg.LeafFilter,
 			WhereNotDone: statusWhere("not", cfg.DoneStatuses),
 			WhereActive:  statusWhere("", cfg.ActiveStatuses),
 		}
-
-		// Check if gitflow fields are configured and emit diagnostic if not
-		if cfg.Gitflow.BranchStyle == "" && cfg.Gitflow.PrTitleStyle == "" && cfg.Gitflow.PrBodyStyle == "" {
-			result.Diagnostics = append(result.Diagnostics, diag.Diagnostic{
-				ID:       "RMC_GITFLOW_NOT_CONFIGURED",
-				Severity: diag.SeverityInfo,
-				Message:  "gitflow style fields not configured; run bootstrap wizard to populate [gitflow] section",
-			})
-			// Recalculate summary with the new diagnostic
-			result.Summary = reports.NewReport(result.Kind, root, result.RoadmapRoot, result.Diagnostics).Summary
-		}
+		result.MissingSettings, result.EmptySettings, result.InvalidSettings = computeBootstrapGitflowStatus(cfg)
 	}
 	return result
+}
+
+func computeBootstrapGitflowStatus(cfg *config.Config) (missing, empty, invalid []string) {
+	if cfg.Gitflow.BaseBranch == "" {
+		missing = append(missing, "gitflow.base_branch")
+	}
+	if cfg.Gitflow.BranchMode == "scope_branch" && cfg.Gitflow.BranchStyle == "" {
+		empty = append(empty, "gitflow.branch_style")
+	}
+	if cfg.Gitflow.PrCreate == "auto" {
+		if cfg.Gitflow.PrTitleStyle == "" {
+			empty = append(empty, "gitflow.pr_title_style")
+		}
+		if cfg.Gitflow.PrBodyStyle == "" {
+			empty = append(empty, "gitflow.pr_body_style")
+		}
+	}
+	return
 }
 
 func renderBootstrapConfig(report bootstrapConfigReport, output string, stdout io.Writer, stderr io.Writer, field string) int {
