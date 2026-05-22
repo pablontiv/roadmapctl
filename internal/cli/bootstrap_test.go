@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/pablontiv/roadmapctl/internal/config"
 )
 
 func TestBootstrapBaseCommandIsReadOnly(t *testing.T) {
@@ -742,6 +744,61 @@ func TestBootstrapJSONIncludesGitflowObject(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("missing_settings should include gitflow.base_branch, got %v", report.MissingSettings)
+	}
+}
+
+func TestComputeBootstrapGitflowStatus(t *testing.T) {
+	tests := []struct {
+		name         string
+		cfg          config.Config
+		wantMissing  []string
+		wantEmpty    []string
+		wantInvalid  []string
+	}{
+		{
+			name:        "base_branch missing",
+			cfg:         config.Config{Gitflow: config.GitflowConfig{BranchMode: "direct_push", PrCreate: "never"}},
+			wantMissing: []string{"gitflow.base_branch"},
+		},
+		{
+			name: "scope_branch with empty branch_style",
+			cfg: config.Config{Gitflow: config.GitflowConfig{
+				BaseBranch: "main", BranchMode: "scope_branch", PrCreate: "never",
+			}},
+			wantEmpty: []string{"gitflow.branch_style"},
+		},
+		{
+			name: "pr_create=auto with empty style fields",
+			cfg: config.Config{Gitflow: config.GitflowConfig{
+				BaseBranch: "main", BranchMode: "scope_branch", BranchStyle: "feat/{scope}", PrCreate: "auto",
+			}},
+			wantEmpty: []string{"gitflow.pr_title_style", "gitflow.pr_body_style"},
+		},
+		{
+			name: "fully configured",
+			cfg: config.Config{Gitflow: config.GitflowConfig{
+				BaseBranch: "main", BranchMode: "direct_push", PrCreate: "never",
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			missing, empty, invalid := computeBootstrapGitflowStatus(&tt.cfg)
+			checkStringSlice := func(label string, got, want []string) {
+				if len(got) != len(want) {
+					t.Fatalf("%s: got %v, want %v", label, got, want)
+				}
+				for i, v := range want {
+					if got[i] != v {
+						t.Fatalf("%s[%d]: got %q, want %q", label, i, got[i], v)
+					}
+				}
+			}
+			checkStringSlice("missing", missing, tt.wantMissing)
+			checkStringSlice("empty", empty, tt.wantEmpty)
+			checkStringSlice("invalid", invalid, tt.wantInvalid)
+		})
 	}
 }
 
