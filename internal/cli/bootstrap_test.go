@@ -261,6 +261,30 @@ func TestBootstrapApplyDiagnosticFormat(t *testing.T) {
 	}
 }
 
+func TestApplyBootstrapChangesMkdirError(t *testing.T) {
+	repo := t.TempDir()
+	// Place a file at "docs" so MkdirAll("docs/roadmap") fails: path component is a file.
+	if err := os.WriteFile(filepath.Join(repo, "docs"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	diags := applyBootstrapChanges(repo, []bootstrapChange{{Path: "docs/roadmap", Operation: "mkdir"}})
+	if len(diags) == 0 || diags[0].ID != "RMC_BOOTSTRAP_APPLY_FAILED" {
+		t.Fatalf("expected RMC_BOOTSTRAP_APPLY_FAILED, got %#v", diags)
+	}
+}
+
+func TestApplyBootstrapChangesCreateDirError(t *testing.T) {
+	repo := t.TempDir()
+	// Place a file at "docs" so MkdirAll("docs/roadmap") fails when creating files inside it.
+	if err := os.WriteFile(filepath.Join(repo, "docs"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	diags := applyBootstrapChanges(repo, []bootstrapChange{{Path: "docs/roadmap/.stem", Operation: "create", Content: "test"}})
+	if len(diags) == 0 || diags[0].ID != "RMC_BOOTSTRAP_APPLY_FAILED" {
+		t.Fatalf("expected RMC_BOOTSTRAP_APPLY_FAILED, got %#v", diags)
+	}
+}
+
 func TestBootstrapFieldExtractionScalarValue(t *testing.T) {
 	repo := t.TempDir()
 	initGitRepo(t, repo)

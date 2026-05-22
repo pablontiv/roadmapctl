@@ -58,6 +58,24 @@ a rebuild, record that requirement here or in the affected repo's local docs.
   sides.
 - For staticcheck SA5011, add an unreachable `return` after fatal nil-guard
   branches when needed so the analyzer sees that nil cannot fall through.
+- `unused` linter flags unexported functions that have no callers. Delete the
+  function entirely — do not add a dummy call or suppress the lint. Dead code
+  should not accumulate.
+
+## Windows Coverage (smoke job)
+
+The `smoke` job runs on `ubuntu-latest`, `macos-latest`, and `windows-latest`.
+Per-package coverage must reach the 85% floor on **all three platforms**.
+
+Tests that use `os.Chmod` to trigger filesystem errors must carry a
+`t.Skip("... does not apply on Windows")` guard, because chmod has no effect on
+directory permissions on Windows. To cover the corresponding production code on
+Windows, add a **platform-neutral unit test** that triggers the same error path
+via a different mechanism: place a regular file at a path where the code expects
+a directory, so `os.MkdirAll` fails with ENOTDIR on all platforms. Tests that
+call `applyBootstrapChanges` directly (same package) can do this without going
+through the full CLI flow, which avoids triggering `pathsec.ResolveInside`
+errors that occur when a path component is a file.
 
 ## Roadmap Validation
 

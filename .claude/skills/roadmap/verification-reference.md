@@ -19,3 +19,5 @@ La evidencia debe mostrar que `roadmapctl doctor` y `roadmapctl check` fueron re
 Antes de hacer push, `golangci-lint run ./...` debe reportar 0 issues (CI lint gate).
 
 Si el repo define coverage gate local, ejecutarlo desde la documentación local del repo. En roadmapctl, ver `docs/local-agent-workflow.md`.
+
+El smoke job corre en Ubuntu, macOS y Windows; la cobertura debe pasar el floor en las tres plataformas. Tests con `os.Chmod` no aplican en Windows — cubrir esos branches con unit tests de plataforma neutral (ver sección "Windows Coverage" en `docs/local-agent-workflow.md`).
