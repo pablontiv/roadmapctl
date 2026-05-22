@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/reports"
-	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/roadmap"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 	"github.com/spf13/cobra"
@@ -19,7 +19,7 @@ import (
 type transitionReport struct {
 	Version              int                          `json:"version"`
 	Kind                 string                       `json:"kind"`
-	Summary              diag.Summary          `json:"summary"`
+	Summary              diag.Summary                 `json:"summary"`
 	Root                 string                       `json:"root"`
 	RoadmapRoot          string                       `json:"roadmap_root"`
 	Action               string                       `json:"action"`
@@ -31,7 +31,7 @@ type transitionReport struct {
 	Reasons              []string                     `json:"reasons"`
 	BlockingDependencies []roadmap.BlockingDependency `json:"blocking_dependencies"`
 	Changes              []roadmap.TransitionChange   `json:"changes"`
-	Diagnostics          []diag.Diagnostic     `json:"diagnostics"`
+	Diagnostics          []diag.Diagnostic            `json:"diagnostics"`
 }
 
 func newTransitionCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {

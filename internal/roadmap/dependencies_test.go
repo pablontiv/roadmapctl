@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pablontiv/roadmapctl/internal/reports"
 	diag "github.com/pablontiv/picokit/diag"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )
 

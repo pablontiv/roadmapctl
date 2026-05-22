@@ -3,8 +3,8 @@ package cli
 import (
 	"context"
 
-	"github.com/pablontiv/roadmapctl/internal/config"
 	diag "github.com/pablontiv/picokit/diag"
+	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/roadmap"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )

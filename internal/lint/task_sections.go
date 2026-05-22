@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pablontiv/roadmapctl/internal/reports"
 	diag "github.com/pablontiv/picokit/diag"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 )
 
 var requiredTaskSections = []string{

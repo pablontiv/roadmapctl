@@ -8,21 +8,21 @@ import (
 	"path/filepath"
 	"sort"
 
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/reports"
-	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/workspace"
 )
 
 type pendingReport struct {
-	Version     int                      `json:"version"`
-	Kind        string                   `json:"kind"`
+	Version     int               `json:"version"`
+	Kind        string            `json:"kind"`
 	Summary     diag.Summary      `json:"summary"`
-	Root        string                   `json:"root"`
-	RoadmapRoot string                   `json:"roadmap_root"`
-	Count       int                      `json:"count"`
-	Tasks       []pendingTask            `json:"tasks,omitempty"`
-	Repos       []pendingRepo            `json:"repos,omitempty"`
+	Root        string            `json:"root"`
+	RoadmapRoot string            `json:"roadmap_root"`
+	Count       int               `json:"count"`
+	Tasks       []pendingTask     `json:"tasks,omitempty"`
+	Repos       []pendingRepo     `json:"repos,omitempty"`
 	Diagnostics []diag.Diagnostic `json:"diagnostics"`
 }
 
@@ -111,4 +111,3 @@ func renderPendingText(w io.Writer, report pendingReport) error {
 	_, err := fmt.Fprintf(w, "%s\nstatus: %s\npending: %d\n", report.Kind, report.Summary.Status, report.Count)
 	return err
 }
-

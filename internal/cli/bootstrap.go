@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/picokit/pathsec"
 	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/reports"
-	diag "github.com/pablontiv/picokit/diag"
 	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 	"github.com/pablontiv/roadmapctl/internal/templates"
 	"github.com/pablontiv/roadmapctl/internal/workspace"
@@ -32,13 +32,13 @@ type bootstrapRepoEntry struct {
 }
 
 type bootstrapReport struct {
-	Version     int                      `json:"version"`
-	Kind        string                   `json:"kind"`
+	Version     int               `json:"version"`
+	Kind        string            `json:"kind"`
 	Summary     diag.Summary      `json:"summary"`
-	Root        string                   `json:"root"`
-	RoadmapRoot string                   `json:"roadmap_root"`
-	Missing     []string                 `json:"missing,omitempty"`
-	Changes     []bootstrapChange        `json:"changes,omitempty"`
+	Root        string            `json:"root"`
+	RoadmapRoot string            `json:"roadmap_root"`
+	Missing     []string          `json:"missing,omitempty"`
+	Changes     []bootstrapChange `json:"changes,omitempty"`
 	Diagnostics []diag.Diagnostic `json:"diagnostics"`
 }
 
@@ -56,32 +56,32 @@ type contextHelpers struct {
 }
 
 type bootstrapConfigReport struct {
-	Version                int                      `json:"version"`
-	Kind                   string                   `json:"kind"`
-	Summary                diag.Summary      `json:"summary"`
-	Root                   string                   `json:"root"`
-	RoadmapRoot            string                   `json:"roadmap_root"`
-	ConfigPath             string                   `json:"config_path"`
-	ConfigSource           string                   `json:"config_source"`
-	RootlineVersion        string                   `json:"rootline_version"`
-	StatusValues           config.StatusValues      `json:"status_values"`
-	DoneStatuses           []string                 `json:"done_statuses"`
-	ActiveStatuses         []string                 `json:"active_statuses"`
-	OutcomeCloseVerify     []string                 `json:"outcome_close_verify"`
-	CommitStyle            string                   `json:"commit_style"`
-	AutoPush               bool                     `json:"auto_push"`
-	RequiredCodeCoverage   float64                  `json:"required_code_coverage"`
-	LoopMaxTasks           int                      `json:"loop_max_tasks"`
-	Parallel               bool                     `json:"parallel"`
-	Autonomy               string                   `json:"autonomy"`
-	CompactAfterTaskCommit bool                     `json:"compact_after_task_commit"`
-	PRMode                 bool                     `json:"pr_mode"`
-	BranchStyle            string                   `json:"branch_style"`
-	PRTitleStyle           string                   `json:"pr_title_style"`
-	PRBodyStyle            string                   `json:"pr_body_style"`
-	Helpers                contextHelpers           `json:"helpers"`
-	Repos                  []bootstrapRepoEntry     `json:"repos,omitempty"`
-	Diagnostics            []diag.Diagnostic `json:"diagnostics"`
+	Version                int                  `json:"version"`
+	Kind                   string               `json:"kind"`
+	Summary                diag.Summary         `json:"summary"`
+	Root                   string               `json:"root"`
+	RoadmapRoot            string               `json:"roadmap_root"`
+	ConfigPath             string               `json:"config_path"`
+	ConfigSource           string               `json:"config_source"`
+	RootlineVersion        string               `json:"rootline_version"`
+	StatusValues           config.StatusValues  `json:"status_values"`
+	DoneStatuses           []string             `json:"done_statuses"`
+	ActiveStatuses         []string             `json:"active_statuses"`
+	OutcomeCloseVerify     []string             `json:"outcome_close_verify"`
+	CommitStyle            string               `json:"commit_style"`
+	AutoPush               bool                 `json:"auto_push"`
+	RequiredCodeCoverage   float64              `json:"required_code_coverage"`
+	LoopMaxTasks           int                  `json:"loop_max_tasks"`
+	Parallel               bool                 `json:"parallel"`
+	Autonomy               string               `json:"autonomy"`
+	CompactAfterTaskCommit bool                 `json:"compact_after_task_commit"`
+	PRMode                 bool                 `json:"pr_mode"`
+	BranchStyle            string               `json:"branch_style"`
+	PRTitleStyle           string               `json:"pr_title_style"`
+	PRBodyStyle            string               `json:"pr_body_style"`
+	Helpers                contextHelpers       `json:"helpers"`
+	Repos                  []bootstrapRepoEntry `json:"repos,omitempty"`
+	Diagnostics            []diag.Diagnostic    `json:"diagnostics"`
 }
 
 func newBootstrapCommand(options *Options, stdin io.Reader, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {

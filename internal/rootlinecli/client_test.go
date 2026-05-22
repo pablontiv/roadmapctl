@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pablontiv/roadmapctl/internal/reports"
 	diag "github.com/pablontiv/picokit/diag"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 )
 
 func TestResolveBinaryPrefersExplicitThenRootlineBinThenPath(t *testing.T) {

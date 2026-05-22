@@ -9,12 +9,12 @@ import (
 )
 
 type Report struct {
-	Version     int                 `json:"version"`
-	Kind        string              `json:"kind"`
-	Summary     diag.Summary        `json:"summary"`
-	Root        string              `json:"root"`
-	RoadmapRoot string              `json:"roadmap_root"`
-	Diagnostics []diag.Diagnostic   `json:"diagnostics"`
+	Version     int               `json:"version"`
+	Kind        string            `json:"kind"`
+	Summary     diag.Summary      `json:"summary"`
+	Root        string            `json:"root"`
+	RoadmapRoot string            `json:"roadmap_root"`
+	Diagnostics []diag.Diagnostic `json:"diagnostics"`
 }
 
 func toBase(r Report) diag.Report {

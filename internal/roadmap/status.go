@@ -1,8 +1,8 @@
 package roadmap
 
 import (
-	"github.com/pablontiv/roadmapctl/internal/config"
 	diag "github.com/pablontiv/picokit/diag"
+	"github.com/pablontiv/roadmapctl/internal/config"
 )
 
 func statusDiagnostics(decoded map[string]any, cfg *config.Config, configured []string, schemaStatuses []string, schemaTypes []string) []Diagnostic {

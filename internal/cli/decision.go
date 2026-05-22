@@ -7,23 +7,23 @@ import (
 	"io"
 	"sort"
 
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/reports"
-	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/roadmap"
 	"github.com/spf13/cobra"
 )
 
 type decisionReport struct {
-	Version          int                      `json:"version"`
-	Kind             string                   `json:"kind"`
+	Version          int               `json:"version"`
+	Kind             string            `json:"kind"`
 	Summary          diag.Summary      `json:"summary"`
-	Root             string                   `json:"root"`
-	RoadmapRoot      string                   `json:"roadmap_root"`
-	Recommendations  []decisionItem           `json:"recommendations"`
-	QuickWins        []decisionItem           `json:"quick_wins"`
-	CriticalBlockers []decisionItem           `json:"critical_blockers"`
-	Blocked          []nextTask               `json:"blocked"`
+	Root             string            `json:"root"`
+	RoadmapRoot      string            `json:"roadmap_root"`
+	Recommendations  []decisionItem    `json:"recommendations"`
+	QuickWins        []decisionItem    `json:"quick_wins"`
+	CriticalBlockers []decisionItem    `json:"critical_blockers"`
+	Blocked          []nextTask        `json:"blocked"`
 	Diagnostics      []diag.Diagnostic `json:"diagnostics"`
 }
 

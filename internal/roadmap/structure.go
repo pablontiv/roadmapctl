@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"strings"
 
+	diag "github.com/pablontiv/picokit/diag"
 	"github.com/pablontiv/roadmapctl/internal/config"
 	"github.com/pablontiv/roadmapctl/internal/reports"
-	diag "github.com/pablontiv/picokit/diag"
 )
 
 const (

@@ -329,4 +329,3 @@ pr_body_style = "test-body"
 		t.Fatalf("Gitflow.PrBodyStyle = %q, want test-body", loaded.Gitflow.PrBodyStyle)
 	}
 }
-

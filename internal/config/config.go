@@ -91,9 +91,9 @@ type FieldsConfig struct {
 }
 
 type GitflowConfig struct {
-	BranchStyle   string `json:"branch_style"`
-	PrTitleStyle  string `json:"pr_title_style"`
-	PrBodyStyle   string `json:"pr_body_style"`
+	BranchStyle  string `json:"branch_style"`
+	PrTitleStyle string `json:"pr_title_style"`
+	PrBodyStyle  string `json:"pr_body_style"`
 }
 
 func Load(repo string) (*Config, error) {
@@ -134,20 +134,20 @@ func Load(repo string) (*Config, error) {
 }
 
 type tomlConfig struct {
-	DoneStatuses           []string         `toml:"done_statuses"`
-	ActiveStatuses         []string         `toml:"active_statuses"`
-	LeafFilter             string           `toml:"leaf_filter"`
-	OutcomeCloseVerify     []string         `toml:"outcome_close_verify"`
-	CommitStyle            string           `toml:"commit_style"`
-	AutoPush               *bool            `toml:"auto_push"`
-	RequiredCodeCoverage   *float64         `toml:"required_code_coverage"`
-	LoopMaxTasks           *int             `toml:"loop_max_tasks"`
-	Parallel               *bool            `toml:"parallel"`
-	Autonomy               string           `toml:"autonomy"`
-	CompactAfterTaskCommit *bool            `toml:"compact_after_task_commit"`
-	PRMode                 *bool            `toml:"pr_mode"`
-	StatusValues           tomlStatusValues `toml:"status_values"`
-	Fields                 tomlFieldsConfig `toml:"fields"`
+	DoneStatuses           []string          `toml:"done_statuses"`
+	ActiveStatuses         []string          `toml:"active_statuses"`
+	LeafFilter             string            `toml:"leaf_filter"`
+	OutcomeCloseVerify     []string          `toml:"outcome_close_verify"`
+	CommitStyle            string            `toml:"commit_style"`
+	AutoPush               *bool             `toml:"auto_push"`
+	RequiredCodeCoverage   *float64          `toml:"required_code_coverage"`
+	LoopMaxTasks           *int              `toml:"loop_max_tasks"`
+	Parallel               *bool             `toml:"parallel"`
+	Autonomy               string            `toml:"autonomy"`
+	CompactAfterTaskCommit *bool             `toml:"compact_after_task_commit"`
+	PRMode                 *bool             `toml:"pr_mode"`
+	StatusValues           tomlStatusValues  `toml:"status_values"`
+	Fields                 tomlFieldsConfig  `toml:"fields"`
 	Gitflow                tomlGitflowConfig `toml:"gitflow"`
 }
 
@@ -170,9 +170,9 @@ type tomlStatusValues struct {
 }
 
 type tomlGitflowConfig struct {
-	BranchStyle   string `toml:"branch_style"`
-	PrTitleStyle  string `toml:"pr_title_style"`
-	PrBodyStyle   string `toml:"pr_body_style"`
+	BranchStyle  string `toml:"branch_style"`
+	PrTitleStyle string `toml:"pr_title_style"`
+	PrBodyStyle  string `toml:"pr_body_style"`
 }
 
 func loadTOMLConfig(cfg *Config, path string) error {

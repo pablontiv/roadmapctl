@@ -72,7 +72,7 @@ func TestCheckGoldenJSONFixtures(t *testing.T) {
 		{name: "invalid stale outcome stem", command: "check", fixture: "invalid-stale-outcome-stem", wantExit: 1, wantID: "RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED", goldenName: "check-invalid-stale-outcome-stem.json"},
 		{name: "missing stem", command: "doctor", fixture: "invalid-missing-stem", wantExit: 2, wantID: "RMC_CONFIG_STEM_MISSING", goldenName: "doctor-invalid-missing-stem.json"},
 		{name: "bare blocked_by", command: "check", fixture: "invalid-bare-blocked-by", wantExit: 1, wantID: "RMC_ROOTLINE_VALIDATE_FAILED", goldenName: "check-invalid-bare-blocked-by.json"},
-{name: "bootstrap config", command: "bootstrap", fixture: "valid-legacy-config-fallback", wantExit: 0, goldenName: "bootstrap-valid-legacy-config-fallback.json"},
+		{name: "bootstrap config", command: "bootstrap", fixture: "valid-legacy-config-fallback", wantExit: 0, goldenName: "bootstrap-valid-legacy-config-fallback.json"},
 		{name: "pending direct tasks", command: "pending", fixture: "valid-direct-tasks", wantExit: 0, goldenName: "pending-valid-direct-tasks.json"},
 		{name: "pending outcome tasks", command: "pending", fixture: "valid-outcome-with-tasks", wantExit: 0, goldenName: "pending-valid-outcome-with-tasks.json"},
 		{name: "pending none", command: "pending", fixture: "valid-no-pending", wantExit: 0, goldenName: "pending-valid-no-pending.json"},

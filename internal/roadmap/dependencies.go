@@ -5,10 +5,10 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/pablontiv/roadmapctl/internal/config"
-	"github.com/pablontiv/roadmapctl/internal/reports"
 	diag "github.com/pablontiv/picokit/diag"
+	"github.com/pablontiv/roadmapctl/internal/config"
 	roadmaplint "github.com/pablontiv/roadmapctl/internal/lint"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 	"github.com/pablontiv/roadmapctl/internal/rootlinecli"
 )
 

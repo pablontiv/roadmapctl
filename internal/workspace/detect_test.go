@@ -135,7 +135,7 @@ func TestMemberRoots_IgnoresDirsWithoutGit(t *testing.T) {
 	root := t.TempDir()
 	mkdirAll(t,
 		filepath.Join(root, "alpha", ".git"),
-		filepath.Join(root, "beta"),  // no .git
+		filepath.Join(root, "beta"), // no .git
 		filepath.Join(root, "gamma", ".git"),
 	)
 

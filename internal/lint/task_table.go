@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pablontiv/roadmapctl/internal/reports"
 	diag "github.com/pablontiv/picokit/diag"
+	"github.com/pablontiv/roadmapctl/internal/reports"
 )
 
 var taskFilenamePattern = regexp.MustCompile(`^T[0-9][0-9][0-9]-.+\.md$`)

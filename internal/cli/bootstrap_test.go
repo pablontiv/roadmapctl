@@ -589,7 +589,7 @@ func TestBootstrapGitflowFieldsInJSON(t *testing.T) {
 		t.Fatalf("stdout invalid JSON: %v\n%s", err, stdout.String())
 	}
 	// Fields should be present in JSON (even if empty)
-	_ = report.BranchStyle  // Just verify the field exists in the struct
+	_ = report.BranchStyle // Just verify the field exists in the struct
 	_ = report.PRTitleStyle
 	_ = report.PRBodyStyle
 
