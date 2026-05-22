@@ -55,14 +55,17 @@ completed = "Done"
 	if loaded.StatusValues.InProgress != "Doing" || loaded.StatusValues.Completed != "Done" || loaded.StatusValues.Pending != "Pending" {
 		t.Fatalf("StatusValues = %#v", loaded.StatusValues)
 	}
-	if loaded.AutoPush {
-		t.Fatal("AutoPush = true, want false")
+	if loaded.Gitflow.AutoPush {
+		t.Fatal("Gitflow.AutoPush = true, want false")
 	}
 	if loaded.RequiredCodeCoverage != 91.5 {
 		t.Fatalf("RequiredCodeCoverage = %v, want 91.5", loaded.RequiredCodeCoverage)
 	}
-	if loaded.LoopMaxTasks != 7 || loaded.Parallel || loaded.Autonomy != "manual" || loaded.CompactAfterTaskCommit || !loaded.PRMode {
-		t.Fatalf("execution settings = max:%d parallel:%t autonomy:%q compact:%t pr:%t", loaded.LoopMaxTasks, loaded.Parallel, loaded.Autonomy, loaded.CompactAfterTaskCommit, loaded.PRMode)
+	if loaded.LoopMaxTasks != 7 || loaded.Parallel || loaded.Autonomy != "manual" || loaded.CompactAfterTaskCommit {
+		t.Fatalf("execution settings = max:%d parallel:%t autonomy:%q compact:%t", loaded.LoopMaxTasks, loaded.Parallel, loaded.Autonomy, loaded.CompactAfterTaskCommit)
+	}
+	if loaded.Gitflow.BranchMode != "scope_branch" || loaded.Gitflow.PrCreate != "auto" {
+		t.Fatalf("gitflow pr migration = branch_mode:%q pr_create:%q", loaded.Gitflow.BranchMode, loaded.Gitflow.PrCreate)
 	}
 }
 
@@ -306,12 +309,17 @@ lifecycle = "custom_status"
 	}
 }
 
-func TestGitflowConfigParsesFields(t *testing.T) {
+func TestGitflowConfigParsesNewFields(t *testing.T) {
 	repo := t.TempDir()
 	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `[gitflow]
+base_branch = "main"
+branch_mode = "scope_branch"
 branch_style = "test-branch"
+pr_create = "manual"
 pr_title_style = "test-title"
 pr_body_style = "test-body"
+commit_style = "custom-commit"
+auto_push = false
 `)
 
 	loaded, err := Load(repo)
@@ -319,8 +327,17 @@ pr_body_style = "test-body"
 		t.Fatalf("Load() error = %v", err)
 	}
 
+	if loaded.Gitflow.BaseBranch != "main" {
+		t.Fatalf("Gitflow.BaseBranch = %q, want main", loaded.Gitflow.BaseBranch)
+	}
+	if loaded.Gitflow.BranchMode != "scope_branch" {
+		t.Fatalf("Gitflow.BranchMode = %q, want scope_branch", loaded.Gitflow.BranchMode)
+	}
 	if loaded.Gitflow.BranchStyle != "test-branch" {
 		t.Fatalf("Gitflow.BranchStyle = %q, want test-branch", loaded.Gitflow.BranchStyle)
+	}
+	if loaded.Gitflow.PrCreate != "manual" {
+		t.Fatalf("Gitflow.PrCreate = %q, want manual", loaded.Gitflow.PrCreate)
 	}
 	if loaded.Gitflow.PrTitleStyle != "test-title" {
 		t.Fatalf("Gitflow.PrTitleStyle = %q, want test-title", loaded.Gitflow.PrTitleStyle)
@@ -328,4 +345,132 @@ pr_body_style = "test-body"
 	if loaded.Gitflow.PrBodyStyle != "test-body" {
 		t.Fatalf("Gitflow.PrBodyStyle = %q, want test-body", loaded.Gitflow.PrBodyStyle)
 	}
+	if loaded.Gitflow.CommitStyle != "custom-commit" {
+		t.Fatalf("Gitflow.CommitStyle = %q, want custom-commit", loaded.Gitflow.CommitStyle)
+	}
+	if loaded.Gitflow.AutoPush {
+		t.Fatal("Gitflow.AutoPush = true, want false")
+	}
+}
+
+func TestGitflowConfigDefaultsApplied(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, "docs", "roadmap"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := Load(repo)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if loaded.Gitflow.BranchMode != "direct_push" {
+		t.Fatalf("Gitflow.BranchMode = %q, want direct_push", loaded.Gitflow.BranchMode)
+	}
+	if loaded.Gitflow.PrCreate != "never" {
+		t.Fatalf("Gitflow.PrCreate = %q, want never", loaded.Gitflow.PrCreate)
+	}
+	if loaded.Gitflow.CommitStyle != "conventional" {
+		t.Fatalf("Gitflow.CommitStyle = %q, want conventional", loaded.Gitflow.CommitStyle)
+	}
+	if !loaded.Gitflow.AutoPush {
+		t.Fatal("Gitflow.AutoPush = false, want true")
+	}
+}
+
+func TestGitflowMigrationFromPRModeTrue(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `pr_mode = true
+`)
+
+	loaded, err := Load(repo)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if loaded.Gitflow.BranchMode != "scope_branch" {
+		t.Fatalf("Gitflow.BranchMode = %q, want scope_branch", loaded.Gitflow.BranchMode)
+	}
+	if loaded.Gitflow.PrCreate != "auto" {
+		t.Fatalf("Gitflow.PrCreate = %q, want auto", loaded.Gitflow.PrCreate)
+	}
+	if !hasWarning(loaded.Warnings, "RMC_CONFIG_DEPRECATED_TOPLEVEL") {
+		t.Fatal("expected RMC_CONFIG_DEPRECATED_TOPLEVEL warning")
+	}
+}
+
+func TestGitflowMigrationFromPRModeFalse(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `pr_mode = false
+`)
+
+	loaded, err := Load(repo)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if loaded.Gitflow.BranchMode != "direct_push" {
+		t.Fatalf("Gitflow.BranchMode = %q, want direct_push", loaded.Gitflow.BranchMode)
+	}
+	if loaded.Gitflow.PrCreate != "never" {
+		t.Fatalf("Gitflow.PrCreate = %q, want never", loaded.Gitflow.PrCreate)
+	}
+}
+
+func TestGitflowValidationRejectsInvalidBranchMode(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `[gitflow]
+branch_mode = "chaos"
+`)
+
+	_, err := Load(repo)
+	if err == nil {
+		t.Fatal("Load() error = nil, want validation error")
+	}
+	var cfgErr *Error
+	if !errors.As(err, &cfgErr) || cfgErr.Code != ErrConfigParse {
+		t.Fatalf("Load() error = %#v, want RMC_CONFIG_PARSE", err)
+	}
+}
+
+func TestGitflowValidationRejectsInvalidPrCreate(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `[gitflow]
+pr_create = "sometimes"
+`)
+
+	_, err := Load(repo)
+	if err == nil {
+		t.Fatal("Load() error = nil, want validation error")
+	}
+	var cfgErr *Error
+	if !errors.As(err, &cfgErr) || cfgErr.Code != ErrConfigParse {
+		t.Fatalf("Load() error = %#v, want RMC_CONFIG_PARSE", err)
+	}
+}
+
+func TestGitflowValidationRejectsPrCreateAutoWithDirectPush(t *testing.T) {
+	repo := t.TempDir()
+	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `[gitflow]
+branch_mode = "direct_push"
+pr_create = "auto"
+`)
+
+	_, err := Load(repo)
+	if err == nil {
+		t.Fatal("Load() error = nil, want validation error")
+	}
+	var cfgErr *Error
+	if !errors.As(err, &cfgErr) || cfgErr.Code != ErrConfigParse {
+		t.Fatalf("Load() error = %#v, want RMC_CONFIG_PARSE", err)
+	}
+}
+
+func hasWarning(warnings []Warning, code string) bool {
+	for _, warning := range warnings {
+		if warning.Code == code {
+			return true
+		}
+	}
+	return false
 }

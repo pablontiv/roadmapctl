@@ -375,14 +375,14 @@ func newBootstrapConfigReport(root string, roadmapRoot string, configPath string
 		result.DoneStatuses = append([]string(nil), cfg.DoneStatuses...)
 		result.ActiveStatuses = append([]string(nil), cfg.ActiveStatuses...)
 		result.OutcomeCloseVerify = append([]string{}, cfg.OutcomeCloseVerify...)
-		result.CommitStyle = cfg.CommitStyle
-		result.AutoPush = cfg.AutoPush
+		result.CommitStyle = cfg.Gitflow.CommitStyle
+		result.AutoPush = cfg.Gitflow.AutoPush
 		result.RequiredCodeCoverage = cfg.RequiredCodeCoverage
 		result.LoopMaxTasks = cfg.LoopMaxTasks
 		result.Parallel = cfg.Parallel
 		result.Autonomy = cfg.Autonomy
 		result.CompactAfterTaskCommit = cfg.CompactAfterTaskCommit
-		result.PRMode = cfg.PRMode
+		result.PRMode = cfg.Gitflow.PrCreate != "never"
 		result.BranchStyle = cfg.Gitflow.BranchStyle
 		result.PRTitleStyle = cfg.Gitflow.PrTitleStyle
 		result.PRBodyStyle = cfg.Gitflow.PrBodyStyle

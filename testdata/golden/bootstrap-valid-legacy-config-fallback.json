@@ -13,6 +13,12 @@
   "config_source": "toml",
   "diagnostics": [
     {
+      "id": "RMC_CONFIG_DEPRECATED_TOPLEVEL",
+      "message": "top-level commit_style, auto_push, pr_mode are deprecated; move them under [gitflow]",
+      "path": "docs/roadmap/.roadmapctl.toml",
+      "severity": "warning"
+    },
+    {
       "id": "RMC_GITFLOW_NOT_CONFIGURED",
       "message": "gitflow style fields not configured; run bootstrap wizard to populate [gitflow] section",
       "severity": "info"
@@ -49,8 +55,8 @@
   "summary": {
     "errors": 0,
     "infos": 1,
-    "status": "ok",
-    "warnings": 0
+    "status": "warning",
+    "warnings": 1
   },
   "version": 1
 }

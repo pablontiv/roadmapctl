@@ -54,8 +54,6 @@ type Config struct {
 	LeafFilter     string
 
 	OutcomeCloseVerify   []string
-	CommitStyle          string
-	AutoPush             bool
 	RequiredCodeCoverage float64
 	Gitflow              GitflowConfig
 
@@ -63,7 +61,6 @@ type Config struct {
 	Parallel               bool
 	Autonomy               string
 	CompactAfterTaskCommit bool
-	PRMode                 bool
 }
 
 type Warning struct {
@@ -91,9 +88,14 @@ type FieldsConfig struct {
 }
 
 type GitflowConfig struct {
+	BaseBranch   string `json:"base_branch"`
+	BranchMode   string `json:"branch_mode"`
 	BranchStyle  string `json:"branch_style"`
+	PrCreate     string `json:"pr_create"`
 	PrTitleStyle string `json:"pr_title_style"`
 	PrBodyStyle  string `json:"pr_body_style"`
+	CommitStyle  string `json:"commit_style"`
+	AutoPush     bool   `json:"auto_push"`
 }
 
 func Load(repo string) (*Config, error) {
@@ -170,9 +172,14 @@ type tomlStatusValues struct {
 }
 
 type tomlGitflowConfig struct {
+	BaseBranch   string `toml:"base_branch"`
+	BranchMode   string `toml:"branch_mode"`
 	BranchStyle  string `toml:"branch_style"`
+	PrCreate     string `toml:"pr_create"`
 	PrTitleStyle string `toml:"pr_title_style"`
 	PrBodyStyle  string `toml:"pr_body_style"`
+	CommitStyle  string `toml:"commit_style"`
+	AutoPush     *bool  `toml:"auto_push"`
 }
 
 func loadTOMLConfig(cfg *Config, path string) error {
@@ -204,12 +211,6 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig, path string) {
 	if decoded.OutcomeCloseVerify != nil {
 		cfg.OutcomeCloseVerify = append([]string(nil), decoded.OutcomeCloseVerify...)
 	}
-	if decoded.CommitStyle != "" {
-		cfg.CommitStyle = decoded.CommitStyle
-	}
-	if decoded.AutoPush != nil {
-		cfg.AutoPush = *decoded.AutoPush
-	}
 	if decoded.RequiredCodeCoverage != nil {
 		cfg.RequiredCodeCoverage = *decoded.RequiredCodeCoverage
 	}
@@ -224,9 +225,6 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig, path string) {
 	}
 	if decoded.CompactAfterTaskCommit != nil {
 		cfg.CompactAfterTaskCommit = *decoded.CompactAfterTaskCommit
-	}
-	if decoded.PRMode != nil {
-		cfg.PRMode = *decoded.PRMode
 	}
 	if decoded.StatusValues.Pending != "" {
 		cfg.StatusValues.Pending = decoded.StatusValues.Pending
@@ -264,8 +262,17 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig, path string) {
 	if decoded.Fields.DependencyLink != "" {
 		cfg.Fields.DependencyLink = decoded.Fields.DependencyLink
 	}
+	if decoded.Gitflow.BaseBranch != "" {
+		cfg.Gitflow.BaseBranch = decoded.Gitflow.BaseBranch
+	}
+	if decoded.Gitflow.BranchMode != "" {
+		cfg.Gitflow.BranchMode = decoded.Gitflow.BranchMode
+	}
 	if decoded.Gitflow.BranchStyle != "" {
 		cfg.Gitflow.BranchStyle = decoded.Gitflow.BranchStyle
+	}
+	if decoded.Gitflow.PrCreate != "" {
+		cfg.Gitflow.PrCreate = decoded.Gitflow.PrCreate
 	}
 	if decoded.Gitflow.PrTitleStyle != "" {
 		cfg.Gitflow.PrTitleStyle = decoded.Gitflow.PrTitleStyle
@@ -273,23 +280,39 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig, path string) {
 	if decoded.Gitflow.PrBodyStyle != "" {
 		cfg.Gitflow.PrBodyStyle = decoded.Gitflow.PrBodyStyle
 	}
+	if decoded.Gitflow.CommitStyle != "" {
+		cfg.Gitflow.CommitStyle = decoded.Gitflow.CommitStyle
+	}
+	if decoded.Gitflow.AutoPush != nil {
+		cfg.Gitflow.AutoPush = *decoded.Gitflow.AutoPush
+	}
+
+	// Migration from deprecated top-level fields
+	deprecatedPresent := decoded.CommitStyle != "" || decoded.AutoPush != nil || decoded.PRMode != nil
+	if deprecatedPresent {
+		cfg.Warnings = append(cfg.Warnings, Warning{
+			Code:    "RMC_CONFIG_DEPRECATED_TOPLEVEL",
+			Message: "top-level commit_style, auto_push, pr_mode are deprecated; move them under [gitflow]",
+			Path:    path,
+		})
+		if decoded.CommitStyle != "" && decoded.Gitflow.CommitStyle == "" {
+			cfg.Gitflow.CommitStyle = decoded.CommitStyle
+		}
+		if decoded.AutoPush != nil && decoded.Gitflow.AutoPush == nil {
+			cfg.Gitflow.AutoPush = *decoded.AutoPush
+		}
+		if decoded.PRMode != nil && decoded.Gitflow.BranchMode == "" && decoded.Gitflow.PrCreate == "" {
+			if *decoded.PRMode {
+				cfg.Gitflow.BranchMode = "scope_branch"
+				cfg.Gitflow.PrCreate = "auto"
+			} else {
+				cfg.Gitflow.BranchMode = "direct_push"
+				cfg.Gitflow.PrCreate = "never"
+			}
+		}
+	}
 }
 
-func configDiffers(left *Config, right *Config) bool {
-	return !stringSlicesEqual(left.DoneStatuses, right.DoneStatuses) ||
-		!stringSlicesEqual(left.ActiveStatuses, right.ActiveStatuses) ||
-		left.LeafFilter != right.LeafFilter ||
-		!stringSlicesEqual(left.OutcomeCloseVerify, right.OutcomeCloseVerify) ||
-		left.CommitStyle != right.CommitStyle ||
-		left.AutoPush != right.AutoPush ||
-		left.RequiredCodeCoverage != right.RequiredCodeCoverage ||
-		left.LoopMaxTasks != right.LoopMaxTasks ||
-		left.Parallel != right.Parallel ||
-		left.Autonomy != right.Autonomy ||
-		left.CompactAfterTaskCommit != right.CompactAfterTaskCommit ||
-		left.PRMode != right.PRMode ||
-		left.StatusValues != right.StatusValues
-}
 
 func stringSlicesEqual(left []string, right []string) bool {
 	if len(left) != len(right) {
@@ -338,16 +361,19 @@ func defaultConfig(repo string) *Config {
 			DisplayName:    "titulo",
 			DependencyLink: "blocked_by",
 		},
-		LeafFilter:             "isIndex == false",
-		OutcomeCloseVerify:     []string{},
-		CommitStyle:            "conventional",
-		AutoPush:               true,
+		LeafFilter:         "isIndex == false",
+		OutcomeCloseVerify: []string{},
+		Gitflow: GitflowConfig{
+			BranchMode:  "direct_push",
+			PrCreate:    "never",
+			CommitStyle: "conventional",
+			AutoPush:    true,
+		},
 		RequiredCodeCoverage:   85.0,
 		LoopMaxTasks:           0,
 		Parallel:               true,
 		Autonomy:               "until_done",
 		CompactAfterTaskCommit: true,
-		PRMode:                 false,
 	}
 }
 
@@ -360,8 +386,21 @@ func validateConfig(cfg *Config, path string) error {
 	}
 	switch cfg.Autonomy {
 	case "manual", "supervised", "until_done":
-		return nil
 	default:
 		return &Error{Code: ErrConfigParse, Message: "autonomy must be one of manual, supervised, until_done", Path: path, ExitCode: 2}
 	}
+	switch cfg.Gitflow.BranchMode {
+	case "direct_push", "scope_branch":
+	default:
+		return &Error{Code: ErrConfigParse, Message: "gitflow.branch_mode must be one of direct_push, scope_branch", Path: path, ExitCode: 2}
+	}
+	switch cfg.Gitflow.PrCreate {
+	case "never", "manual", "auto":
+	default:
+		return &Error{Code: ErrConfigParse, Message: "gitflow.pr_create must be one of never, manual, auto", Path: path, ExitCode: 2}
+	}
+	if cfg.Gitflow.PrCreate == "auto" && cfg.Gitflow.BranchMode != "scope_branch" {
+		return &Error{Code: ErrConfigParse, Message: "gitflow.pr_create=auto requires gitflow.branch_mode=scope_branch", Path: path, ExitCode: 2}
+	}
+	return nil
 }

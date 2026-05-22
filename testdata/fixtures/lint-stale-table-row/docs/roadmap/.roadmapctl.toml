@@ -2,8 +2,6 @@ done_statuses = ["Completed", "Obsolete"]
 active_statuses = ["Pending", "Specified", "In Progress"]
 leaf_filter = "isIndex == false"
 outcome_close_verify = []
-commit_style = "conventional"
-auto_push = true
 required_code_coverage = 85.0
 
 [status_values]
