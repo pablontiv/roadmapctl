@@ -18,6 +18,13 @@ just coverage-check
 per-package floors declared in `.coverage-floors.toml` and is also used by the
 pre-push hook when Go files changed.
 
+The `ci` GitHub Actions job (crossbeam reusable workflow) runs tests with
+`-race` and without rootline installed, which inflates fake-rootline subprocess
+latency to the point where the global coverage threshold becomes unreliable.
+Per-package floors are enforced instead by `pkcov check` in the `smoke` job,
+which installs rootline before running tests. The crossbeam `coverage-threshold`
+is set to 0 for this reason.
+
 ## Rootline Dependency
 
 `roadmapctl` shells out to a `rootline` binary. For normal CLI validation, the
