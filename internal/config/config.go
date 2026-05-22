@@ -18,8 +18,6 @@ const (
 
 	DefaultDependencyLink = "blocked_by"
 
-	DiagnosticGitflowPRMergeStrategyDeprecated = "RMC_GITFLOW_PR_MERGE_STRATEGY_DEPRECATED"
-
 	roadmapRootDir = "docs/roadmap"
 )
 
@@ -56,7 +54,6 @@ type Config struct {
 	LeafFilter     string
 
 	OutcomeCloseVerify   []string
-	PRMergeStrategy      string
 	CommitStyle          string
 	AutoPush             bool
 	RequiredCodeCoverage float64
@@ -141,7 +138,6 @@ type tomlConfig struct {
 	ActiveStatuses         []string         `toml:"active_statuses"`
 	LeafFilter             string           `toml:"leaf_filter"`
 	OutcomeCloseVerify     []string         `toml:"outcome_close_verify"`
-	PRMergeStrategy        string           `toml:"pr_merge_strategy"`
 	CommitStyle            string           `toml:"commit_style"`
 	AutoPush               *bool            `toml:"auto_push"`
 	RequiredCodeCoverage   *float64         `toml:"required_code_coverage"`
@@ -207,14 +203,6 @@ func applyTOMLConfig(cfg *Config, decoded tomlConfig, path string) {
 	}
 	if decoded.OutcomeCloseVerify != nil {
 		cfg.OutcomeCloseVerify = append([]string(nil), decoded.OutcomeCloseVerify...)
-	}
-	if decoded.PRMergeStrategy != "" {
-		cfg.PRMergeStrategy = decoded.PRMergeStrategy
-		cfg.Warnings = append(cfg.Warnings, Warning{
-			Code:    DiagnosticGitflowPRMergeStrategyDeprecated,
-			Message: "pr_merge_strategy is deprecated; use [gitflow] fields instead",
-			Path:    path,
-		})
 	}
 	if decoded.CommitStyle != "" {
 		cfg.CommitStyle = decoded.CommitStyle
@@ -292,7 +280,6 @@ func configDiffers(left *Config, right *Config) bool {
 		!stringSlicesEqual(left.ActiveStatuses, right.ActiveStatuses) ||
 		left.LeafFilter != right.LeafFilter ||
 		!stringSlicesEqual(left.OutcomeCloseVerify, right.OutcomeCloseVerify) ||
-		left.PRMergeStrategy != right.PRMergeStrategy ||
 		left.CommitStyle != right.CommitStyle ||
 		left.AutoPush != right.AutoPush ||
 		left.RequiredCodeCoverage != right.RequiredCodeCoverage ||
@@ -353,7 +340,6 @@ func defaultConfig(repo string) *Config {
 		},
 		LeafFilter:             "isIndex == false",
 		OutcomeCloseVerify:     []string{},
-		PRMergeStrategy:        "squash",
 		CommitStyle:            "conventional",
 		AutoPush:               true,
 		RequiredCodeCoverage:   85.0,

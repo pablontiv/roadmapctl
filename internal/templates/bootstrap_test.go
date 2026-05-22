@@ -110,7 +110,6 @@ func TestDefaultRoadmapctlTOMLIncludesAllRequiredSettings(t *testing.T) {
 		"active_statuses",
 		"leaf_filter",
 		"outcome_close_verify",
-		"pr_merge_strategy",
 		"commit_style",
 		"auto_push",
 		"required_code_coverage = 85.0",

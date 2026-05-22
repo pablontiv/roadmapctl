@@ -11,7 +11,6 @@ status-values:
   obsolete: 'Obsolete'
 leaf-filter: 'isIndex == false'
 outcome-close-verify: []
-pr-merge-strategy: 'squash'
 commit-style: 'conventional'
 auto-push: true
 ---

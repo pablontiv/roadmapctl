@@ -32,7 +32,6 @@
   "outcome_close_verify": [],
   "parallel": true,
   "pr_body_style": "",
-  "pr_merge_strategy": "squash",
   "pr_mode": false,
   "pr_title_style": "",
   "required_code_coverage": 85,

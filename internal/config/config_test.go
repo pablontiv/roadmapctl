@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -25,7 +24,6 @@ func TestLoadPrefersRoadmapctlTOMLAndInfersRoadmapRoot(t *testing.T) {
 active_statuses = ["Ready", "Doing"]
 leaf_filter = "isIndex == false"
 outcome_close_verify = ["go test ./..."]
-pr_merge_strategy = "merge"
 commit_style = "conventional"
 auto_push = false
 required_code_coverage = 91.5
@@ -332,27 +330,3 @@ pr_body_style = "test-body"
 	}
 }
 
-func TestPRMergeStrategyDeprecatedWarning(t *testing.T) {
-	repo := t.TempDir()
-	writeRoadmapctlTOML(t, repo, filepath.Join("docs", "roadmap"), `pr_merge_strategy = "squash"
-`)
-
-	loaded, err := Load(repo)
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-
-	if len(loaded.Warnings) != 1 {
-		t.Fatalf("Warnings count = %d, want 1", len(loaded.Warnings))
-	}
-	warning := loaded.Warnings[0]
-	if warning.Code != DiagnosticGitflowPRMergeStrategyDeprecated {
-		t.Fatalf("Warning.Code = %q, want %q", warning.Code, DiagnosticGitflowPRMergeStrategyDeprecated)
-	}
-	if !strings.Contains(warning.Message, "deprecated") {
-		t.Fatalf("Warning.Message = %q, want to contain 'deprecated'", warning.Message)
-	}
-	if loaded.PRMergeStrategy != "squash" {
-		t.Fatalf("PRMergeStrategy = %q, want squash", loaded.PRMergeStrategy)
-	}
-}

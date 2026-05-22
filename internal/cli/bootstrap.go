@@ -68,7 +68,6 @@ type bootstrapConfigReport struct {
 	DoneStatuses           []string                 `json:"done_statuses"`
 	ActiveStatuses         []string                 `json:"active_statuses"`
 	OutcomeCloseVerify     []string                 `json:"outcome_close_verify"`
-	PRMergeStrategy        string                   `json:"pr_merge_strategy"`
 	CommitStyle            string                   `json:"commit_style"`
 	AutoPush               bool                     `json:"auto_push"`
 	RequiredCodeCoverage   float64                  `json:"required_code_coverage"`
@@ -376,7 +375,6 @@ func newBootstrapConfigReport(root string, roadmapRoot string, configPath string
 		result.DoneStatuses = append([]string(nil), cfg.DoneStatuses...)
 		result.ActiveStatuses = append([]string(nil), cfg.ActiveStatuses...)
 		result.OutcomeCloseVerify = append([]string{}, cfg.OutcomeCloseVerify...)
-		result.PRMergeStrategy = cfg.PRMergeStrategy
 		result.CommitStyle = cfg.CommitStyle
 		result.AutoPush = cfg.AutoPush
 		result.RequiredCodeCoverage = cfg.RequiredCodeCoverage
