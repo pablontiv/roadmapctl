@@ -1,2 +1,5 @@
 cartyx-out/
 graphify-out/
+coverage.out
+cov_workspace.out
+dist/
