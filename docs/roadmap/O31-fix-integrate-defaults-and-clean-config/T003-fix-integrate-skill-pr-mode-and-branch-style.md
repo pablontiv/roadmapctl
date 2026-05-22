@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T003: Fix `/integrate` Fase 2 (pr_mode condicional) y remover fallback `branch_style`

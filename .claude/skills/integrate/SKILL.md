@@ -90,9 +90,9 @@ efectivo. Si un texto matchea señales de `scope-branch` y `direct-push`, gana
      informativo si `pr_mode=true`: `RMC_INTEGRATE_PR_DISABLED_BY_DIRECT_PUSH`.
    - Si `branch_style` es `scope-branch`: `branch_mode=scope-branch` y generar
      `branch_target` desde el patrón indicado.
-   - Si `branch_style` es `ambiguous` y `pr_mode=true`: `branch_mode=scope-branch`
-     con fallback `feat/<scope>` (e.g. `feat/O24-slug` para Outcome,
-     `feat/direct-roadmap-tasks` para `direct-tasks`).
+   - Si `branch_style` es `ambiguous` y `pr_mode=true`: no se asigna `branch_target` en Fase 1.
+     Fase 2 verifica `branch_style` antes de ejecutar `checkout -B`; si sigue vacío/ambiguo,
+     emite `RMC_INTEGRATE_BRANCH_STYLE_MISSING` y detiene.
    - Si `branch_style` es `ambiguous` y `pr_mode=false`: `branch_mode=direct-push`,
      `branch_target=<base_branch>`, `effective_pr_mode=false`.
 
@@ -113,37 +113,34 @@ Si `scope_changed == true` y `effective_pr_mode == true`:
 
 ## Fase 2: Branch setup
 
-Fase 2 corre siempre, pero branch por scope **no** es invariante. `branch_style`
-define si se crea branch de scope o si se integra directo en la rama base.
-`pr_mode` solo fuerza branch cuando `branch_style` es ambiguo; si `branch_style`
-declara direct-push/no feature branch, no crear branch por scope aunque
-`pr_mode=true`.
+Fase 2 siempre sincroniza `base_branch` antes de commitear, garantizando que HEAD queda
+en la posición correcta independientemente del estado previo.
 
 1. Detectar branch actual:
    ```bash
    git -C <repo_path> rev-parse --abbrev-ref HEAD
    ```
 
-2. Si `branch_mode=scope-branch` y el branch actual difiere del target:
+2. Sincronizar `base_branch` siempre:
    ```bash
    git -C <repo_path> fetch origin <base_branch>
    git -C <repo_path> checkout <base_branch>
    git -C <repo_path> pull --ff-only
-   git -C <repo_path> checkout -B <branch_target>
    ```
+   Si el `checkout` falla porque hay cambios locales en conflicto: emitir
+   `RMC_INTEGRATE_CHECKOUT_BLOCKED` y detener. El operador debe resolver el estado
+   antes de reinvocar.
 
-3. Si `branch_mode=direct-push`:
-   - No ejecutar `checkout -B` ni crear branch por scope.
-   - Si el branch actual ya es `<base_branch>`, continuar.
-   - Si el branch actual difiere y `git status --porcelain` está vacío:
+3. Crear branch de scope (solo si `effective_pr_mode == true`):
+   - Si `branch_style` está vacío, es `ambiguous` o no contiene un patrón de scope explícito
+     (`<scope>`, `{scope}`, o frase como `branch per scope`): emitir
+     `RMC_INTEGRATE_BRANCH_STYLE_MISSING` y detener. Recovery: correr
+     `/roadmap bootstrap` para popular `[gitflow].branch_style`.
+   - Si `branch_style` provee un patrón de scope válido: LLM genera `branch_target`
+     desde el patrón y ejecuta:
      ```bash
-     git -C <repo_path> fetch origin <base_branch>
-     git -C <repo_path> checkout <base_branch>
-     git -C <repo_path> pull --ff-only
+     git -C <repo_path> checkout -B <branch_target>
      ```
-   - Si el branch actual difiere y hay cambios sin commitear, detenerse con
-     `RMC_INTEGRATE_DIRECT_BRANCH_MISMATCH`. No commitear cambios direct-push en
-     una rama distinta a `<base_branch>`.
 
 ## Fase 3: Commit
 
@@ -264,6 +261,8 @@ Registrar `{number, url, scope, status: "merged"}` para el caller.
 | `RMC_INTEGRATE_GH_AUTH` | `gh auth status` falla | Ejecutar `gh auth login` y reinvocar |
 | `RMC_INTEGRATE_NO_GIT` | `git` no encontrado en PATH | Instalar git o verificar entorno |
 | `RMC_INTEGRATE_NO_GH` | `gh` no encontrado en PATH | Instalar GitHub CLI (`gh`) o degradar a `pr_mode=false` |
+| `RMC_INTEGRATE_BRANCH_STYLE_MISSING` | `effective_pr_mode=true` pero `branch_style` vacío o no contiene patrón de scope | Correr `/roadmap bootstrap` y popular `[gitflow].branch_style` en `.roadmapctl.toml` |
+| `RMC_INTEGRATE_CHECKOUT_BLOCKED` | Checkout de `base_branch` fallido por cambios locales en conflicto | Resolver state del worktree (commit, stash o discard) y reinvocar |
 
 ## Verificación al modificar este skill
 
@@ -274,13 +273,17 @@ Ejecutar desde el repo canónico después de cualquier cambio:
 PI_SKIP_VERSION_CHECK=1 pi --no-extensions --skill .claude/skills/integrate/SKILL.md --tools read,bash \
   -p 'HEADLESS: invocar integrate con pr_mode=false, branch_style="push directly to master; no feature branches", autonomy=until_done, task=docs/roadmap/T020-x.md, scope=direct-tasks. Listar los comandos que correrías, SIN ejecutar git/gh ni modificar archivos.'
 PI_SKIP_VERSION_CHECK=1 pi --no-extensions --skill .claude/skills/integrate/SKILL.md --tools read,bash \
+  -p 'HEADLESS: invocar integrate con pr_mode=true, branch_style="feat/<scope>-slug", scope=O22-slug, previous_scope=O21-slug, is_last_in_scope=false. Listar comandos SIN ejecutar ni modificar archivos.'
+PI_SKIP_VERSION_CHECK=1 pi --no-extensions --skill .claude/skills/integrate/SKILL.md --tools read,bash \
   -p 'HEADLESS: invocar integrate con pr_mode=true, branch_style="", scope=O22-slug, previous_scope=O21-slug, is_last_in_scope=false. Listar comandos SIN ejecutar ni modificar archivos.'
 PI_SKIP_VERSION_CHECK=1 pi --no-extensions --skill .claude/skills/integrate/SKILL.md --tools read,bash \
   -p 'HEADLESS: invocar integrate con pr_mode=true, branch_style="push directly to master; no feature branches", scope=O22-slug, previous_scope=O21-slug, is_last_in_scope=false. Listar comandos SIN ejecutar ni modificar archivos.'
 ```
 
-Escenario A debe listar `git add`, `git commit`, `git push -u origin master`; NO debe listar `checkout -B`, `gh pr create` ni `gh pr merge`; debe imprimir `INTEGRATE_RESULT` con `pr: null`.
+Escenario A debe listar `git fetch`, `git checkout`, `git pull --ff-only`, `git add`, `git commit`, `git push -u origin master`; NO debe listar `checkout -B`, `gh pr create` ni `gh pr merge`; debe imprimir `INTEGRATE_RESULT` con `branch: "master"` y `pr: null`.
 
-Escenario B debe mencionar detección de scope change, branch `feat/O22-slug`, y plan de detectar PR previo de `O21-slug` (sin ejecutarlo).
+Escenario B debe listar `git fetch`, `git checkout <base_branch>`, `git pull --ff-only`, `git checkout -B <branch_target>`, y `gh pr create`; debe mencionar detección de scope change y PR previo de `O21-slug` (sin ejecutarlo).
 
-Escenario C debe degradar a direct-push, emitir warning `RMC_INTEGRATE_PR_DISABLED_BY_DIRECT_PUSH`, no crear branch por scope y no crear PR.
+Escenario C (pr_mode=true + branch_style vacío) debe contener `RMC_INTEGRATE_BRANCH_STYLE_MISSING` y NO debe listar `checkout -B` ni `gh pr create`.
+
+Escenario D debe degradar a direct-push, emitir warning `RMC_INTEGRATE_PR_DISABLED_BY_DIRECT_PUSH`, no crear branch por scope y no crear PR.
