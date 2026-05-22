@@ -53,6 +53,13 @@ Permitido: Write tool por archivo canónico tras aprobación y preflight exitoso
 
 Ejecutar `roadmapctl bootstrap --repo <repo> --output json`. Su JSON es fuente de verdad para config, helpers y comportamiento. Gate inicial: `command -v roadmapctl`. Detalle: [bootstrap-reference.md](bootstrap-reference.md) | [config-reference.md](config-reference.md).
 
+## Frontera de responsabilidad
+
+- `roadmapctl` gobierna guards, validación, estado, cola, readiness y decisiones.
+- Rootline es la base Markdown genérica; usarlo directamente solo donde no exista comando vivo de `roadmapctl`.
+- El skill conversa, descompone, pide aprobación, escribe Markdown canónico aprobado y orquesta ejecución.
+- Reglas específicas del repo (lint, coverage, toolchain, hooks locales) viven en docs locales del repo, no en este skill compartido.
+
 ## Gates CLI
 
 Antes de escribir/mutar/ejecutar/declarar validez:

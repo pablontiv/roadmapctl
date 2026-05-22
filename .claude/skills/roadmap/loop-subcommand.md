@@ -21,18 +21,20 @@ Ruta normal autosuficiente: este archivo contiene el procedimiento operativo com
 - `--filter PATTERN`: filtrar por path (`O01`, `T003`, slug, etc.).
 - `--max N`: límite de esta ejecución. Tiene precedencia sobre `loop_max_tasks`.
 
-Los flags de comportamiento históricos `--parallel`, `--worktree`, `--self-pace`, `--skip-reviews`, `--checkpoint-interval` y `--pr` están obsoletos; no documentarlos ni aceptarlos como comportamiento activo. Usar los campos de configuración `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode`, `pr_merge_strategy`, `commit_style`, `auto_push` y `outcome_close_verify` expuestos por `roadmapctl bootstrap`.
+Los flags de comportamiento históricos `--parallel`, `--worktree`, `--self-pace`, `--skip-reviews`, `--checkpoint-interval` y `--pr` están obsoletos; no documentarlos ni aceptarlos como comportamiento activo. Usar los campos de configuración `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode`, `commit_style`, `auto_push`, `outcome_close_verify` y los style fields de `[gitflow]` expuestos por `roadmapctl bootstrap`.
 
 ## Config efectiva
 
-Del JSON de bootstrap/context leer:
+Del JSON de bootstrap leer:
 
 - `loop_max_tasks`: límite repo-local; `0` significa sin límite.
 - `parallel`: permite waves oportunistas cuando sea seguro.
 - `autonomy`: `manual`, `supervised` o `until_done`.
 - `compact_after_task_commit`: compactar contexto tras una task durable.
 - `pr_mode`: activar workflow de PR por scope.
-- `pr_merge_strategy`, `commit_style`, `auto_push`, `outcome_close_verify`.
+- `commit_style`, `auto_push`, `outcome_close_verify`, `branch_style`, `pr_title_style`, `pr_body_style`.
+
+Si el repo tiene reglas locales para agentes, leerlas desde docs locales (`CLAUDE.md`, `AGENTS.md`, `docs/local-agent-workflow.md` o equivalente) y aplicarlas solo como checks adicionales. Las reglas locales no pueden relajar los gates de `roadmapctl`.
 
 Calcular `effective_max` así:
 
@@ -80,21 +82,6 @@ roadmapctl check --repo <repo-path> --output json --strict
 ```
 
 Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de seleccionar o ejecutar tasks. Reportar comando, exit code y diagnostic IDs si hubo JSON. No ejecutar tasks ni mutar estados.
-
-**Rootline binary staleness** — Cuando el loop ejecuta tasks en el repo `rootline` (o en repos que modifican `cmd/rootline/` o `internal/`), verificar que el binario instalado refleja los cambios recientes. Si el binario es stale, `roadmapctl next` puede devolver JSON formato v1 (sin `frontmatter` map) produciendo títulos vacíos y otros fallos silenciosos.
-
-```bash
-rootline --version                              # versión del binario instalado
-git -C /home/shared/rootline log --oneline -1  # último commit de fuente
-```
-
-Si la fuente es más nueva que el binario, reconstruir antes de continuar:
-
-```bash
-go build -o $(which rootline) /home/shared/rootline/cmd/rootline
-```
-
-Nota CI: `go test ./...` funciona sin rootline instalado — `TestMain` activa el fake rootline automáticamente cuando `exec.LookPath("rootline")` falla (`ROADMAPCTL_FAKE_ROOTLINE=1`). El fake `describe` retorna el envelope completo `rootline/describe` (versión 1, schema, links, validate[]). Tests que requieren rootline real deben llamar `requiresRealRootline(t)` para saltearse automáticamente (ciclos, broken blocked_by, query/graph/tree, can-start/can-complete, decision scoring). La cobertura se verifica con `./scripts/check-coverage.sh` (umbral: 85.0%) en el job `smoke` (Ubuntu, macOS, Windows); el job `ci/Test` de crossbeam corre `go test ./... -race` sin gate de cobertura (instala fake rootline, no el real). Áreas de cobertura reciente: `bootstrap.go` (bootstrapApplyDiagnostic, renderBootstrap), `lint/schema_portability.go` (CheckFilenamePortability, reservedWindowsName, lintNameDiagnostic, arrayValue — cobertura cross-platform con tests que no dependen de filesystem case-sensitive ni chmod). Tras O25-picokit-integration la resolución de paths está cubierta por `github.com/pablontiv/picokit/pathsec` (medida en el repo de picokit), y la infraestructura de tipos de diagnóstico se consume directamente desde `github.com/pablontiv/picokit/diag`. Regla invariante: todo test que skippea con `runtime.GOOS` o filesystem case-insensitivo debe tener un gemelo cross-platform que cubra el mismo código desde otro ángulo.
 
 1. Obtener estado determinístico de ejecución:
    ```bash
@@ -285,14 +272,14 @@ Para cada task o wave ordenada:
 
    **Fallback de re-verificación textual cuando `grep`/`git grep` está interceptado**
 
-   Si el shell del loop tiene `grep` o `git grep` interceptado por un hook local del proyecto (señal: stderr contiene mensajes como "use cartyx instead", "repo is indexed", o similar), **no abortar la re-verificación**. Usar en orden:
+   Si el shell del loop tiene `grep` o `git grep` interceptado por un hook local del proyecto, **no abortar la re-verificación**. Usar en orden:
 
    1. **`find` + `grep` por exec**: escapar el interceptor enviando `grep` como argumento de exec en lugar de comando directo:
       ```bash
       find <path> -name '*.<ext>' -exec grep -l '<patrón>' {} +
       ```
    2. **Leer con Read tool y matchear en conversación**: leer el archivo directamente con la herramienta `Read` y verificar textualmente que la cadena buscada aparece (o no aparece) en el contenido leído. Esta verificación es exacta y no depende de ningún comando shell.
-   3. **Comando alternativo del hook, solo si indexa contenido textual**: si el hook sugiere un comando alternativo (e.g., `cartyx query <término>`), usarlo **únicamente** si indexa contenido de texto literal — no si solo indexa estructura, símbolos o AST. Si indexa solo estructura/símbolos, **no cuenta como AC verificado** para ACs de presencia/ausencia de texto exacto.
+   3. **Comando alternativo del hook, solo si indexa contenido textual**: si el hook sugiere un comando alternativo, usarlo **únicamente** si indexa contenido de texto literal — no si solo indexa estructura, símbolos o AST. Si indexa solo estructura/símbolos, **no cuenta como AC verificado** para ACs de presencia/ausencia de texto exacto.
 
    La re-verificación nunca aborta por un hook interceptor: o se encuentra un camino verificable o se reporta el bloqueo y se detiene el loop con diagnóstico explícito.
 
@@ -306,7 +293,7 @@ Para cada task o wave ordenada:
    - cargo: `cargo test` con `CARGO_INCREMENTAL=0` o limpieza previa.
    - Otros runners tienen flags equivalentes; aplicar el principio, no la sintaxis literal.
 
-   Ejemplo real (picokit T002): el subagente reportó `coverage: 95.7% (cached)` sobre código que en realidad no había sido modificado por su edit. El loop tomó eso como AC pasado y solo se descubrió el problema en CI. Con `-count=1` el cache hit no ocurre y el resultado refleja el estado real del código.
+   Con `-count=1` o flags equivalentes se evita aceptar cache hits como evidencia sobre código recién editado.
 
    **Lint local antes de declarar ACs pasados (requisito si el repo tiene linter)**
 
@@ -322,7 +309,7 @@ Para cada task o wave ordenada:
    - **Violations en archivos tocados por la task activa**: son parte del scope. Resolverlas antes de `transition complete`.
    - **Violations en archivos NO tocados por la task activa**: heredadas del estado previo del repo. Documentarlas en el contexto de la sesión como candidatas a nueva task de fix; **no implementarlas dentro del scope activo** (la regla de scope guard del paso 5 sigue vigente).
 
-   Ejemplo real (picokit T003): el repo tenía 6 violations de lint (errcheck, staticcheck SA5011/SA9003, unused) en paquetes no tocados por T002. Como no se corrió el linter localmente, T003 las heredó y tuvo que producir 3 commits de fix no planificados que rompían su propio scope. Con lint local antes del push, esos hallazgos se documentan como candidatos a nueva task en lugar de contaminar el scope activo.
+   Con lint local antes de integrar, los hallazgos heredados se documentan como candidatos a nueva task en lugar de contaminar el scope activo.
 
 7. **Outcome close check**
    Si es la última task pendiente del Outcome, ejecutar comandos de `outcome_close_verify` si existen. Warning informativo, no bloqueo automático.

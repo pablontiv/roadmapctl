@@ -88,9 +88,9 @@ rootline describe <roadmap-root>/OXX-slug/ --field schema.id.next_by_pattern --o
 
 Preferir `next_by_pattern` (mapa) sobre `next` (string) en schemas con múltiples patrones de secuencia. `next` es determinístico post-fix pero retorna solo el primer patrón alfabético que coincide con entries existentes.
 
-## Cascading links
+## Vistas de Outcome
 
-El skill no edita manualmente la tabla `## Tasks`. `roadmapctl materialize` actualiza el README del Outcome y mantiene la tabla sin columna Estado; el estado se lee desde frontmatter.
+Outcome README no persiste `## Tasks` como fuente de verdad. La lista de tasks se deriva de los archivos `TXXX-*.md` hijos y de las vistas read-only de `roadmapctl`.
 
 ## Dependencias duras
 
@@ -125,6 +125,6 @@ Estos comandos son solo para inspección de bajo nivel, troubleshooting o repara
 
 No usar `rootline stats`; `tree` ya incluye conteos. No postprocesar JSON crudo de Rootline para reconstruir lógica que pertenece a `roadmapctl`.
 
-## Workspace context — fixture .git dirs
+## Reglas locales del repo
 
-Los tests de workspace context requieren directorios `.git` en los fixtures. Git no rastrea directorios vacíos ni archivos dentro de un path component llamado `.git`. `TestMain` en `internal/cli/golden_test.go` los crea con `os.MkdirAll` al arrancar los tests. No agregar `.gitkeep` dentro de esos directorios.
+Reglas de lint, coverage, toolchain, hooks shell o fixtures específicas del repo no pertenecen al skill compartido. Consultar `CLAUDE.md`, `AGENTS.md` o docs locales del repo cuando existan; en roadmapctl, usar `docs/local-agent-workflow.md`.
