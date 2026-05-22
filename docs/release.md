@@ -30,12 +30,12 @@ Required capabilities by command family:
 |------------------|-------------|---------------------------|
 | `--version` | `doctor` | Emits version text for environment reports. |
 | `validate --all <root> --output json` | `check` | Emits parseable JSON, including when validation exits non-zero. |
-| `describe <root>/ --output json` | `check`, `context`, `lint`, `transition` | Exposes schema enum values via `schema.<field>.values` or supported legacy top-level `values`. |
+| `describe <root>/ --output json` | `check`, `lint`, `transition`, bootstrap diagnostics | Exposes schema enum values via `schema.<field>.values` or supported legacy top-level `values`. |
 | `query <root> --where ... --output json` | `check`, read commands, transition checks | Emits `rows[]` with `path`, `frontmatter`, and optional `derived`. |
 | `graph <root> --where ... --output json` | `check`, read commands, transition checks | Emits `cycles[]` and `broken_links[]`. |
-| `tree <root> --where ... --output json` | `context`, `pending`, `next`, `decision` | Emits recursive tree data with child nodes and completion counts. |
+| `tree <root> --where ... --output json` | `pending`, `next`, `decision` | Emits recursive tree data with child nodes and completion counts. |
 | `set <file> field=value` | `transition --apply` | May emit text; `roadmapctl` treats output as raw and validates after mutation. |
-| `new <filepath>` | legacy/manual troubleshooting only | Materialization is implemented directly by roadmapctl and does not require Rootline `new`. |
+| `new <filepath>` | legacy/manual troubleshooting only | Approved roadmap files are written by the skill; roadmapctl guards and validates the result. |
 
 Rootline compatibility diagnostics should differentiate:
 
@@ -61,8 +61,8 @@ Projects can run roadmap validation in CI after installing both Rootline and roa
 - name: Validate roadmap
   shell: bash
   run: |
-    roadmapctl check --repo . --roadmap-root docs/roadmap --output json --strict > roadmapctl-check.json
-    roadmapctl lint --repo . --roadmap-root docs/roadmap --output json --strict > roadmapctl-lint.json
+    roadmapctl check --repo . --output json --strict > roadmapctl-check.json
+    roadmapctl lint --repo . --output json --strict > roadmapctl-lint.json
 ```
 
 JSON/text remain the primary outputs. SARIF/JUnit or GitHub annotations can be layered later by wrappers that consume JSON; core commands do not depend on GitHub.
@@ -97,7 +97,7 @@ A release/cutover is blocked unless each applicable item has evidence:
    - `roadmapctl lint --repo testdata/fixtures/lint-valid --output json --strict`
    - negative guard checks from `scripts/verify-roadmap-skill-headless.sh`
 3. Rootline compatibility:
-   - `roadmapctl doctor --repo . --roadmap-root docs/roadmap --output json --strict`
+   - `roadmapctl doctor --repo . --output json --strict`
    - evidence of detected `rootline --version`
    - missing-rootline negative check exits `3` with `RMC_ENV_ROOTLINE_MISSING`
 4. Skill sync and Pi headless (required for any `/roadmap` skill or guard change):

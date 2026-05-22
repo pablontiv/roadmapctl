@@ -11,7 +11,7 @@ Companion CLI for Rootline-governed roadmaps.
 | Concern | Owner |
 |---------|-------|
 | Filesystem database, `.stem` schema, frontmatter, validation | `rootline` |
-| Status policy, transition guards, pending/next/decision, materialize | `roadmapctl` |
+| Status policy, transition guards, pending/next/decision | `roadmapctl` |
 | Intent decomposition, agent orchestration, user dialogue | `/roadmap` skill |
 | Code/docs changes, acceptance checks | Implementing agent |
 
@@ -160,8 +160,8 @@ roadmapctl does not plan, decompose, or generate content. It **enforces the inva
 | Layer | Owns | Does not own |
 |-------|------|--------------|
 | Rootline | Generic Markdown filesystem database: hierarchy, `.stem` schema, frontmatter, links, validation, graph/query/tree/describe primitives. | Roadmap-specific status policy, prioritization, agent workflow, commits, PRs, or AI decomposition. |
-| roadmapctl | Deterministic roadmap semantics on top of Rootline: config, status roles, guards, `check`/`lint`, `pending`/`next`/`decision`, `transition`, `materialize`, stable diagnostics and exit codes. | Free-form planning, product decisions, task implementation, creative prose generation, or replacing Rootline's structural engine. |
-| `/roadmap` skill | Conversational/orchestration layer: understand user intent, decompose Outcomes/Tasks conceptually, ask for approval, present results, run implementation loops, coordinate agents. | Recomputing deterministic policy already owned by `roadmapctl`, mutating roadmap state directly with Rootline, or manually numbering/materializing roadmap files. |
+| roadmapctl | Deterministic roadmap semantics on top of Rootline: config, status roles, guards, `check`/`lint`, `pending`/`next`/`decision`, `transition`, stable diagnostics and exit codes. | Free-form planning, product decisions, task implementation, creative prose generation, commits, or PRs. |
+| `/roadmap` skill | Conversational/orchestration layer: understand user intent, decompose Outcomes/Tasks, ask for approval, write approved roadmap Markdown, present results, run implementation loops, coordinate agents. | Recomputing deterministic policy already owned by `roadmapctl`, mutating task status directly with Rootline, or bypassing roadmap guards. |
 | Implementing agent | Read an approved task, modify project code/docs, run acceptance checks, summarize and commit work. | Bypassing roadmap guards or deciding roadmap state transitions directly. |
 | Git/CI/release | Reproducible evidence, branch/PR/release mechanics, checksums and distribution. | Serving as the source of truth for roadmap structure or status policy. |
 
@@ -228,12 +228,11 @@ roadmapctl lint --repo <path>                         # Check format conventions
 roadmapctl bootstrap --repo <path> --output json      # Effective config for agents — helpers, thresholds, flags
 roadmapctl pending --repo <path>                      # All tasks not in a done status
 roadmapctl next --repo <path>                         # Suggested next task based on priority/order
-roadmapctl decision <query> --repo <path>             # Query indexed decisions
+roadmapctl decision --repo <path>                     # Deterministic prioritization data
 
 # Controlled mutation (require --apply; blocked if preflight fails)
 roadmapctl transition start <task.md> --repo <path> --apply
 roadmapctl transition complete <task.md> --repo <path> --apply
-roadmapctl materialize <spec> --repo <path> --apply
 ```
 
 The public CLI contract is documented in [docs/cli-contract.md](docs/cli-contract.md). Skill integration details live in [docs/roadmap-skill-integration.md](docs/roadmap-skill-integration.md).
@@ -306,7 +305,8 @@ golangci-lint run ./...   # CI lint gate (golangci-lint v2 required)
 ./scripts/check-coverage.sh  # coverage gate (≥85.0%)
 ```
 
-Common lint constraints: `defer f.Close()` must be wrapped as `defer func() { _ = f.Close() }()` (errcheck); `httpClient.Do(req)` requires `//nolint:gosec` when the URL comes from a variable (G704); avoid indexing array `b[i]` inside `for i := range a` across two arrays (G602 false positive). Cross-platform path assertions: use `filepath.ToSlash` on both sides when comparing output against `filepath.Join` paths. SA5011 (staticcheck nil-deref): add an unreachable `return` after `t.Fatalf` in nil-guard blocks so staticcheck infers the nil branch does not fall through.
+Repository-local agent workflow, coverage, and lint notes live in
+[docs/local-agent-workflow.md](docs/local-agent-workflow.md).
 
 Non-goals:
 
@@ -325,6 +325,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
 | [CLI Contract](docs/cli-contract.md) | Commands, flags, exit codes, JSON output shapes |
 | [Auto-update](docs/auto-update.md) | Staged async update pattern, OS behavior, escape hatches |
 | [Skill Integration](docs/roadmap-skill-integration.md) | How the `/roadmap` skill delegates to roadmapctl |
+| [Local Agent Workflow](docs/local-agent-workflow.md) | Repo-local verification, lint, coverage, and toolchain notes |
 | [Release](docs/release.md) | Release outline and rootline compatibility notes |
 | [Roadmap](docs/roadmap/) | Project roadmap (governed by rootline + roadmapctl) |
 
