@@ -65,64 +65,28 @@ validate:
     rule: non_empty
 `
 
-func TestBootstrapRepairDetectsAndPrompts(t *testing.T) {
+func TestBootstrapRepairDetectsAndBlocks(t *testing.T) {
 	requiresRealRootline(t)
 	repo := setupRepairRepo(t, staleOutcomeEstadoStem)
 
-	// stdin closed immediately → treated as "N" (no confirmation)
+	// Without --yes, init should block on schema compat and not repair
 	var stdout, stderr bytes.Buffer
-	code := ExecuteWithStdin(
-		[]string{"bootstrap", "--repo", repo, "--output", "json"},
-		bytes.NewReader(nil),
+	code := Execute(
+		[]string{"bootstrap", "init", "--apply", "--repo", repo, "--output", "json"},
 		&stdout, &stderr, "dev",
 	)
 
-	// Should exit non-zero because stem is still stale
 	assertRepairExitCode(t, code, 1, &stdout, &stderr)
 	report := testutil.DecodeJSON(t, stdout.Bytes())
 	testutil.RequireDiagnosticID(t, report, "RMC_LINT_SCHEMA_OUTCOME_ESTADO_REQUIRED")
 
-	// Diff and prompt must appear in stderr
-	stderrStr := stderr.String()
-	if !strings.Contains(stderrStr, "--- current .stem") {
-		t.Fatalf("stderr missing diff header; got:\n%s", stderrStr)
-	}
-	if !strings.Contains(stderrStr, "+++ canonical .stem") {
-		t.Fatalf("stderr missing canonical header; got:\n%s", stderrStr)
-	}
-	if !strings.Contains(stderrStr, "Update .stem to canonical schema? [y/N]") {
-		t.Fatalf("stderr missing prompt; got:\n%s", stderrStr)
-	}
-
-	// .stem must be unchanged
+	// .stem must be unchanged — no repair without --yes
 	content, err := os.ReadFile(filepath.Join(repo, "docs", "roadmap", ".stem"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(content) != staleOutcomeEstadoStem {
-		t.Fatalf(".stem was modified when user said N")
-	}
-}
-
-func TestBootstrapRepairAppliesOnYesInput(t *testing.T) {
-	requiresRealRootline(t)
-	repo := setupRepairRepo(t, staleOutcomeEstadoStem)
-
-	var stdout, stderr bytes.Buffer
-	code := ExecuteWithStdin(
-		[]string{"bootstrap", "--repo", repo, "--output", "json"},
-		strings.NewReader("y\n"),
-		&stdout, &stderr, "dev",
-	)
-
-	assertRepairExitCode(t, code, 0, &stdout, &stderr)
-
-	content, err := os.ReadFile(filepath.Join(repo, "docs", "roadmap", ".stem"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(content) != templates.GenerateStemContent("blocked_by") {
-		t.Fatalf(".stem not updated to canonical:\n%s", string(content))
+		t.Fatalf(".stem was modified without --yes")
 	}
 }
 
@@ -131,9 +95,8 @@ func TestBootstrapRepairAppliesWithYesFlag(t *testing.T) {
 	repo := setupRepairRepo(t, staleOutcomeEstadoStem)
 
 	var stdout, stderr bytes.Buffer
-	code := ExecuteWithStdin(
-		[]string{"bootstrap", "--repo", repo, "--yes", "--output", "json"},
-		bytes.NewReader(nil),
+	code := Execute(
+		[]string{"bootstrap", "init", "--apply", "--yes", "--repo", repo, "--output", "json"},
 		&stdout, &stderr, "dev",
 	)
 
@@ -146,21 +109,16 @@ func TestBootstrapRepairAppliesWithYesFlag(t *testing.T) {
 	if string(content) != templates.GenerateStemContent("blocked_by") {
 		t.Fatalf(".stem not updated to canonical:\n%s", string(content))
 	}
-
-	// Prompt must NOT appear in stderr when --yes is set
-	if strings.Contains(stderr.String(), "Update .stem to canonical schema?") {
-		t.Fatalf("--yes flag did not suppress interactive prompt")
-	}
 }
 
-func TestBootstrapRepairDoesNotModifyOnNoInput(t *testing.T) {
+func TestBootstrapRepairDoesNotRepairWithoutYesFlag(t *testing.T) {
 	requiresRealRootline(t)
 	repo := setupRepairRepo(t, staleOutcomeEstadoStem)
 
+	// Without --yes, init blocks on stale stem and does not repair
 	var stdout, stderr bytes.Buffer
-	code := ExecuteWithStdin(
-		[]string{"bootstrap", "--repo", repo, "--output", "json"},
-		strings.NewReader("N\n"),
+	code := Execute(
+		[]string{"bootstrap", "init", "--apply", "--repo", repo, "--output", "json"},
 		&stdout, &stderr, "dev",
 	)
 
@@ -171,7 +129,7 @@ func TestBootstrapRepairDoesNotModifyOnNoInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	if string(content) != staleOutcomeEstadoStem {
-		t.Fatalf(".stem was modified despite user answering N")
+		t.Fatalf(".stem was modified without --yes")
 	}
 }
 
@@ -180,9 +138,8 @@ func TestBootstrapRepairUnsupportedCustomStem(t *testing.T) {
 	repo := setupRepairRepo(t, customStemWithExtraField)
 
 	var stdout, stderr bytes.Buffer
-	code := ExecuteWithStdin(
-		[]string{"bootstrap", "--repo", repo, "--yes", "--output", "json"},
-		bytes.NewReader(nil),
+	code := Execute(
+		[]string{"bootstrap", "init", "--apply", "--yes", "--repo", repo, "--output", "json"},
 		&stdout, &stderr, "dev",
 	)
 
@@ -205,9 +162,8 @@ func TestBootstrapRepairNotTriggeredForCanonicalStem(t *testing.T) {
 	repo := setupRepairRepo(t, templates.GenerateStemContent("blocked_by"))
 
 	var stdout, stderr bytes.Buffer
-	code := ExecuteWithStdin(
-		[]string{"bootstrap", "--repo", repo, "--output", "json"},
-		bytes.NewReader(nil),
+	code := Execute(
+		[]string{"bootstrap", "init", "--apply", "--yes", "--repo", repo, "--output", "json"},
 		&stdout, &stderr, "dev",
 	)
 

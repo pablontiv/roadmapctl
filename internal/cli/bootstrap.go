@@ -94,7 +94,6 @@ type bootstrapConfigReport struct {
 }
 
 func newBootstrapCommand(options *Options, stdin io.Reader, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
-	var yes bool
 	var field string
 	cmd := &cobra.Command{
 		Use:           "bootstrap",
@@ -105,30 +104,13 @@ func newBootstrapCommand(options *Options, stdin io.Reader, stdout io.Writer, st
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			report := buildBootstrapConfig(ctx, *options)
-			if hasRepairTriggerDiagnostics(report.Diagnostics) {
-				root, roadmapRoot, _ := bootstrapRoots(*options)
-				if root != "" && roadmapRoot != "" {
-					applied, extraDiags := repairStemIfNeeded(ctx, *options, root, roadmapRoot, yes, stdin, stderr)
-					if applied {
-						report = buildBootstrapConfig(ctx, *options)
-						if len(extraDiags) > 0 {
-							report.Diagnostics = append(report.Diagnostics, extraDiags...)
-							report.Summary = reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics).Summary
-						}
-					} else {
-						report.Diagnostics = append(report.Diagnostics, extraDiags...)
-						report.Summary = reports.NewReport(report.Kind, report.Root, report.RoadmapRoot, report.Diagnostics).Summary
-					}
-				}
-			}
 			*exitCode = renderBootstrapConfig(report, options.Output, stdout, stderr, field)
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&yes, "yes", false, "apply .stem repair without interactive prompt")
 	cmd.Flags().StringVar(&field, "field", "", "dot-path field extraction from bootstrap JSON output")
 	cmd.AddCommand(newBootstrapInspectCommand(options, stdout, stderr, exitCode))
-	cmd.AddCommand(newBootstrapInitCommand(options, stdout, stderr, exitCode))
+	cmd.AddCommand(newBootstrapInitCommand(options, stdin, stdout, stderr, exitCode))
 	return cmd
 }
 
@@ -140,19 +122,21 @@ func newBootstrapInspectCommand(options *Options, stdout io.Writer, stderr io.Wr
 	}}
 }
 
-func newBootstrapInitCommand(options *Options, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
+func newBootstrapInitCommand(options *Options, stdin io.Reader, stdout io.Writer, stderr io.Writer, exitCode *int) *cobra.Command {
 	var dryRun bool
 	var apply bool
+	var yes bool
 	cmd := &cobra.Command{Use: "init", Short: "Initialize missing bootstrap files with explicit dry-run or apply.", Args: cobra.NoArgs, SilenceUsage: true, SilenceErrors: true, RunE: func(cmd *cobra.Command, args []string) error {
 		if dryRun == apply {
 			return fmt.Errorf("bootstrap init requires exactly one of --dry-run or --apply")
 		}
-		report := buildBootstrapInit(context.Background(), *options, apply)
+		report := buildBootstrapInit(context.Background(), *options, apply, yes, stdin, stderr)
 		*exitCode = renderBootstrap(report, options.Output, stdout, stderr)
 		return nil
 	}}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show proposed bootstrap files without writing")
 	cmd.Flags().BoolVar(&apply, "apply", false, "write allowed bootstrap files")
+	cmd.Flags().BoolVar(&yes, "yes", false, "apply .stem repair without interactive prompt")
 	return cmd
 }
 
@@ -167,12 +151,27 @@ func buildBootstrapInspect(ctx context.Context, options Options) bootstrapReport
 	return report
 }
 
-func buildBootstrapInit(ctx context.Context, options Options, apply bool) bootstrapReport {
+func buildBootstrapInit(ctx context.Context, options Options, apply bool, yes bool, stdin io.Reader, stderr io.Writer) bootstrapReport {
 	root, roadmapRoot, diagnosticsFound := bootstrapRoots(options)
 	report := bootstrapReport{Version: 1, Kind: "roadmapctl/bootstrap/init", Root: root, RoadmapRoot: roadmapRoot, Diagnostics: diagnosticsFound}
-	if len(diagnosticsFound) == 0 {
-		report.Diagnostics = append(report.Diagnostics, bootstrapSchemaCompatibilityDiagnostics(ctx, options, root, roadmapRoot)...)
+	if len(diagnosticsFound) > 0 {
+		report.Summary = reports.NewReport(report.Kind, root, roadmapRoot, report.Diagnostics).Summary
+		return report
 	}
+
+	report.Diagnostics = append(report.Diagnostics, bootstrapSchemaCompatibilityDiagnostics(ctx, options, root, roadmapRoot)...)
+
+	// When applying with --yes, try to repair an incompatible .stem before creating missing files
+	if apply && yes && hasRepairTriggerDiagnostics(report.Diagnostics) {
+		repaired, repairDiags := repairStemIfNeeded(ctx, options, root, roadmapRoot, yes, stdin, stderr)
+		if repaired {
+			report.Diagnostics = repairDiags
+			report.Diagnostics = append(report.Diagnostics, bootstrapSchemaCompatibilityDiagnostics(ctx, options, root, roadmapRoot)...)
+		} else {
+			report.Diagnostics = append(report.Diagnostics, repairDiags...)
+		}
+	}
+
 	if len(report.Diagnostics) == 0 {
 		depLink := defaultDependencyLink(options)
 		report.Changes = proposedBootstrapChanges(root, roadmapRoot, apply, depLink)
@@ -283,24 +282,6 @@ func buildBootstrapConfig(ctx context.Context, options Options) bootstrapConfigR
 		found = append(found, rootlineDiagnostic(err))
 	} else {
 		rootlineVersion = strings.TrimSpace(string(version.Stdout))
-	}
-
-	// Check bootstrap files exist or need to be created
-	if len(found) == 0 {
-		changes := proposedBootstrapChanges(cfg.RepoRoot, cfg.RoadmapRoot, false, cfg.Fields.DependencyLink)
-		if len(changes) > 0 {
-			// Apply bootstrap changes to ensure config and .stem exist
-			applyErrs := applyBootstrapChanges(cfg.RepoRoot, changes)
-			found = append(found, applyErrs...)
-			if len(applyErrs) == 0 {
-				// Reload config after bootstrap apply
-				cfg, err = config.Load(options.Repo)
-				if err != nil {
-					diagnostic := configDiagnostic(root, err)
-					return newBootstrapConfigReport(root, "", "", "", "", nil, []diag.Diagnostic{diagnostic})
-				}
-			}
-		}
 	}
 
 	found = append(found, bootstrapSchemaCompatibilityDiagnostics(ctx, options, cfg.RepoRoot, cfg.RoadmapRoot)...)

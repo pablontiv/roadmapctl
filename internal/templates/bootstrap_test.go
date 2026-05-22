@@ -110,14 +110,16 @@ func TestDefaultRoadmapctlTOMLIncludesAllRequiredSettings(t *testing.T) {
 		"active_statuses",
 		"leaf_filter",
 		"outcome_close_verify",
-		"commit_style",
-		"auto_push",
 		"required_code_coverage = 85.0",
 		"loop_max_tasks",
 		"parallel",
 		"autonomy",
 		"compact_after_task_commit",
-		"pr_mode",
+		"[gitflow]",
+		`branch_mode = "direct_push"`,
+		`pr_create = "never"`,
+		`commit_style = "conventional"`,
+		"auto_push = true",
 		"[status_values]",
 		"pending",
 		"specified",
@@ -131,5 +133,17 @@ func TestDefaultRoadmapctlTOMLIncludesAllRequiredSettings(t *testing.T) {
 		if !strings.Contains(DefaultRoadmapctlTOML, setting) {
 			t.Errorf("DefaultRoadmapctlTOML missing %q", setting)
 		}
+	}
+
+	// Deprecated fields should not appear in the template
+	for _, deprecated := range []string{"pr_mode", "commit_style = "} {
+		// commit_style should only appear inside [gitflow], not before it at top level
+		gitflowIdx := strings.Index(DefaultRoadmapctlTOML, "[gitflow]")
+		if strings.Contains(DefaultRoadmapctlTOML[:gitflowIdx], deprecated) {
+			t.Errorf("DefaultRoadmapctlTOML has deprecated %q before [gitflow] section", deprecated)
+		}
+	}
+	if strings.Contains(DefaultRoadmapctlTOML, "pr_mode") {
+		t.Error("DefaultRoadmapctlTOML should not contain deprecated pr_mode")
 	}
 }

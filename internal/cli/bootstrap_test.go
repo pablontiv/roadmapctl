@@ -12,6 +12,18 @@ import (
 	"testing"
 )
 
+func TestBootstrapBaseCommandIsReadOnly(t *testing.T) {
+	repo := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	Execute([]string{"bootstrap", "--repo", repo, "--output", "json"}, &stdout, &stderr, "dev")
+	if _, err := os.Stat(filepath.Join(repo, "docs", "roadmap")); !os.IsNotExist(err) {
+		t.Fatal("base bootstrap command created docs/roadmap — should be read-only")
+	}
+	if _, err := os.Stat(filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml")); !os.IsNotExist(err) {
+		t.Fatal("base bootstrap command created .roadmapctl.toml — should be read-only")
+	}
+}
+
 func TestBootstrapInspectIsReadOnlyAndReportsMissing(t *testing.T) {
 	repo := t.TempDir()
 	var stdout, stderr bytes.Buffer
@@ -60,7 +72,7 @@ func TestBootstrapInitDryRunDoesNotWriteAndShowsChanges(t *testing.T) {
 			t.Fatalf("dry-run applied change: %#v", change)
 		}
 		if change.Path == "docs/roadmap/.roadmapctl.toml" {
-			for _, want := range []string{"required_code_coverage = 85.0", "loop_max_tasks = 0", "parallel = true", "autonomy = \"until_done\"", "compact_after_task_commit = true", "pr_mode = false"} {
+			for _, want := range []string{"required_code_coverage = 85.0", "loop_max_tasks = 0", "parallel = true", "autonomy = \"until_done\"", "compact_after_task_commit = true", "[gitflow]", `branch_mode = "direct_push"`} {
 				if !strings.Contains(change.Content, want) {
 					t.Fatalf("bootstrap TOML missing %q:\n%s", want, change.Content)
 				}
@@ -616,16 +628,34 @@ func TestBootstrapGitflowConfiguredEmitsNoDiagnostic(t *testing.T) {
 		t.Fatalf("bootstrap init --apply exit = %d; stderr=%q", code, stderr.String())
 	}
 
-	// Now update the config to include gitflow fields
+	// Update gitflow section in the config to include style fields
 	tomlPath := filepath.Join(repo, "docs", "roadmap", ".roadmapctl.toml")
 	content, err := os.ReadFile(tomlPath)
 	if err != nil {
 		t.Fatalf("read toml: %v", err)
 	}
-	updatedContent := string(content) + "\n[gitflow]\n" +
+	// Replace the existing [gitflow] section with one that includes style fields
+	gitflowSection := "\n[gitflow]\n" +
+		`branch_mode = "direct_push"` + "\n" +
+		`pr_create = "never"` + "\n" +
+		`commit_style = "conventional"` + "\n" +
+		"auto_push = true\n" +
 		`branch_style = "conventional"` + "\n" +
 		`pr_title_style = "conventional"` + "\n" +
 		`pr_body_style = "conventional"` + "\n"
+	// Remove the existing [gitflow] block and append the new one
+	tomlStr := string(content)
+	if idx := strings.Index(tomlStr, "[gitflow]"); idx >= 0 {
+		// Find the next top-level section or end of file
+		rest := tomlStr[idx+len("[gitflow]"):]
+		nextSection := strings.Index(rest, "\n[")
+		if nextSection >= 0 {
+			tomlStr = tomlStr[:idx] + rest[nextSection+1:]
+		} else {
+			tomlStr = tomlStr[:idx]
+		}
+	}
+	updatedContent := tomlStr + gitflowSection
 	if err := os.WriteFile(tomlPath, []byte(updatedContent), 0o644); err != nil {
 		t.Fatalf("write updated toml: %v", err)
 	}

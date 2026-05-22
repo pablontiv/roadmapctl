@@ -45,14 +45,17 @@ const DefaultRoadmapctlTOML = `done_statuses = ["Completed", "Obsolete"]
 active_statuses = ["Pending", "Specified", "In Progress"]
 leaf_filter = "isIndex == false"
 outcome_close_verify = []
-commit_style = "conventional"
-auto_push = true
 required_code_coverage = 85.0
 loop_max_tasks = 0
 parallel = true
 autonomy = "until_done"
 compact_after_task_commit = true
-pr_mode = false
+
+[gitflow]
+branch_mode = "direct_push"
+pr_create = "never"
+commit_style = "conventional"
+auto_push = true
 
 [status_values]
 pending = "Pending"
