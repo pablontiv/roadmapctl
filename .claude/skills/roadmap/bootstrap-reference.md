@@ -30,6 +30,8 @@ Usar el JSON devuelto como fuente de verdad para:
 - `<where-active>` = `helpers.where_active`
 - status/config operacional = campos `status_values`, `done_statuses`, `active_statuses`, `outcome_close_verify`, `commit_style`, `auto_push`, `required_code_coverage`, `loop_max_tasks`, `parallel`, `autonomy`, `compact_after_task_commit`, `pr_mode` y cualquier campo adicional expuesto
 
+Nota: `required_code_coverage` aplica vía `pkcov` (picokit ≥ v0.4.0) con coverage-spec v1.1 (auto-discovery de packages). Los repos del ecosistema declaran floors en `.coverage-floors.toml`; `just coverage-check` es el gate local.
+
 Para el schema completo de `estado`, llamar `rootline describe` directamente si se necesita.
 
 `roadmapctl doctor` y `roadmapctl check` no forman parte del bootstrap read-only. Ejecutarlos solo antes de escribir, mutar, ejecutar tasks o declarar validez del roadmap, y como postcheck después de materializar o mutar.
