@@ -17,10 +17,10 @@ The current live CLI surface is:
 - `roadmapctl lint`
 - `roadmapctl transition`
 
-The skill must not call or document removed command surfaces such as
-`roadmapctl context`, `roadmapctl materialize`, `roadmapctl plan-paths`, or the
-old `--roadmap-root` flag. The roadmap root is fixed at `docs/roadmap/` under
-the selected repo and is exposed as `roadmap_root` in JSON reports.
+The skill must not call or document removed surfaces such as the old context
+command, materialization command, plan-path helper, or roadmap-root override
+flag. The roadmap root is fixed at `docs/roadmap/` under the selected repo and
+is exposed as `roadmap_root` in JSON reports.
 
 ## Responsibility Boundary
 

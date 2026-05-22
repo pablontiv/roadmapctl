@@ -21,9 +21,9 @@ Commands:
   transition   Evaluate and apply policy-checked task status transitions.
 ```
 
-Removed or unsupported surfaces are not part of the live contract:
-`roadmapctl context`, `roadmapctl materialize`, `roadmapctl plan-paths`, and
-`--roadmap-root`.
+Removed or unsupported surfaces are not part of the live contract: the old
+context command, materialization command, plan-path helper, and roadmap-root
+override flag.
 
 ## Global Flags
 
