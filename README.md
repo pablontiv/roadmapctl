@@ -124,11 +124,11 @@ my-workspace/                    # parent dir without .git
 │   └── docs/roadmap/
 │       ├── .stem
 │       └── .roadmapctl.toml
-├── tsg-valuecreation-core/      # repo 2: same layout
+├── myapp/      # repo 2: same layout
 │   ├── .git/
 │   └── docs/roadmap/
 │       └── ...
-└── tsg-valuecreation-frontend/  # repo 3: same layout
+└── myservice/  # repo 3: same layout
     ├── .git/
     └── docs/roadmap/
         └── ...
