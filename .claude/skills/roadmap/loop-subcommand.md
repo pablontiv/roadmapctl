@@ -73,6 +73,23 @@ Si la salida NO está vacía (cualquier `M`, `A`, `D`, `??` que no esté en `.gi
 
 El loop no continúa hasta que el operador resuelva y el check vuelva a dar output vacío. **Este check aplica solo a `.claude/skills/`** — no bloquea por cambios en otras rutas (`dist/`, `docs/roadmap/`, código fuente, etc.).
 
+**Check de blobs grandes / build dirs trackeados (ejecutar antes de doctor/check)**
+
+El loop integra con push al final; si el historial pendiente arrastra blobs grandes (build output trackeado por accidente), el push falla **reactivamente** en remoto (límite 100MB de GitHub) recién después de ejecutar y commitear tasks. Detectarlo en preflight evita ese desperdicio:
+
+```bash
+# Blobs >50MB en el árbol de HEAD
+git ls-tree -r -l HEAD | awk '$4 > 50000000 {print $4, $5}'
+# Build dirs trackeados que casi nunca deben estar en el repo
+git ls-files target/ node_modules/ dist/ build/ .next/ 2>/dev/null | head
+```
+
+Si aparece algún blob >50MB **o** un build dir trackeado:
+
+- Reportarlo como **bloqueante informativo** del loop antes de tocar tasks. Identificar el commit que lo introdujo (`git log --oneline --diff-filter=A -- <path>`) y verificar si ya está en `origin/<base>` (`git ls-tree origin/<base> <path>`).
+- Proponer la corrección al operador: agregar el path a `.gitignore` y purgarlo del historial pendiente con `git filter-branch --index-filter 'git rm -r --cached --ignore-unmatch <path>' origin/<base>..HEAD` (reversible vía `refs/original/` mientras no se haya pusheado). **No reescribir historia ni mutar `.gitignore` sin aprobación explícita del operador.**
+- **Detener el loop antes de Fase 2** hasta que el operador resuelva o autorice la limpieza. El skill no reescribe historia por su cuenta.
+
 Antes de consultar o ejecutar tasks pendientes:
 
 ```bash
@@ -134,6 +151,21 @@ Si `roadmapctl` falta o cualquier comando sale non-zero, detenerse antes de sele
    - Si `gh` no está disponible en PATH, advertir una sola vez y continuar sin bloquear (entornos sin GitHub CLI no deben quedar bloqueados).
 
    El pre-check es **selectivo**: aplica solo a tasks que declaran CI como invariante explícito, no es un gate universal de la queue.
+
+   **Pre-check selectivo: estado inicial esperado (informativo)**
+
+   Algunas tasks declaran precondiciones externas (deps cross-repo, releases, tags) que NO se modelan como `blocked_by` estructural porque el target está fuera del roadmap. Esas precondiciones suelen vivir en una sección `## Estado inicial esperado` (o equivalente como `## Estado inicial`) con un comando de verificación entre paréntesis o en bloque.
+
+   Después de fijar `ready[]`, para cada task escanear esa sección y extraer comandos verificables y deterministas (read-only, e.g. `gh release view <tag> --repo <owner>/<repo>`, `gh api ...`, `git ls-remote ...`). Heurística: comandos precedidos de "verificar:", "verify:" o dentro de un bloque de la sección de estado inicial.
+
+   Si hay un comando verificable, ejecutarlo:
+
+   - Si la precondición **no se cumple** (el comando indica ausencia: "not found", exit non-zero, release inexistente), reportar la task como **bloqueante informativo** — anotar la precondición incumplida en el resumen del discovery y **saltarla** según el modo de autonomía (no mutar su estado ni inventar `blocked_by`). Ejecutarla igual podría aplicar un cambio destructivo (e.g. bumpear a una versión inexistente que rompe CI).
+   - Si la precondición **se cumple**, continuar normalmente con esa task.
+   - Solo ejecutar comandos read-only y deterministas; si el comando no es claramente seguro/idempotente o no puede parsearse, no ejecutarlo y anotar la precondición como "no verificada automáticamente" para que el modo de autonomía decida.
+   - Si `gh`/`git` remoto no está disponible, advertir una sola vez y continuar sin bloquear.
+
+   Este pre-check es **selectivo**: aplica solo a tasks con sección de estado inicial y comando verificable; no es un gate universal de la queue.
 
 7. Si no hay tasks en `ready[]` después del filtro: informar pendientes bloqueadas y, **antes de devolver control al usuario, invocar `/retrospective`** de forma incondicional (el cierre del loop siempre dispara retrospective, incluso sin trabajo nuevo):
 
