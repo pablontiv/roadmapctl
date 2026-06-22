@@ -3,3 +3,6 @@ graphify-out/
 coverage.out
 cov_workspace.out
 dist/
+# Local Pi runtime state
+.atl/
+.pi/
