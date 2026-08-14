@@ -18,7 +18,7 @@ jobs:
       coverage-threshold: 0
 
   gitleaks:
-    uses: pablontiv/crossbeam/.github/workflows/gitleaks.yml@v1
+    uses: pablontiv/crossbeam/.github/workflows/gitleaks.yml@v2
 
   smoke:
     name: Smoke tests on ${{ matrix.os }}
