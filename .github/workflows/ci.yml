@@ -61,7 +61,7 @@ jobs:
           go run ./cmd/roadmapctl lint --repo testdata/fixtures/lint-valid --output json --strict
 
   release:
-    uses: pablontiv/crossbeam/.github/workflows/go-release.yml@v1
+    uses: pablontiv/crossbeam/.github/workflows/go-release.yml@v2
     needs: [ci, gitleaks, smoke]
     if: github.event_name == 'push'
     with:
