@@ -3,7 +3,7 @@ module github.com/pablontiv/roadmapctl
 go 1.26
 
 require (
-	github.com/pablontiv/picokit v0.4.0
+	github.com/pablontiv/picokit v1.0.0
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/spf13/cobra v1.10.2
 	github.com/yuin/goldmark v1.8.5
