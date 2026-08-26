@@ -12,13 +12,13 @@ concurrency:
 
 jobs:
   ci:
-    uses: pablontiv/crossbeam/.github/workflows/go-ci.yml@v1
+    uses: pablontiv/crossbeam/.github/workflows/go-ci.yml@v2
     with:
       go-version-file: go.mod
       coverage-threshold: 0
 
   gitleaks:
-    uses: pablontiv/crossbeam/.github/workflows/gitleaks.yml@v1
+    uses: pablontiv/crossbeam/.github/workflows/gitleaks.yml@v2
 
   smoke:
     name: Smoke tests on ${{ matrix.os }}
@@ -61,7 +61,7 @@ jobs:
           go run ./cmd/roadmapctl lint --repo testdata/fixtures/lint-valid --output json --strict
 
   release:
-    uses: pablontiv/crossbeam/.github/workflows/go-release.yml@v1
+    uses: pablontiv/crossbeam/.github/workflows/go-release.yml@v2
     needs: [ci, gitleaks, smoke]
     if: github.event_name == 'push'
     with:
